@@ -186,6 +186,26 @@ replacement and blur.
 CodeFormer (non-commercial), Depth Anything V2 Base/Large/Giant (non-commercial), BRIA RMBG-2.0
 (non-commercial), and code copied from GPL/AGPL apps (darktable, RawTherapee, Upscayl).
 
+## Privacy and security rules (mandatory for every step)
+
+The owner's requirement: **no photo or user data may leave the device** through any of these integrations.
+
+1. **Self-host everything.** Model files and runtime engine files (ONNX Runtime `.wasm`/`.mjs`) are served
+   from our own origin (`/models/`, `/ort/`), never from huggingface.co, jsdelivr or any CDN at runtime.
+   Transformers.js: set `env.allowRemoteModels = false`, `env.localModelPath = '/models/'`, and point
+   `env.backends.onnx.wasm.wasmPaths` to our own folder (by default it loads from a CDN).
+2. **Integrity check.** Record each model file's SHA-256 and size in the model registry; `setup:models`
+   and the on-demand downloader verify the hash and refuse mismatched files.
+3. **Safe formats only.** Load only `.onnx` / `.safetensors`. Never load `.pth`, `.pt`, `.pkl` or other
+   pickle-based files, which can execute code.
+4. **Keep the Content-Security-Policy strict** (`connect-src 'self'` in `server/app.ts`). Do not add external
+   domains to it. If something only works by loosening the CSP, stop and ask the owner.
+5. **Network-isolation test.** Add an e2e test that loads the app, runs every AI feature, and fails if any
+   request goes to a host other than the app's own (the Claude endpoint is excluded only when the user
+   explicitly runs reference analysis with consent).
+6. **Dependencies.** Exact pinned versions, `npm audit` (0 high/critical) at each step, no packages from
+   unknown publishers, and no telemetry/analytics libraries.
+
 ## Rules for every step
 
 1. Commit before and after each step.
