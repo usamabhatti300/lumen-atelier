@@ -11,6 +11,10 @@
  * The output size is never reduced silently: the caller chooses the scale,
  * and if the browser cannot hold the full-size canvas the export fails with
  * an explanation instead of shrinking the image.
+ *
+ * Optional AI upscale (2×/4×, Real-ESRGAN in the ML worker) runs after the
+ * edit is rendered: the model is loaded first (so a missing model fails
+ * fast), then the rendered image is enlarged tile by tile.
  */
 import { GLRenderer } from '@/lib/engine/gl/renderer';
 import { cpuRender } from '@/lib/engine/cpu/cpuRender';
@@ -20,6 +24,8 @@ import { canvasToBlob, createCanvas } from '@/lib/image/decode';
 import { getLut } from '@/lib/storage/db';
 import type { EditState } from '@/lib/schema/adjustments';
 import { effectiveAdjustments } from '@/state/editorStore';
+import { upscaleSizeProblem, upscaleTileCount, type UpscaleFactor } from '@/lib/ml/upscale';
+import { aiUpscale, loadUpscaler } from './aiUpscale';
 
 export type ExportFormat = 'image/jpeg' | 'image/png' | 'image/webp';
 
@@ -31,6 +37,8 @@ export interface ExportOptions {
   quality: number;
   /** Output scale relative to full resolution (0 < scale <= 1). */
   scale: number;
+  /** Enlarge the rendered result with the on-device AI upscaler. */
+  aiUpscale?: UpscaleFactor;
   layerMasks: Map<string, TexImageSource>;
   portraitMask: TexImageSource | null;
   signal?: AbortSignal;
@@ -49,10 +57,25 @@ export class ExportCancelled extends Error {
 export const MAX_CANVAS_SIDE = 16384;
 export const MAX_CANVAS_AREA = 268_000_000;
 
-export function plannedExportSize(source: Size, edit: EditState, scale: number): Size {
+/** Size of the rendered edit before any AI upscale. */
+export function plannedRenderSize(source: Size, edit: EditState, scale: number): Size {
   const full = outputSize(source, edit.geometry);
   return { width: Math.max(1, Math.round(full.width * scale)), height: Math.max(1, Math.round(full.height * scale)) };
 }
+
+/** Size of the exported file. */
+export function plannedExportSize(source: Size, edit: EditState, scale: number, upscale: UpscaleFactor | 1 = 1): Size {
+  const r = plannedRenderSize(source, edit, scale);
+  return { width: r.width * upscale, height: r.height * upscale };
+}
+
+/** Why this export cannot run (too large), or null. `render` is the size before AI upscale. */
+export function exportPlanProblem(render: Size, upscale: UpscaleFactor | 1 = 1): string | null {
+  if (upscale === 1) return exportSizeProblem(render);
+  return upscaleSizeProblem(render, upscale) ?? exportSizeProblem({ width: render.width * upscale, height: render.height * upscale });
+}
+
+export { upscaleTileCount };
 
 export function exportSizeProblem(size: Size): string | null {
   if (size.width > MAX_CANVAS_SIDE || size.height > MAX_CANVAS_SIDE || size.width * size.height > MAX_CANVAS_AREA) {
@@ -81,8 +104,21 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
     fullSize = { width: scaled.width, height: scaled.height };
   }
   const out = outputSize(fullSize, edit.geometry);
-  const problem = exportSizeProblem(out);
+  const problem = exportPlanProblem(out, opts.aiUpscale ?? 1);
   if (problem) throw new Error(problem);
+
+  // With AI upscale: model load 0–5 %, render 5–15 %, upscale tiles 15–95 %.
+  const report = opts.onProgress;
+  const upscaling = !!opts.aiUpscale;
+  if (upscaling) {
+    try {
+      await loadUpscaler(opts.signal, (f, stage) => report?.(f * 0.05, stage));
+    } catch (e) {
+      throw cancelOr(e);
+    }
+    check();
+  }
+  const renderOpts: ExportOptions = upscaling ? { ...opts, onProgress: (f, stage) => report?.(0.05 + f * 0.1, stage) } : opts;
 
   const final = createCanvas(out.width, out.height);
   const fctx = final.getContext('2d') as CanvasRenderingContext2D | null;
@@ -103,10 +139,10 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
       }
     }
     if (renderer) {
-      await renderTiles(renderer, source, fullSize, out, edit, opts, fctx, check);
+      await renderTiles(renderer, source, fullSize, out, edit, renderOpts, fctx, check);
       renderer.dispose();
     } else {
-      opts.onProgress?.(0.05, 'Rendering on CPU');
+      renderOpts.onProgress?.(0.05, 'Rendering on CPU');
       const tmp = createCanvas(source.width, source.height);
       const tctx = tmp.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
       tctx.drawImage(source, 0, 0);
@@ -123,9 +159,34 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
       fctx.putImageData(new ImageData(new Uint8ClampedArray(res.data), res.width, res.height), 0, 0);
     }
     check();
-    opts.onProgress?.(0.97, 'Encoding');
+    let encodeFrom: OffscreenCanvas | HTMLCanvasElement = final;
+    if (opts.aiUpscale) {
+      const factor = opts.aiUpscale;
+      const rendered = fctx.getImageData(0, 0, out.width, out.height);
+      final.width = 1;
+      final.height = 1;
+      report?.(0.15, `Upscaling ${factor}× with AI`);
+      let big;
+      try {
+        big = await aiUpscale(rendered, factor, opts.signal, (done, total) =>
+          report?.(0.15 + (done / total) * 0.8, `Upscaling ${factor}× with AI: tile ${done} of ${total}`),
+        );
+      } catch (e) {
+        throw cancelOr(e);
+      }
+      check();
+      encodeFrom = createCanvas(big.width, big.height);
+      const bctx = encodeFrom.getContext('2d') as CanvasRenderingContext2D | null;
+      if (!bctx) throw new Error('This browser could not allocate an image of this size. Choose a smaller AI upscale.');
+      bctx.putImageData(new ImageData(big.data as Uint8ClampedArray<ArrayBuffer>, big.width, big.height), 0, 0);
+    }
+    report?.(0.97, 'Encoding');
     const q = opts.format === 'image/png' ? undefined : Math.min(1, Math.max(0.01, opts.quality / 100));
-    const blob = await canvasToBlob(final, opts.format, q);
+    const blob = await canvasToBlob(encodeFrom, opts.format, q);
+    if (encodeFrom !== final) {
+      encodeFrom.width = 1;
+      encodeFrom.height = 1;
+    }
     if (blob.type !== opts.format) {
       throw new Error(`This browser cannot encode ${opts.format.replace('image/', '').toUpperCase()}. Choose another format.`);
     }
@@ -223,6 +284,11 @@ async function renderTiles(
       await new Promise((r) => setTimeout(r, 0));
     }
   }
+}
+
+/** Cancellation from the ML worker arrives as an AbortError; report it like any other cancelled export. */
+function cancelOr(e: unknown): unknown {
+  return e instanceof Error && e.name === 'AbortError' ? new ExportCancelled() : e;
 }
 
 export function exportFileName(name: string, format: ExportFormat): string {

@@ -11,6 +11,15 @@ import type { EditState } from '@/lib/schema/adjustments';
 import { analyzePortraitBitmap } from '@/features/portrait/portraitState';
 import { engine } from './controller';
 import { ExportCancelled, exportEdited, exportFileName, type ExportFormat } from './exporter';
+import type { UpscaleFactor } from '@/lib/ml/upscale';
+
+export interface ExportSettings {
+  format: ExportFormat;
+  quality: number;
+  scale: number;
+  /** On-device AI upscale after rendering (works in batch too: each photo is upscaled in turn). */
+  aiUpscale?: UpscaleFactor;
+}
 
 export async function editFor(id: string): Promise<EditState | null> {
   const s = useEditor.getState();
@@ -37,7 +46,7 @@ export interface BatchProgress {
 
 export async function exportPhoto(
   id: string,
-  opts: { format: ExportFormat; quality: number; scale: number },
+  opts: ExportSettings,
   signal?: AbortSignal,
   onProgress?: (fraction: number, stage: string) => void,
 ): Promise<{ name: string; blob: Blob }> {
@@ -74,6 +83,7 @@ export async function exportPhoto(
       format: opts.format,
       quality: opts.quality,
       scale: opts.scale,
+      aiUpscale: opts.aiUpscale,
       layerMasks: masks,
       portraitMask: (portrait?.mask as TexImageSource | null) ?? null,
       signal,
@@ -87,7 +97,7 @@ export async function exportPhoto(
 
 export async function exportMany(
   ids: string[],
-  opts: { format: ExportFormat; quality: number; scale: number },
+  opts: ExportSettings,
   signal: AbortSignal,
   onProgress: (p: BatchProgress) => void,
   onFile: (file: { name: string; blob: Blob }) => void,
