@@ -99,6 +99,7 @@ export async function exportPhoto(
       aiUpscale: opts.aiUpscale,
       layerMasks: masks,
       portraitMask: (portrait?.mask as TexImageSource | null) ?? null,
+      removalScope: id,
       signal,
       onProgress,
     });

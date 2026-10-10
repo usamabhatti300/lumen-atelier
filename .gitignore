@@ -17,3 +17,4 @@ public/models/*.tflite
 .DS_Store
 public/ort
 public/models/*/
+.vite-cache

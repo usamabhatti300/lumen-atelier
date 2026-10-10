@@ -291,6 +291,7 @@ function MoreTabs({ value, onChange }: { value: RightTab; onChange: (t: RightTab
     { id: 'detail', label: 'Detail' },
     { id: 'masks', label: 'Masks' },
     { id: 'portrait', label: 'Portrait' },
+    { id: 'remove', label: 'Remove' },
     { id: 'geometry', label: 'Crop' },
   ];
   return (

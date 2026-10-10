@@ -111,7 +111,7 @@ export const MODELS: readonly ModelInfo[] = [
     name: 'MI-GAN inpainting',
     feature: 'Remove: paint over objects to erase them',
     runtime: 'onnxruntime',
-    status: 'planned',
+    status: 'ready',
     licence: 'MIT',
     licenceUrl: `${HF}/andraniksargsyan/migan/blob/main/LICENSE`,
     source: 'Picsart AI Research, andraniksargsyan/migan',

@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { EditStateSchema, defaultEditState, type EditState } from '../schema/adjustments';
 import { PresetSchema, type Preset } from '../schema/preset';
 import type { ExifInfo } from '../image/exif';
+import { clearPatches } from '../removal/cache';
 
 export const DB_NAME = 'lumen-atelier';
 export const DB_VERSION = 1;
@@ -153,6 +154,7 @@ export async function deleteProject(id: string): Promise<void> {
     ...photos.map((p) => tx.objectStore('originals').delete(p.id)),
     tx.done,
   ]);
+  for (const p of photos) await clearPatches(p.id);
 }
 
 // --- Photos ------------------------------------------------------------------
@@ -211,6 +213,7 @@ export async function deletePhoto(id: string): Promise<void> {
   const db = await getDb();
   const tx = db.transaction(['photos', 'originals'], 'readwrite');
   await Promise.all([tx.objectStore('photos').delete(id), tx.objectStore('originals').delete(id), tx.done]);
+  await clearPatches(id);
 }
 
 // --- Presets -----------------------------------------------------------------
@@ -276,4 +279,5 @@ export async function clearAllData(): Promise<void> {
   const stores = ['projects', 'photos', 'originals', 'presets', 'luts', 'settings'] as const;
   const tx = db.transaction([...stores], 'readwrite');
   await Promise.all([...stores.map((s) => tx.objectStore(s).clear()), tx.done]);
+  await clearPatches();
 }

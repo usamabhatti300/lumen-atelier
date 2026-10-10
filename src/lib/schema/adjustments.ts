@@ -357,6 +357,30 @@ export const RETOUCH_RANGES = {
   underEye: r(0, 100),
 } as const;
 
+// --- Object removal (MI-GAN inpainting) ------------------------------------
+
+/** One painted stroke of the Remove brush. */
+export interface RemovalStroke {
+  /** Brush diameter as a fraction of the image's long edge. */
+  size: number;
+  /** Stroke path, normalized source-image coordinates. */
+  points: [number, number][];
+}
+
+/**
+ * A non-destructive removal: the painted area is filled by the inpainting
+ * model from the surrounding pixels. Only the strokes are stored; the filled
+ * pixels are a cache that is recomputed from them when missing. Removals are
+ * applied in order to the original pixels, before every adjustment.
+ */
+export interface Removal {
+  id: string;
+  visible: boolean;
+  strokes: RemovalStroke[];
+}
+
+export const REMOVAL_LIMITS = { removals: 64, strokes: 32, points: 4000, minSize: 0.002, maxSize: 0.4 } as const;
+
 // --- LUT ---------------------------------------------------------------------
 
 export interface LutRef {
@@ -392,6 +416,8 @@ export interface EditState {
   appliedPreset: AppliedPreset | null;
   /** Toggles the visibility of all global adjustments (layers/retouch unaffected). */
   adjustmentsVisible: boolean;
+  /** Object removals, applied in order to the original pixels. Absent in older edits (same as []). */
+  removals?: Removal[];
 }
 
 export type DeepPartial<T> = T extends readonly unknown[]
@@ -739,6 +765,23 @@ export const RetouchSchema = z.object({
     .max(64),
 });
 
+export const RemovalSchema = z.object({
+  id: z.string().max(64),
+  visible: z.boolean(),
+  strokes: z
+    .array(
+      z.object({
+        size: z
+          .number()
+          .refine(Number.isFinite)
+          .transform((v) => Math.min(REMOVAL_LIMITS.maxSize, Math.max(REMOVAL_LIMITS.minSize, v))),
+        points: z.array(z.tuple([coord, coord])).min(1).max(REMOVAL_LIMITS.points),
+      }),
+    )
+    .min(1)
+    .max(REMOVAL_LIMITS.strokes),
+});
+
 export const EditStateSchema = z.object({
   version: z.literal(EDIT_SCHEMA_VERSION),
   adjustments: AdjustmentsSchema,
@@ -759,6 +802,8 @@ export const EditStateSchema = z.object({
     })
     .nullable(),
   adjustmentsVisible: z.boolean(),
+  // A damaged removals list is dropped rather than discarding the whole edit.
+  removals: z.array(RemovalSchema).max(REMOVAL_LIMITS.removals).optional().catch(undefined),
 });
 
 // ---------------------------------------------------------------------------

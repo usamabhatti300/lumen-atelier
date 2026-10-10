@@ -14,9 +14,15 @@ let ortPromise: Promise<typeof Ort> | null = null;
 
 export function getOrt(): Promise<typeof Ort> {
   if (!ortPromise) {
-    ortPromise = import('onnxruntime-web/webgpu').then((ort) => {
-      // The bundle embeds its JS loader; only the binary is fetched, from our own folder.
-      ort.env.wasm.wasmPaths = { wasm: `${ORT_WASM_BASE}ort-wasm-simd-threaded.asyncify.wasm` };
+    // The WebGPU bundle runs WASM through an "asyncify" build that is several times slower on the
+    // CPU (MI-GAN: 13 s vs 2 s per fill), so without WebGPU the plain WASM bundle is used.
+    const load = async () => {
+      const gpu = await webgpuAvailable();
+      return { gpu, ort: gpu ? await import('onnxruntime-web/webgpu') : await import('onnxruntime-web/wasm') };
+    };
+    ortPromise = load().then(({ gpu, ort }) => {
+      // Each bundle embeds its JS loader; only the binary is fetched, from our own folder.
+      ort.env.wasm.wasmPaths = { wasm: `${ORT_WASM_BASE}ort-wasm-simd-threaded${gpu ? '.asyncify' : ''}.wasm` };
       ort.env.wasm.proxy = false;
       // Threads need cross-origin isolation (COOP + COEP); otherwise one thread.
       ort.env.wasm.numThreads = globalThis.crossOriginIsolated ? Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1)) : 1;

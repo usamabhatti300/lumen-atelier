@@ -127,7 +127,7 @@ export async function makeThumbnail(source: ImageBitmap | ImageData, maxSide = 3
 }
 
 /** Pixel data of a bitmap at reduced size (analysis, histograms). */
-export function bitmapToImageData(bitmap: ImageBitmap, maxSide: number): ImageData {
+export function bitmapToImageData(bitmap: ImageBitmap | OffscreenCanvas | HTMLCanvasElement, maxSide: number): ImageData {
   const k = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const w = Math.max(1, Math.round(bitmap.width * k));
   const h = Math.max(1, Math.round(bitmap.height * k));

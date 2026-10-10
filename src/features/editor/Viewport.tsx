@@ -11,6 +11,7 @@ import { useEditor } from '@/state/editorStore';
 import { frameSize, outputSize } from '@/lib/engine/geometry';
 import { CropOverlay } from './overlays/CropOverlay';
 import { MaskToolOverlay } from './overlays/MaskToolOverlay';
+import { RemoveToolOverlay } from './overlays/RemoveToolOverlay';
 import { SplitDivider } from './overlays/SplitDivider';
 
 export interface ViewBox {
@@ -177,7 +178,8 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       </motion.div>
 
       {activePhotoId && !loading && !error && tool === 'crop' && <CropOverlay box={box} />}
-      {activePhotoId && !loading && !error && toolActive && compare !== 'side' && !spaceDown && <MaskToolOverlay box={box} />}
+      {activePhotoId && !loading && !error && toolActive && compare !== 'side' && !spaceDown &&
+        (tool === 'remove' ? <RemoveToolOverlay box={box} /> : <MaskToolOverlay box={box} />)}
 
       {!fitted && activePhotoId && currentZoom > previewToFull * 1.01 && (
         <p className="pointer-events-none absolute bottom-3 left-3 rounded-xs bg-ink-950/80 px-2 py-1 text-[11px] text-mute">

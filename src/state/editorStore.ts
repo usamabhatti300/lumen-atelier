@@ -22,7 +22,9 @@ import {
   type MaskComponent,
   type MaskLayer,
   type PartialAdjustments,
+  type RemovalStroke,
   type Retouch,
+  REMOVAL_LIMITS,
 } from '@/lib/schema/adjustments';
 import { blendPreset } from '@/lib/presets/blend';
 import { emptyHistory, record, redo as redoH, undo as undoH, type History } from '@/lib/history';
@@ -42,8 +44,8 @@ export interface PhotoMeta {
 }
 
 export type CompareMode = 'off' | 'split' | 'side' | 'before';
-export type Tool = 'none' | 'crop' | 'brush' | 'linear' | 'radial' | 'heal' | 'object';
-export type RightTab = 'adjust' | 'color' | 'detail' | 'portrait' | 'masks' | 'geometry';
+export type Tool = 'none' | 'crop' | 'brush' | 'linear' | 'radial' | 'heal' | 'object' | 'remove';
+export type RightTab = 'adjust' | 'color' | 'detail' | 'portrait' | 'masks' | 'remove' | 'geometry';
 export type LeftTab = 'presets' | 'photos' | 'reference';
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
 
@@ -154,6 +156,12 @@ export interface EditorState {
   removeSpot(id: string): void;
   clearSpots(): void;
 
+  /** Adds a removal, or (append) adds the stroke to the most recent one. Returns its id. */
+  addRemoval(stroke: RemovalStroke, append?: boolean): string;
+  setRemovalVisible(id: string, visible: boolean): void;
+  deleteRemoval(id: string): void;
+  clearRemovals(): void;
+
   setUi(patch: Partial<Pick<EditorState, 'compare' | 'split' | 'zoom' | 'tool' | 'showMaskOverlay' | 'leftTab' | 'rightTab' | 'leftOpen' | 'rightOpen' | 'density'>>): void;
   setBrush(patch: Partial<BrushSettings>): void;
   markSaved(at: number): void;
@@ -173,6 +181,14 @@ export const useEditor = create<EditorState>()(
       if (next === edit) return;
       if (gesture) set({ edit: next, saveState: 'unsaved' });
       else set({ edit: next, history: record(history, edit, label), saveState: 'unsaved' });
+    };
+
+    /** Like `change`, but never merged with the previous entry (each brush stroke is its own undo step). */
+    const changeDistinct = (label: string, updater: (e: EditState) => EditState) => {
+      const { edit, history } = get();
+      const next = updater(edit);
+      if (next === edit) return;
+      set({ edit: next, history: record(history, edit, label, Date.now(), undefined, 0), saveState: 'unsaved' });
     };
 
     /** Track manual edits of fields a live preset controls. */
@@ -336,6 +352,7 @@ export const useEditor = create<EditorState>()(
           appliedPreset: null,
           layers: [],
           retouch: { ...e.retouch, skinSmoothing: 0, eyeEnhance: 0, teethWhitening: 0, faceLight: 0, underEye: 0, spots: [] },
+          removals: [],
           lut: null,
         }));
       },
@@ -503,6 +520,36 @@ export const useEditor = create<EditorState>()(
 
       clearSpots() {
         change('Clear spots', (e) => ({ ...e, retouch: { ...e.retouch, spots: [] } }));
+      },
+
+      addRemoval(stroke, append = false) {
+        const list = get().edit.removals ?? [];
+        const last = list[list.length - 1];
+        if (append && last && last.strokes.length < REMOVAL_LIMITS.strokes) {
+          changeDistinct('Remove object', (e) => ({
+            ...e,
+            removals: (e.removals ?? []).map((r) => (r.id === last.id ? { ...r, visible: true, strokes: [...r.strokes, stroke] } : r)),
+          }));
+          return last.id;
+        }
+        const id = newId('r_');
+        changeDistinct('Remove object', (e) => ({
+          ...e,
+          removals: [...(e.removals ?? []), { id, visible: true, strokes: [stroke] }].slice(-REMOVAL_LIMITS.removals),
+        }));
+        return id;
+      },
+
+      setRemovalVisible(id, visible) {
+        change('Toggle removal', (e) => ({ ...e, removals: (e.removals ?? []).map((r) => (r.id === id ? { ...r, visible } : r)) }));
+      },
+
+      deleteRemoval(id) {
+        change('Delete removal', (e) => ({ ...e, removals: (e.removals ?? []).filter((r) => r.id !== id) }));
+      },
+
+      clearRemovals() {
+        change('Clear removals', (e) => (e.removals?.length ? { ...e, removals: [] } : e));
       },
 
       setUi(patch) {
