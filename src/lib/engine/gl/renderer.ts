@@ -4,6 +4,7 @@
  *   source (sRGB 8-bit texture)
  *     -> linearize                       [float intermediate]
  *     -> retouch (heal spots, skin, eyes, teeth, under-eye, face light)
+ *     -> lens blur (depth of field from a depth map: prep, gather, composite)
  *     -> Gaussian blur pyramid (small / medium / large), downsampled for large radii
  *     -> develop (detail, WB, exposure, mixer, tone, OKLab colour, curves, levels, LUT)
  *     -> adjustment layers (masked local adjustments, optional blur)
@@ -18,7 +19,10 @@ import type { CropRect, EditState } from '../../schema/adjustments';
 import {
   BLUR_RADII,
   MIN_BLUR_PX,
+  deriveLensParams,
   deriveLocalParams,
+  lensBlurPlan,
+  lensRadiusPx,
   type DevelopParams,
 } from '../params';
 import { outputToSourceMatrix, toGlMat3, type Mat3, type Size } from '../geometry';
@@ -29,6 +33,9 @@ import {
   copyFrag,
   developFrag,
   layerFrag,
+  lensCompositeFrag,
+  lensGatherFrag,
+  lensPrepFrag,
   linearizeFrag,
   outputFrag,
   presentFrag,
@@ -97,6 +104,7 @@ export class GLRenderer {
   private blank3d: WebGLTexture;
   private layerMasks = new Map<string, WebGLTexture>();
   private portraitMask: WebGLTexture | null = null;
+  private depthTex: WebGLTexture | null = null;
   private lost = false;
   onContextLost?: () => void;
 
@@ -210,6 +218,27 @@ export class GLRenderer {
     this.portraitMask = tex;
   }
 
+  /** Depth raster for lens blur: one byte per pixel, nearness 0 (far) .. 255 (near), full-image extent. */
+  setDepthMap(depth: { width: number; height: number; data: Uint8Array | Uint8ClampedArray } | null) {
+    const gl = this.gl;
+    if (!depth) {
+      if (this.depthTex) gl.deleteTexture(this.depthTex);
+      this.depthTex = null;
+      return;
+    }
+    const tex = this.depthTex ?? gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    const data = depth.data instanceof Uint8Array ? depth.data : new Uint8Array(depth.data.buffer, depth.data.byteOffset, depth.data.length);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, depth.width, depth.height, 0, gl.RED, gl.UNSIGNED_BYTE, data);
+    this.setFilter(gl.LINEAR);
+    this.depthTex = tex;
+  }
+
+  get hasDepthMap(): boolean {
+    return this.depthTex !== null;
+  }
+
   /** 3D LUT (size^3 RGB floats, red fastest). Pass null to clear. */
   setLut(data: Float32Array | null, size = 0) {
     const gl = this.gl;
@@ -244,7 +273,7 @@ export class GLRenderer {
     this.releaseIntermediates();
     for (const tex of this.layerMasks.values()) gl.deleteTexture(tex);
     this.layerMasks.clear();
-    for (const t of [this.srcTex, this.portraitMask, this.lutTex, this.curveTex, this.blankTex, this.blank3d])
+    for (const t of [this.srcTex, this.portraitMask, this.depthTex, this.lutTex, this.curveTex, this.blankTex, this.blank3d])
       if (t) gl.deleteTexture(t);
     for (const p of this.programs.values()) gl.deleteProgram(p.prog);
     this.programs.clear();
@@ -313,6 +342,51 @@ export class GLRenderer {
         u_skinRadius: radius(BLUR_RADII.medium * 2, 2),
         'u_spots[0]': spotData,
         'u_spotOff[0]': offData,
+      });
+      base = out;
+    }
+
+    // 2b. Lens blur (depth of field), in linear source space.
+    const lens = deriveLensParams(edit.lensBlur);
+    const lensPx = lensRadiusPx(lens, longEdge, pxPerFull);
+    if (!neutral && lens.active && this.depthTex && lensPx >= 0.5) {
+      const plan = lensBlurPlan(lensPx);
+      const common = {
+        u_depth: this.depthTex,
+        u_region: [this.srcRegion.x, this.srcRegion.y, this.srcRegion.w, this.srcRegion.h],
+        u_size: [sw, sh],
+        u_lens: [lens.focus, lens.band, lens.width, lens.boost],
+      };
+      const src = base;
+      const level = (name: string, lv: { factor: number; radius: number; samples: number }) => {
+        const size = [Math.ceil(sw / lv.factor), Math.ceil(sh / lv.factor)];
+        const prep = this.ensureTarget(`${name}Prep`, size[0], size[1], f);
+        this.pass('lensPrep', lensPrepFrag(f), prep, { ...common, u_src: src.tex, u_factor: lv.factor, u_cocScale: lensPx / lv.factor });
+        const gather = this.ensureTarget(`${name}Gather`, size[0], size[1], f);
+        this.pass('lensGather', lensGatherFrag(f), gather, {
+          ...common,
+          u_prep: prep.tex,
+          u_lowSize: size,
+          u_radius: lv.radius,
+          u_samples: lv.samples,
+        });
+        return { prep, gather, size };
+      };
+      const coarse = level('lens', plan);
+      const fine = plan.fine ? level('lensFine', plan.fine) : null;
+      const out = this.ensureTarget('lensOut', sw, sh, f);
+      this.pass('lensComposite', lensCompositeFrag(f), out, {
+        ...common,
+        u_src: src.tex,
+        u_prep: coarse.prep.tex,
+        u_gather: coarse.gather.tex,
+        u_lowSize: coarse.size,
+        u_factor: plan.factor,
+        u_prepF: (fine ?? coarse).prep.tex,
+        u_gatherF: (fine ?? coarse).gather.tex,
+        u_fineSize: (fine ?? coarse).size,
+        u_fineFactor: plan.fine?.factor ?? 0,
+        u_rmax: lensPx,
       });
       base = out;
     }
@@ -696,6 +770,9 @@ const INT_UNIFORMS = new Set([
   'u_effectsOn',
   'u_mode',
   'u_overlay',
+  'u_factor',
+  'u_samples',
+  'u_fineFactor',
 ]);
 function isIntUniform(name: string) {
   return INT_UNIFORMS.has(name);

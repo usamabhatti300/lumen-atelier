@@ -15,7 +15,7 @@
 import { linearSrgbToOklab, oklabToLinearSrgb } from '../color/oklab';
 import { linearToSrgb, luminance, srgbToLinear } from '../color/srgb';
 import { CURVE_LUT_SIZE, sampleLut } from '../color/curves';
-import type { DevelopParams, LocalParams } from './params';
+import { LENS, type DevelopParams, type LensParams, type LensPlan, type LocalParams } from './params';
 
 export type RGB = [number, number, number];
 
@@ -339,4 +339,86 @@ export function applyGrainSrgb(srgb: RGB, n: number, amount: number): RGB {
   const w = 0.35 + 0.65 * (1 - Math.pow(2 * y - 1, 2));
   const d = n * amount * 0.11 * w;
   return [clamp(srgb[0] + d, 0, 1), clamp(srgb[1] + d, 0, 1), clamp(srgb[2] + d, 0, 1)];
+}
+
+// ---------------------------------------------------------------------------
+// Lens blur (depth of field). Mirrored by lensPrepFrag / lensGatherFrag /
+// lensCompositeFrag in gl/shaders.ts; the image-level CPU pass is
+// lensBlurLinear in cpu/cpuRender.ts. Units: nearness n is 0 (far) .. 1 (near);
+// CoC values are blur-disc radii in pixels of the pass that uses them, signed
+// (+ behind the focal plane, - in front of it).
+// ---------------------------------------------------------------------------
+
+export const GOLDEN_ANGLE = 2.399963229728653;
+
+/** Signed blur size in [-1, 1] for a pixel of nearness `n`. Zero inside the in-focus band. */
+export function lensCoc(n: number, L: Pick<LensParams, 'focus' | 'band' | 'width'>): number {
+  const d = L.focus - n;
+  const t = clamp((Math.abs(d) - L.band) / L.width, 0, 1);
+  const s = t * (2 - t);
+  return d < 0 && s > 0 ? -s : s;
+}
+
+/**
+ * Expands highlights before blurring so out-of-focus lights stay bright and
+ * form discs (an 8-bit source clips them at 1.0). Luminance-based, so hue is
+ * kept; exactly inverted by bokehCompress.
+ */
+export function bokehExpand(rgb: RGB, boost: number): RGB {
+  const y = luminance(rgb[0], rgb[1], rgb[2]);
+  const T = LENS.highlightThreshold;
+  if (boost <= 0 || y <= T) return rgb;
+  const k = (y + boost * (y - T) * (y - T)) / y;
+  return [rgb[0] * k, rgb[1] * k, rgb[2] * k];
+}
+
+export function bokehCompress(rgb: RGB, boost: number): RGB {
+  const y = luminance(rgb[0], rgb[1], rgb[2]);
+  const T = LENS.highlightThreshold;
+  if (boost <= 0 || y <= T) return rgb;
+  const g = T + (Math.sqrt(1 + 4 * boost * (y - T)) - 1) / (2 * boost);
+  const k = g / y;
+  return [rgb[0] * k, rgb[1] * k, rgb[2] * k];
+}
+
+/** How much a neighbour with CoC `a` may stand in for a pixel with CoC `ref` (keeps edges between depths clean). */
+export function cocSimilarity(a: number, ref: number): number {
+  const tau = 0.5 + 0.25 * Math.abs(ref);
+  return 1 - smoothstep(tau, 2 * tau, Math.abs(a - ref));
+}
+
+/** Gather sample `k` of `n` on a disc of radius `R` (golden-angle spiral, uniform density): [dx, dy, r]. */
+export function lensSample(k: number, n: number, R: number): [number, number, number] {
+  const r = R * Math.sqrt((k + 0.5) / n);
+  const a = k * GOLDEN_ANGLE;
+  return [r * Math.cos(a), r * Math.sin(a), r];
+}
+
+/**
+ * Scatter-as-gather weight of a sample at distance `r` from the centre: the
+ * sample contributes if its own blur disc reaches the centre. A sample behind
+ * the centre may not spill over it by more than the centre's own blur (a
+ * blurred background never bleeds over a sharp subject). Returns
+ * [weight, foreground weight]; the latter measures blurred foreground spilling
+ * over a sharper centre.
+ */
+export function lensGatherWeight(sampleCoc: number, centerCoc: number, r: number): [number, number] {
+  const c0 = Math.abs(centerCoc);
+  let cs = Math.abs(sampleCoc);
+  if (sampleCoc > centerCoc + 0.5) cs = Math.min(cs, c0 * 2 + 0.5);
+  const w = clamp(cs - r + 0.5, 0, 1);
+  const fg = sampleCoc < centerCoc - 0.5 && cs > c0 ? w : 0;
+  return [w, fg];
+}
+
+/**
+ * Composite weights for a pixel with CoC `cocPx` (render px): [t, u], where t
+ * mixes sharp → blurred and u mixes the fine level → the coarse level. The
+ * blurred image is only trusted once the CoC reaches about a pixel of the
+ * level it comes from.
+ */
+export function lensBlendWeights(cocPx: number, plan: Pick<LensPlan, 'factor' | 'fine'>): [number, number] {
+  const c = Math.abs(cocPx);
+  if (!plan.fine) return [smoothstep(0.5, 0.5 + plan.factor, c), 1];
+  return [smoothstep(0.5, 0.5 + plan.fine.factor, c), smoothstep(0.75 * plan.factor, 1.5 * plan.factor, c)];
 }

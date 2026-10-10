@@ -1,5 +1,5 @@
 import { expect, test, type Request } from '@playwright/test';
-import { makeImage, waitForRender } from './helpers.ts';
+import { makeImage, setRange, waitForRender } from './helpers.ts';
 
 /**
  * Privacy guarantee: running the on-device AI features must not send a single
@@ -9,7 +9,7 @@ import { makeImage, waitForRender } from './helpers.ts';
  * is not run here.)
  */
 test('AI features make no requests to other hosts', async ({ page, context, baseURL }) => {
-  test.setTimeout(1_200_000); // Select object's image embedding is slow on a shared CPU
+  test.setTimeout(1_500_000);
   const origin = new URL(baseURL!).origin;
   const foreign: string[] = [];
   const seen: string[] = [];
@@ -74,6 +74,13 @@ test('AI features make no requests to other hosts', async ({ page, context, base
   expect(seen.some((u) => u.endsWith('/models/jonathanst29/tinier-upscale-models/realesr-general-x4v3.onnx'))).toBe(true);
   await expect(page.getByText(/Exported 1 file/)).toBeVisible();
 
+  // Depth Anything V2 Small (Transformers.js) for lens blur.
+  await page.keyboard.press('Escape');
+  await page.locator('#tab-detail').click();
+  await setRange(page, 'Amount', 50);
+  await expect(page.getByTestId('depth-status')).toContainText('Depth estimated on this device', { timeout: 1_200_000 });
+  expect(seen.some((u) => u.endsWith('/models/onnx-community/depth-anything-v2-small/onnx/model_fp16.onnx'))).toBe(true);
+
   // ONNX Runtime (WebGPU + WASM) and Transformers.js via the runtime check.
   await page.goto('/settings');
   const models = page.getByRole('list', { name: 'AI models' });
@@ -82,6 +89,7 @@ test('AI features make no requests to other hosts', async ({ page, context, base
   await expect(page.getByTestId('ai-model-slimsam').getByTestId('ai-model-state')).toHaveText('Downloaded');
   await expect(page.getByTestId('ai-model-realesrgan-x4v3').getByTestId('ai-model-state')).toHaveText('Downloaded');
   await expect(page.getByTestId('ai-model-migan').getByTestId('ai-model-state')).toHaveText('Downloaded');
+  await expect(page.getByTestId('ai-model-depth-anything-v2-small').getByTestId('ai-model-state')).toHaveText('Downloaded');
   await page.getByRole('button', { name: 'Check AI runtime' }).click();
   const status = page.getByTestId('ai-runtime-status');
   await expect(status).toContainText('CPU (WebAssembly)', { timeout: 120_000 });

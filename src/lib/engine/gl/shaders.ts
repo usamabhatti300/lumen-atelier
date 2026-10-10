@@ -3,6 +3,7 @@
  * The colour math mirrors src/lib/engine/pixel.ts (CPU reference). Keep the two
  * in sync; tests exercise the CPU version and e2e tests compare both paths.
  */
+import { LENS } from '../params';
 
 export const VERTEX = /* glsl */ `#version 300 es
 in vec2 a_pos;
@@ -552,4 +553,213 @@ void main() {
     rgb = mix(rgb, u_overlayColor.rgb, m * u_overlayColor.a);
   }
   o = vec4(rgb, 1.0);
+}`;
+
+// ---------------------------------------------------------------------------
+// Lens blur (depth of field): prep -> gather -> composite. Mirrors
+// lensBlurLinear in cpu/cpuRender.ts and the lens helpers in pixel.ts.
+// ---------------------------------------------------------------------------
+
+function glslFloat(v: number): string {
+  const s = String(v);
+  return s.includes('.') || s.includes('e') ? s : `${s}.0`;
+}
+
+const LENS_COMMON = /* glsl */ `
+uniform sampler2D u_depth;   // R8 nearness (0 far .. 1 near), full image extent
+uniform vec4 u_region;       // this texture's region within the full image (normalized)
+uniform vec2 u_size;         // source (region) size in px
+uniform vec4 u_lens;         // focus, band, width, boost
+const float GOLDEN_ANGLE = 2.399963229728653;
+const float BOKEH_T = ${glslFloat(LENS.highlightThreshold)};
+
+float lensCoc(float n) {
+  float d = u_lens.x - n;
+  float t = clamp((abs(d) - u_lens.y) / u_lens.z, 0.0, 1.0);
+  float s = t * (2.0 - t);
+  return d < 0.0 ? -s : s;
+}
+// p: position in source px (texel centres at +0.5).
+float cocAtPx(vec2 p) { return lensCoc(texture(u_depth, u_region.xy + (p / u_size) * u_region.zw).r); }
+
+vec3 bokehExpand(vec3 c, float boost) {
+  float y = dot(c, LUMA);
+  if (boost <= 0.0 || y <= BOKEH_T) return c;
+  return c * ((y + boost * (y - BOKEH_T) * (y - BOKEH_T)) / y);
+}
+vec3 bokehCompress(vec3 c, float boost) {
+  float y = dot(c, LUMA);
+  if (boost <= 0.0 || y <= BOKEH_T) return c;
+  float g = BOKEH_T + (sqrt(1.0 + 4.0 * boost * (y - BOKEH_T)) - 1.0) / (2.0 * boost);
+  return c * (g / y);
+}
+float cocSimilarity(float a, float ref) {
+  float tau = 0.5 + 0.25 * abs(ref);
+  return 1.0 - smoothstep(tau, 2.0 * tau, abs(a - ref));
+}
+
+// Low-resolution lens targets: exact in float targets; the 8-bit fallback
+// encodes (expanded) colour as sqrt(v / 4) and the signed CoC around 0.5.
+vec4 storeBokeh(vec3 rgb, float coc) {
+#if FLOAT_FBO
+  return vec4(rgb, coc);
+#else
+  return vec4(sqrt(clamp(rgb / 4.0, 0.0, 1.0)), clamp(0.5 + coc / 64.0, 0.0, 1.0));
+#endif
+}
+vec4 loadBokeh(vec4 v) {
+#if FLOAT_FBO
+  return v;
+#else
+  return vec4(v.rgb * v.rgb * 4.0, (v.a - 0.5) * 64.0);
+#endif
+}
+vec4 storeGather(vec3 rgb, float fg) {
+#if FLOAT_FBO
+  return vec4(rgb, fg);
+#else
+  return vec4(sqrt(clamp(rgb / 4.0, 0.0, 1.0)), fg);
+#endif
+}
+vec4 loadGather(vec4 v) {
+#if FLOAT_FBO
+  return v;
+#else
+  return vec4(v.rgb * v.rgb * 4.0, v.a);
+#endif
+}
+`;
+
+const lensHeader = (f: boolean) => `${header(f)}${LENS_COMMON}`;
+
+/** Lens prep (low res): highlight-expanded colour averaged over factor x factor blocks at the block's depth; alpha = CoC. */
+export const lensPrepFrag = (f: boolean) => `${lensHeader(f)}
+out vec4 o;
+uniform sampler2D u_src;
+uniform int u_factor;
+uniform float u_cocScale; // full blur radius in this level's px
+void main() {
+  ivec2 lo = ivec2(gl_FragCoord.xy);
+  int fac = u_factor;
+  ivec2 sz = ivec2(u_size);
+  float cc = cocAtPx((vec2(lo) + 0.5) * float(fac)) * u_cocScale;
+  vec3 acc = vec3(0.0);
+  vec3 pacc = vec3(0.0);
+  float ws = 0.0;
+  float pn = 0.0;
+  ivec2 b = lo * fac;
+  for (int y = 0; y < ${LENS.maxFactor}; y++) {
+    int sy = b.y + y;
+    if (y >= fac || sy >= sz.y) break;
+    for (int x = 0; x < ${LENS.maxFactor}; x++) {
+      int sx = b.x + x;
+      if (x >= fac || sx >= sz.x) break;
+      vec3 e = bokehExpand(loadLin(texelFetch(u_src, ivec2(sx, sy), 0)).rgb, u_lens.w);
+      float w = cocSimilarity(cocAtPx(vec2(sx, sy) + 0.5) * u_cocScale, cc);
+      acc += e * w;
+      ws += w;
+      pacc += e;
+      pn += 1.0;
+    }
+  }
+  vec3 c = ws > 1e-3 ? acc / ws : pacc / max(pn, 1.0);
+  o = storeBokeh(c, cc);
+}`;
+
+/** Lens gather (low res): scatter-as-gather disc blur with golden-angle samples. Alpha = foreground spill. */
+export const lensGatherFrag = (f: boolean) => `${lensHeader(f)}
+out vec4 o;
+uniform sampler2D u_prep;
+uniform vec2 u_lowSize;
+uniform float u_radius;
+uniform int u_samples;
+void main() {
+  vec2 p = gl_FragCoord.xy;
+  vec4 c = loadBokeh(texelFetch(u_prep, ivec2(p), 0));
+  vec3 acc = c.rgb;
+  float ws = 1.0;
+  float fg = 0.0;
+  float c0 = abs(c.a);
+  for (int k = 0; k < ${LENS.maxSamples}; k++) {
+    if (k >= u_samples) break;
+    float fk = float(k);
+    float r = u_radius * sqrt((fk + 0.5) / float(u_samples));
+    float a = fk * GOLDEN_ANGLE;
+    // Bilinear footprint, but each of the 4 texels is tested for coverage on its own: interpolating
+    // colour and CoC first would let in-focus texels leak across depth edges as halos.
+    vec2 q = p + r * vec2(cos(a), sin(a)) - 0.5;
+    vec2 q0 = floor(q);
+    vec2 fr = q - q0;
+    for (int t = 0; t < 4; t++) {
+      ivec2 off = ivec2(t & 1, t >> 1);
+      ivec2 ix = clamp(ivec2(q0) + off, ivec2(0), ivec2(u_lowSize) - 1);
+      float bil = (off.x == 1 ? fr.x : 1.0 - fr.x) * (off.y == 1 ? fr.y : 1.0 - fr.y);
+      vec4 s = loadBokeh(texelFetch(u_prep, ix, 0));
+      float cs = abs(s.a);
+      if (s.a > c.a + 0.5) cs = min(cs, c0 * 2.0 + 0.5);
+      float w = bil * clamp(cs - r + 0.5, 0.0, 1.0);
+      acc += s.rgb * w;
+      ws += w;
+      if (s.a < c.a - 0.5 && cs > c0) fg += w;
+    }
+  }
+  o = storeGather(acc / ws, fg / ws);
+}`;
+
+/** Lens composite (full res): depth-aware upsample of the gather, mixed with the sharp image by CoC. */
+export const lensCompositeFrag = (f: boolean) => `${lensHeader(f)}
+in vec2 v_uv; out vec4 o;
+uniform sampler2D u_src, u_prep, u_gather, u_prepF, u_gatherF;
+uniform vec2 u_lowSize, u_fineSize;
+uniform int u_factor;
+uniform int u_fineFactor;  // 0 = no fine level
+uniform float u_rmax;      // full blur radius in source px
+
+// Depth-aware (joint bilateral) upsample of one level's gather: rgb + foreground spill.
+vec4 upsample(sampler2D prep, sampler2D gather, vec2 size, float fac, vec2 p, float c0) {
+  float c0l = c0 / fac;
+  vec2 q = p / fac - 0.5;
+  vec2 q0 = floor(q);
+  vec2 fr = q - q0;
+  ivec2 hi = ivec2(size) - 1;
+  vec4 acc = vec4(0.0);
+  float ws = 0.0;
+  vec4 bacc = vec4(0.0);
+  for (int k = 0; k < 4; k++) {
+    ivec2 off = ivec2(k & 1, k >> 1);
+    ivec2 ix = clamp(ivec2(q0) + off, ivec2(0), hi);
+    float bil = (off.x == 1 ? fr.x : 1.0 - fr.x) * (off.y == 1 ? fr.y : 1.0 - fr.y);
+    float a = loadBokeh(texelFetch(prep, ix, 0)).a;
+    vec4 g = loadGather(texelFetch(gather, ix, 0));
+    float w = bil * cocSimilarity(a, c0l);
+    acc += g * w;
+    ws += w;
+    bacc += g * bil;
+  }
+  return ws > 1e-4 ? acc / ws : bacc;
+}
+
+void main() {
+  vec4 src = loadLin(texture(u_src, v_uv));
+  vec2 p = gl_FragCoord.xy;
+  float fac = float(u_factor);
+  float c0 = cocAtPx(p) * u_rmax;
+  float ac = abs(c0);
+  float tc;
+  float u;
+  if (u_fineFactor == 0) {
+    tc = smoothstep(0.5, 0.5 + fac, ac);
+    u = 1.0;
+  } else {
+    tc = smoothstep(0.5, 0.5 + float(u_fineFactor), ac);
+    u = smoothstep(0.75 * fac, 1.5 * fac, ac);
+  }
+  vec4 b = upsample(u_prep, u_gather, u_lowSize, fac, p, c0);
+  if (u_fineFactor != 0 && u < 1.0) {
+    vec4 a = upsample(u_prepF, u_gatherF, u_fineSize, float(u_fineFactor), p, c0);
+    b = mix(a, b, u);
+  }
+  float t = max(tc, b.a);
+  if (t <= 0.0) { o = storeLin(src); return; }
+  o = storeLin(vec4(mix(src.rgb, bokehCompress(b.rgb, u_lens.w), t), src.a));
 }`;

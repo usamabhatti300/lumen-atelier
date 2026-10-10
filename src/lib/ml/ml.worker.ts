@@ -7,7 +7,8 @@
  */
 import type * as Ort from 'onnxruntime-web';
 import { createSession, getOrt, type Backend } from './ort';
-import type { BackendCheck, LoadResult, MlRequest, MlResponse, SelfTestResult, TensorData } from './protocol';
+import type { BackendCheck, DepthResult, LoadResult, MlRequest, MlResponse, SelfTestResult, TensorData } from './protocol';
+import { estimateDepth } from './depth';
 import { getModel } from './registry';
 import { handleSam } from './sam';
 import { isSamRequest } from './samProtocol';
@@ -117,8 +118,11 @@ self.onmessage = async (e: MessageEvent<MlRequest>) => {
     } else if (msg.type === 'selftest') result = await selfTest();
     else if (msg.type === 'load') result = await load(msg.id, msg.modelId, ac.signal);
     else if (msg.type === 'run') result = await run(msg.modelId, msg.file, msg.feeds);
+    else if (msg.type === 'depth')
+      result = await estimateDepth(msg.image, ac.signal, (loaded, total) => post({ type: 'progress', id: msg.id, loaded, total }));
     else result = await release(msg.modelId);
     if (msg.type === 'run') transfer = Object.values(result as Record<string, TensorData>).map((t) => t.data.buffer as ArrayBuffer);
+    else if (msg.type === 'depth') transfer = [(result as DepthResult).data.buffer as ArrayBuffer];
     post({ type: 'result', id: msg.id, result }, transfer);
   } catch (err) {
     const error = err instanceof Error ? { name: err.name, message: err.message } : { name: 'Error', message: String(err) };

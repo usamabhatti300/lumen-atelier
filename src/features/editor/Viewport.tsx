@@ -13,6 +13,7 @@ import { CropOverlay } from './overlays/CropOverlay';
 import { MaskToolOverlay } from './overlays/MaskToolOverlay';
 import { RemoveToolOverlay } from './overlays/RemoveToolOverlay';
 import { SplitDivider } from './overlays/SplitDivider';
+import { FocusOverlay } from './overlays/FocusOverlay';
 
 export interface ViewBox {
   left: number;
@@ -119,7 +120,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     [currentZoom, size, pan, fitted, setUi],
   );
 
-  const toolActive = tool !== 'none' && tool !== 'crop';
+  const toolActive = tool !== 'none' && tool !== 'crop' && tool !== 'focus';
   const canPan = !fitted && (tool === 'none' || spaceDown);
 
   return (
@@ -180,6 +181,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       {activePhotoId && !loading && !error && tool === 'crop' && <CropOverlay box={box} />}
       {activePhotoId && !loading && !error && toolActive && compare !== 'side' && !spaceDown &&
         (tool === 'remove' ? <RemoveToolOverlay box={box} /> : <MaskToolOverlay box={box} />)}
+      {activePhotoId && !loading && !error && tool === 'focus' && compare !== 'side' && !spaceDown && <FocusOverlay box={box} />}
 
       {!fitted && activePhotoId && currentZoom > previewToFull * 1.01 && (
         <p className="pointer-events-none absolute bottom-3 left-3 rounded-xs bg-ink-950/80 px-2 py-1 text-[11px] text-mute">

@@ -15,6 +15,7 @@ export type MlRequest =
   | { type: 'load'; id: number; modelId: string }
   | { type: 'run'; id: number; modelId: string; file?: string; feeds: Record<string, TensorData> }
   | { type: 'release'; id: number; modelId: string }
+  | { type: 'depth'; id: number; image: DepthImage }
   | { type: 'cancel'; id: number }
   | SamRequest;
 
@@ -36,6 +37,23 @@ export interface SelfTestResult {
 export interface LoadResult {
   /** Backend chosen for each ONNX file of the model. */
   backends: Record<string, Backend>;
+}
+
+/** RGBA pixels sent for depth estimation. */
+export interface DepthImage {
+  width: number;
+  height: number;
+  data: Uint8ClampedArray;
+}
+
+/** Normalized nearness (0 far .. 65535 near), row-major, at the size of the image sent. */
+export interface DepthResult {
+  width: number;
+  height: number;
+  data: Uint16Array;
+  backend: Backend;
+  /** Inference time (excluding model download and start-up). */
+  ms: number;
 }
 
 export type MlResponse =

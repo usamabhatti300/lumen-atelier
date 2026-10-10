@@ -2,6 +2,7 @@ import { Section } from '@/components/ui/Section';
 import { AdjustmentSlider } from '../AdjustmentSlider';
 import { useResetKeys, useSectionModified } from './LightPanel';
 import { useEngine } from '@/engine/engineStore';
+import { LensBlurSection } from './LensBlurSection';
 
 export function DetailPanel() {
   const detailMod = useSectionModified('detail');
@@ -13,6 +14,7 @@ export function DetailPanel() {
   const downscaled = preview && full && preview.width < full.width;
   return (
     <>
+      <LensBlurSection />
       <Section title="Sharpening" modified={detailMod} onReset={resetDetail}>
         <AdjustmentSlider path="detail.sharpening" label="Amount" />
         <AdjustmentSlider path="detail.sharpenMasking" label="Edge masking" />

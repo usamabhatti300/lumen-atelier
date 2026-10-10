@@ -123,11 +123,14 @@ export const MODELS: readonly ModelInfo[] = [
     name: 'Depth Anything V2 Small',
     feature: 'Lens blur: depth-aware background blur',
     runtime: 'transformers',
-    status: 'planned',
+    status: 'ready',
     licence: 'Apache-2.0 (Small only)',
     licenceUrl: `${HF}/onnx-community/depth-anything-v2-small`,
     source: 'onnx-community/depth-anything-v2-small',
-    io: 'Image in; relative depth map out.',
+    // Checked with onnxruntime: input pixel_values float32 [1,3,H,W] (H, W multiples of 14; 518 short side),
+    // output predicted_depth float32 [1,H,W], relative inverse depth (larger = nearer). The fp16 file keeps
+    // float32 inputs/outputs and runs on both WebGPU and the WASM CPU backend (max error 0.2% of range vs fp32).
+    io: 'float32 [1,3,H,W] ImageNet-normalized RGB in; predicted_depth [1,H,W] relative inverse depth out.',
     files: [
       hfFile('onnx-community/depth-anything-v2-small', DEPTH_REV, 'config.json', 38, '3aee5b9bc4f711ee885c2526d871f0c8c6c8c4b26b8e04253d0167f6a83264f5'),
       hfFile('onnx-community/depth-anything-v2-small', DEPTH_REV, 'preprocessor_config.json', 461, '03576db3c13dd0471fdf5f5e1428befcb95de063fe699879150b293dc9e0a2c6'),

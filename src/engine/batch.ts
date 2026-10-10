@@ -9,6 +9,7 @@ import { getOriginal, getPhoto, updatePhotoEdit } from '@/lib/storage/db';
 import { rasterizeLayer } from '@/lib/masks/rasterize';
 import type { EditState } from '@/lib/schema/adjustments';
 import { analyzePortraitBitmap } from '@/features/portrait/portraitState';
+import { depthForPhoto } from '@/features/depth/depthState';
 import { engine } from './controller';
 import { objectComponentsOf, objectMasks } from './objectMasks';
 import { OBJECT_MASK_SIDE } from '@/lib/masks/objectMask';
@@ -30,11 +31,14 @@ export async function editFor(id: string): Promise<EditState | null> {
   return (await getPhoto(id))?.edit ?? null;
 }
 
+const lensBlurOn = (edit: EditState) => (edit.lensBlur?.amount ?? 0) > 0;
+
 function needsPortrait(edit: EditState) {
   const r = edit.retouch;
   return (
     edit.layers.some((l) => l.components.some((c) => c.type === 'segment')) ||
-    r.skinSmoothing > 0 || r.eyeEnhance > 0 || r.teethWhitening > 0 || r.faceLight > 0 || r.underEye > 0
+    r.skinSmoothing > 0 || r.eyeEnhance > 0 || r.teethWhitening > 0 || r.faceLight > 0 || r.underEye > 0 ||
+    (lensBlurOn(edit) && edit.lensBlur!.protectSubject)
   );
 }
 
@@ -85,6 +89,11 @@ export async function exportPhoto(
         throw new Error(`${name}: a "Select object" mask could not be computed (${e instanceof Error ? e.message : String(e)})`);
       }
     }
+    let depth = null;
+    if (lensBlurOn(edit)) {
+      if (!engine.getDepthData(id)) onProgress?.(0.01, 'Estimating depth');
+      if (await depthForPhoto(id, bitmap, signal)) depth = engine.exportDepthRaster(id, bitmap, edit, portrait?.segmentation ?? null);
+    }
     const masks = new Map<string, TexImageSource>();
     const lookup = objectMasks.lookup(id, false);
     for (const layer of edit.layers) {
@@ -100,6 +109,7 @@ export async function exportPhoto(
       layerMasks: masks,
       portraitMask: (portrait?.mask as TexImageSource | null) ?? null,
       removalScope: id,
+      depth,
       signal,
       onProgress,
     });

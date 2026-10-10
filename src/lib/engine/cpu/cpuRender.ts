@@ -3,7 +3,8 @@
  *
  * Implements the same stages as the GPU path using pixel.ts, with box-blur
  * approximations of the Gaussian pyramid. Portrait retouching and layer blur
- * are GPU-only; the UI discloses this when the CPU path is active.
+ * are GPU-only; the UI discloses this when the CPU path is active. Lens blur
+ * runs on both paths (lensBlurLinear is the reference for the GLSL passes).
  */
 import { SRGB8_TO_LINEAR, linearToSrgb } from '../../color/srgb';
 import type { EditState } from '../../schema/adjustments';
@@ -12,16 +13,27 @@ import {
   BLUR_RADII,
   MIN_BLUR_PX,
   deriveDevelopParams,
+  deriveLensParams,
   deriveLocalParams,
+  lensBlurPlan,
+  lensRadiusPx,
   type DevelopParams,
+  type LensParams,
 } from '../params';
 import {
   applyGrainSrgb,
   applyVignette,
+  bokehCompress,
+  bokehExpand,
+  cocSimilarity,
   detailStage,
   developLinear,
   displayStage,
   grainValue,
+  lensBlendWeights,
+  lensCoc,
+  lensGatherWeight,
+  lensSample,
   localAdjust,
   vignetteWeight,
   type RGB,
@@ -43,6 +55,8 @@ export interface CpuRenderInput {
   neutral?: boolean;
   /** Alpha-channel mask rasters keyed by layer id (full-image extent). */
   layerMasks?: Record<string, CpuImage>;
+  /** Depth raster for lens blur (full-image extent). */
+  depth?: DepthRaster | null;
   shouldCancel?: () => boolean;
 }
 
@@ -90,6 +104,240 @@ function boxV(src: Float32Array, dst: Float32Array, w: number, h: number, r: num
   }
 }
 
+/** Single-channel depth raster: nearness 0 (far) .. 255 (near), covering the full image. */
+export interface DepthRaster {
+  width: number;
+  height: number;
+  data: Uint8Array | Uint8ClampedArray;
+}
+
+/** Bilinear depth lookup at normalized full-image coordinates (matches GL LINEAR + CLAMP_TO_EDGE). Returns 0..1. */
+export function sampleDepth(d: DepthRaster, s: number, t: number): number {
+  const fx = Math.min(d.width - 1, Math.max(0, s * d.width - 0.5));
+  const fy = Math.min(d.height - 1, Math.max(0, t * d.height - 0.5));
+  const x0 = Math.floor(fx);
+  const y0 = Math.floor(fy);
+  const x1 = Math.min(d.width - 1, x0 + 1);
+  const y1 = Math.min(d.height - 1, y0 + 1);
+  const ax = fx - x0;
+  const ay = fy - y0;
+  const D = d.data;
+  const top = D[y0 * d.width + x0] * (1 - ax) + D[y0 * d.width + x1] * ax;
+  const bot = D[y1 * d.width + x0] * (1 - ax) + D[y1 * d.width + x1] * ax;
+  return (top * (1 - ay) + bot * ay) / 255;
+}
+
+export interface SourceRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface LensLevel {
+  f: number;
+  w: number;
+  h: number;
+  prep: Float32Array;
+  gather: Float32Array;
+}
+
+/**
+ * Depth-aware lens blur on linear RGB (3 floats per pixel), CPU reference of
+ * the GLSL lens passes. `region` is the extent of `lin` within the full image
+ * (normalized), `rmaxPx` the full blur radius in pixels of `lin`.
+ *
+ * Per level (a coarse level for large blur, plus a finer one for the
+ * near-focus range when the coarse level is heavily downscaled):
+ *  1. prep: highlights expanded, averaged over factor x factor blocks (only
+ *     texels at a similar depth to the block centre), with the block's CoC;
+ *  2. gather: scatter-as-gather disc blur (golden-angle samples).
+ * Then composite: depth-aware upsample of each level, blended by CoC, mixed
+ * with the sharp image.
+ */
+export function lensBlurLinear(
+  lin: Float32Array,
+  W: number,
+  H: number,
+  depth: DepthRaster,
+  region: SourceRegion,
+  L: LensParams,
+  rmaxPx: number,
+): Float32Array {
+  const plan = lensBlurPlan(rmaxPx);
+  const cocAt = (px: number, py: number) =>
+    lensCoc(sampleDepth(depth, region.x + (px / W) * region.w, region.y + (py / H) * region.h), L);
+
+  const level = (f: number, radius: number, N: number): LensLevel => {
+    const cocScale = rmaxPx / f;
+    const lw = Math.ceil(W / f);
+    const lh = Math.ceil(H / f);
+    // 1. Prep.
+    const prep = new Float32Array(lw * lh * 4);
+    for (let j = 0; j < lh; j++) {
+      for (let i = 0; i < lw; i++) {
+        const cc = cocAt((i + 0.5) * f, (j + 0.5) * f) * cocScale;
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        let ws = 0;
+        let pr = 0;
+        let pg = 0;
+        let pb = 0;
+        let pn = 0;
+        for (let y = j * f; y < Math.min(H, j * f + f); y++) {
+          for (let x = i * f; x < Math.min(W, i * f + f); x++) {
+            const o = (y * W + x) * 3;
+            const e = bokehExpand([lin[o], lin[o + 1], lin[o + 2]], L.boost);
+            const w = cocSimilarity(cocAt(x + 0.5, y + 0.5) * cocScale, cc);
+            r += e[0] * w;
+            g += e[1] * w;
+            b += e[2] * w;
+            ws += w;
+            pr += e[0];
+            pg += e[1];
+            pb += e[2];
+            pn++;
+          }
+        }
+        const o = (j * lw + i) * 4;
+        if (ws > 1e-3) {
+          prep[o] = r / ws;
+          prep[o + 1] = g / ws;
+          prep[o + 2] = b / ws;
+        } else {
+          prep[o] = pr / pn;
+          prep[o + 1] = pg / pn;
+          prep[o + 2] = pb / pn;
+        }
+        prep[o + 3] = cc;
+      }
+    }
+    // 2. Gather.
+    const gather = new Float32Array(lw * lh * 4);
+    const taps = Array.from({ length: N }, (_, k) => lensSample(k, N, radius));
+    for (let j = 0; j < lh; j++) {
+      for (let i = 0; i < lw; i++) {
+        const o = (j * lw + i) * 4;
+        const c0 = prep[o + 3];
+        let r = prep[o];
+        let g = prep[o + 1];
+        let b = prep[o + 2];
+        let ws = 1;
+        let fg = 0;
+        for (const [dx, dy, dist] of taps) {
+          // Bilinear footprint with per-texel coverage (interpolating colour and CoC first would leak
+          // in-focus texels across depth edges as halos).
+          const qx = i + dx;
+          const qy = j + dy;
+          const x0 = Math.floor(qx);
+          const y0 = Math.floor(qy);
+          const ax = qx - x0;
+          const ay = qy - y0;
+          for (let t = 0; t < 4; t++) {
+            const ix = Math.min(lw - 1, Math.max(0, x0 + (t & 1)));
+            const iy = Math.min(lh - 1, Math.max(0, y0 + (t >> 1)));
+            const bil = (t & 1 ? ax : 1 - ax) * (t >> 1 ? ay : 1 - ay);
+            const so = (iy * lw + ix) * 4;
+            const [cw, cf] = lensGatherWeight(prep[so + 3], c0, dist);
+            const w = bil * cw;
+            r += prep[so] * w;
+            g += prep[so + 1] * w;
+            b += prep[so + 2] * w;
+            ws += w;
+            fg += bil * cf;
+          }
+        }
+        gather[o] = r / ws;
+        gather[o + 1] = g / ws;
+        gather[o + 2] = b / ws;
+        gather[o + 3] = fg / ws;
+      }
+    }
+    return { f, w: lw, h: lh, prep, gather };
+  };
+
+  /** Depth-aware (joint bilateral) upsample of a level's gather at full-res pixel (x, y) with CoC c0 (px). */
+  const upsample = (lv: LensLevel, x: number, y: number, c0: number, out: number[]) => {
+    const c0l = c0 / lv.f;
+    const qx = (x + 0.5) / lv.f - 0.5;
+    const qy = (y + 0.5) / lv.f - 0.5;
+    const x0 = Math.floor(qx);
+    const y0 = Math.floor(qy);
+    const ax = qx - x0;
+    const ay = qy - y0;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let fg = 0;
+    let ws = 0;
+    let br = 0;
+    let bg = 0;
+    let bb = 0;
+    let bf = 0;
+    for (let k = 0; k < 4; k++) {
+      const ix = Math.min(lv.w - 1, Math.max(0, x0 + (k & 1)));
+      const iy = Math.min(lv.h - 1, Math.max(0, y0 + (k >> 1)));
+      const bil = (k & 1 ? ax : 1 - ax) * (k >> 1 ? ay : 1 - ay);
+      const lo = (iy * lv.w + ix) * 4;
+      const w = bil * cocSimilarity(lv.prep[lo + 3], c0l);
+      const G = lv.gather;
+      r += G[lo] * w;
+      g += G[lo + 1] * w;
+      b += G[lo + 2] * w;
+      fg += G[lo + 3] * w;
+      ws += w;
+      br += G[lo] * bil;
+      bg += G[lo + 1] * bil;
+      bb += G[lo + 2] * bil;
+      bf += G[lo + 3] * bil;
+    }
+    if (ws > 1e-4) {
+      out[0] = r / ws;
+      out[1] = g / ws;
+      out[2] = b / ws;
+      out[3] = fg / ws;
+    } else {
+      out[0] = br;
+      out[1] = bg;
+      out[2] = bb;
+      out[3] = bf;
+    }
+  };
+
+  const coarse = level(plan.factor, plan.radius, plan.samples);
+  const fine = plan.fine ? level(plan.fine.factor, plan.fine.radius, plan.fine.samples) : null;
+
+  // 3. Composite.
+  const out = new Float32Array(lin.length);
+  const B = [0, 0, 0, 0];
+  const A = [0, 0, 0, 0];
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const o = (y * W + x) * 3;
+      const c0 = cocAt(x + 0.5, y + 0.5) * rmaxPx;
+      const [tc, u] = lensBlendWeights(c0, plan);
+      upsample(coarse, x, y, c0, B);
+      if (fine && u < 1) {
+        upsample(fine, x, y, c0, A);
+        for (let k = 0; k < 4; k++) B[k] = A[k] + (B[k] - A[k]) * u;
+      }
+      const t = Math.max(tc, B[3]);
+      if (t <= 0) {
+        out[o] = lin[o];
+        out[o + 1] = lin[o + 1];
+        out[o + 2] = lin[o + 2];
+        continue;
+      }
+      const c = bokehCompress([B[0], B[1], B[2]], L.boost);
+      out[o] = lin[o] + (c[0] - lin[o]) * t;
+      out[o + 1] = lin[o + 1] + (c[1] - lin[o + 1]) * t;
+      out[o + 2] = lin[o + 2] + (c[2] - lin[o + 2]) * t;
+    }
+  }
+  return out;
+}
+
 function sampleMask(mask: CpuImage, s: number, t: number): number {
   const x = Math.min(mask.width - 1, Math.max(0, Math.round(s * mask.width - 0.5)));
   const y = Math.min(mask.height - 1, Math.max(0, Math.round(t * mask.height - 0.5)));
@@ -108,11 +356,22 @@ export function cpuRender(input: CpuRenderInput): ImageData | CpuImage {
   const n = W * H;
 
   // Linearize.
-  const lin = new Float32Array(n * 3);
+  let lin: Float32Array = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
     lin[i * 3] = SRGB8_TO_LINEAR[source.data[i * 4]];
     lin[i * 3 + 1] = SRGB8_TO_LINEAR[source.data[i * 4 + 1]];
     lin[i * 3 + 2] = SRGB8_TO_LINEAR[source.data[i * 4 + 2]];
+  }
+
+  const pxPerFull = W / input.fullSize.width;
+  const longEdge = Math.max(input.fullSize.width, input.fullSize.height);
+
+  // Lens blur (source space, linear light; like retouching, not affected by the adjustments toggle).
+  const lens = deriveLensParams(edit.lensBlur);
+  const lensPx = lensRadiusPx(lens, longEdge, pxPerFull);
+  if (!neutral && lens.active && input.depth && lensPx >= 0.5) {
+    lin = lensBlurLinear(lin, W, H, input.depth, { x: 0, y: 0, w: 1, h: 1 }, lens, lensPx);
+    if (input.shouldCancel?.()) throw new RenderCancelled();
   }
 
   const D = P.detail;
@@ -121,8 +380,6 @@ export function cpuRender(input: CpuRenderInput): ImageData | CpuImage {
   const layers = neutral
     ? []
     : edit.layers.filter((l) => l.visible && l.opacity > 0 && input.layerMasks?.[l.id]);
-  const pxPerFull = W / input.fullSize.width;
-  const longEdge = Math.max(input.fullSize.width, input.fullSize.height);
   const radius = (frac: number, min: number) => Math.max(min, frac * longEdge * pxPerFull);
   const needLarge =
     (detailOn && (D.clarity !== 0 || D.dehaze !== 0)) ||

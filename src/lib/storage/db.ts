@@ -18,6 +18,7 @@ import { EditStateSchema, defaultEditState, type EditState } from '../schema/adj
 import { PresetSchema, type Preset } from '../schema/preset';
 import type { ExifInfo } from '../image/exif';
 import { clearPatches } from '../removal/cache';
+import { clearDepthCache, deleteCachedDepth } from './depthCache';
 
 export const DB_NAME = 'lumen-atelier';
 export const DB_VERSION = 1;
@@ -155,6 +156,7 @@ export async function deleteProject(id: string): Promise<void> {
     tx.done,
   ]);
   for (const p of photos) await clearPatches(p.id);
+  await deleteCachedDepth(photos.map((p) => p.id));
 }
 
 // --- Photos ------------------------------------------------------------------
@@ -214,6 +216,7 @@ export async function deletePhoto(id: string): Promise<void> {
   const tx = db.transaction(['photos', 'originals'], 'readwrite');
   await Promise.all([tx.objectStore('photos').delete(id), tx.objectStore('originals').delete(id), tx.done]);
   await clearPatches(id);
+  await deleteCachedDepth([id]);
 }
 
 // --- Presets -----------------------------------------------------------------
@@ -280,4 +283,5 @@ export async function clearAllData(): Promise<void> {
   const tx = db.transaction([...stores], 'readwrite');
   await Promise.all([...stores.map((s) => tx.objectStore(s).clear()), tx.done]);
   await clearPatches();
+  await clearDepthCache();
 }
