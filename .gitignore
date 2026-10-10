@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+coverage
+test-results
+playwright-report
+blob-report
+playwright/.cache
+public/mediapipe/wasm
+public/models/*.task
+public/models/*.tflite
+*.tsbuildinfo
+.DS_Store

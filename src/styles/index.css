@@ -1,0 +1,215 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/instrument-serif/400-italic.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+/*
+ * Lumen Atelier design tokens.
+ * Darkroom palette: warm near-black inks, graphite panels, warm-grey hairlines,
+ * ivory type, a single muted amber accent. Safelight red is reserved for errors.
+ */
+@theme {
+  --color-ink-950: #0d0c0b;
+  --color-ink-900: #121110;
+  --color-ink-850: #171614;
+  --color-ink-800: #1b1a18;
+  --color-ink-750: #211f1d;
+  --color-ink-700: #272522;
+  --color-ink-600: #322f2b;
+  --color-line: #38342e;
+  --color-line-soft: #2a2724;
+  --color-line-strong: #4a453d;
+  --color-ivory: #ece6da;
+  --color-ivory-dim: #c9c2b5;
+  --color-mute: #9c958a;
+  --color-faint: #6f695f;
+  --color-amber: #c9a26b;
+  --color-amber-bright: #dcbb88;
+  --color-amber-deep: #8f7046;
+  --color-champagne: #e3cfa6;
+  --color-safelight: #d0584a;
+  --color-verdigris: #7fa391;
+
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+
+  --shadow-float: 0 18px 50px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 245 230 / 0.05);
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --animate-scan: scan 2.4s var(--ease-in-out-soft) infinite;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+}
+
+/* Motion durations (documented in docs/DESIGN_SYSTEM.md). */
+:root {
+  --dur-instant: 80ms;
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 380ms;
+  color-scheme: dark;
+}
+
+@keyframes scan {
+  0% { transform: translateY(-10%); opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { transform: translateY(110%); opacity: 0; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='full']) *,
+  :root:not([data-motion='full']) *::before,
+  :root:not([data-motion='full']) *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-ink-900);
+  color: var(--color-ivory);
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: rgb(201 162 107 / 0.35);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 1.5px solid var(--color-amber);
+  outline-offset: 2px;
+}
+
+/* Quiet scrollbars for dense panels. */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3631 transparent;
+}
+.scroll-quiet::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-quiet::-webkit-scrollbar-thumb {
+  background: #3a3631;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.editor-canvas {
+  display: block;
+  image-rendering: auto;
+  max-width: none;
+}
+
+/* Film rebate edge printing used on the filmstrip and gallery. */
+.edge-code {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-amber-deep);
+  text-transform: uppercase;
+}
+
+/* Range input reset for the custom slider (the visual track is drawn separately). */
+.slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  cursor: ew-resize;
+}
+.slider-input::-webkit-slider-runnable-track {
+  height: 22px;
+  background: transparent;
+}
+.slider-input::-moz-range-track {
+  height: 22px;
+  background: transparent;
+}
+.slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: 5.5px;
+  border-radius: 999px;
+  background: var(--color-ivory);
+  border: 2px solid var(--color-ink-800);
+  box-shadow: 0 0 0 1px var(--color-line-strong);
+  transition: transform var(--dur-fast) var(--ease-out-quint), background var(--dur-fast);
+}
+.slider-input::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: var(--color-ivory);
+  border: 2px solid var(--color-ink-800);
+  box-shadow: 0 0 0 1px var(--color-line-strong);
+}
+.slider-input:hover::-webkit-slider-thumb,
+.slider-input:active::-webkit-slider-thumb {
+  transform: scale(1.25);
+  background: var(--color-champagne);
+}
+.slider-input:focus-visible {
+  outline: none;
+}
+.slider-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--color-amber);
+}
+.slider-input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 2px var(--color-amber);
+}
+
+.checker {
+  background-color: #2a2826;
+  background-image:
+    linear-gradient(45deg, #34312d 25%, transparent 25%),
+    linear-gradient(-45deg, #34312d 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #34312d 75%),
+    linear-gradient(-45deg, transparent 75%, #34312d 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}

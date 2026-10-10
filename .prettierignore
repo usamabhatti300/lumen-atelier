@@ -1,0 +1,7 @@
+dist
+node_modules
+public/mediapipe
+coverage
+playwright-report
+test-results
+package-lock.json
