@@ -5,6 +5,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useEditor, type PhotoMeta, type RightTab } from '@/state/editorStore';
 import { engine } from '@/engine/controller';
+import { initLensBlurAutoload } from '@/features/depth/depthState';
 import { startAutosave, saveNow } from '@/engine/autosave';
 import { importFiles } from '@/engine/importer';
 import { setPreviewSource } from '@/engine/presetThumbs';
@@ -49,6 +50,7 @@ export default function EditorScreen() {
     if (!projectId) return;
     let cancelled = false;
     engine.init();
+    initLensBlurAutoload();
     startAutosave();
     void (async () => {
       const project = await getProject(projectId);

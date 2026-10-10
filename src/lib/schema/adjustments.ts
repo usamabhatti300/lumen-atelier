@@ -335,6 +335,39 @@ export const RETOUCH_RANGES = {
   underEye: r(0, 100),
 } as const;
 
+// --- Lens blur (depth of field) ---------------------------------------------
+
+/**
+ * Depth-aware lens blur. Photo-specific (like retouching), so it is not part
+ * of `Adjustments` and never travels with presets. Optional in the edit state:
+ * a missing value means "off", so older saved edits stay valid.
+ */
+export interface LensBlur {
+  /** Strength (maximum blur disc size), 0..100. 0 is off. */
+  amount: number;
+  /** Focal plane distance: 0 = nearest, 100 = farthest part of the scene. */
+  focus: number;
+  /** How gradually the blur grows away from the focal plane, 0..100. */
+  falloff: number;
+  /** Brightness of out-of-focus highlights (bokeh), 0..100. */
+  highlights: number;
+  /** Where the user clicked to focus (normalized source coordinates), for the on-canvas marker. */
+  focusPoint: [number, number] | null;
+  /** Keep the detected person on one focal plane so they stay sharp (uses subject detection). */
+  protectSubject: boolean;
+}
+
+export const LENS_BLUR_RANGES = {
+  amount: r(0, 100),
+  focus: r(0, 100, 0),
+  falloff: r(0, 100, 50),
+  highlights: r(0, 100, 50),
+} as const;
+
+export function defaultLensBlur(): LensBlur {
+  return { amount: 0, focus: 0, falloff: 50, highlights: 50, focusPoint: null, protectSubject: true };
+}
+
 // --- LUT ---------------------------------------------------------------------
 
 export interface LutRef {
@@ -370,6 +403,8 @@ export interface EditState {
   appliedPreset: AppliedPreset | null;
   /** Toggles the visibility of all global adjustments (layers/retouch unaffected). */
   adjustmentsVisible: boolean;
+  /** Depth-aware lens blur; absent means off (added without a schema version bump). */
+  lensBlur?: LensBlur;
 }
 
 export type DeepPartial<T> = T extends readonly unknown[]
@@ -708,6 +743,15 @@ export const RetouchSchema = z.object({
     .max(64),
 });
 
+export const LensBlurSchema = z.object({
+  amount: clampTo(LENS_BLUR_RANGES.amount),
+  focus: clampTo(LENS_BLUR_RANGES.focus),
+  falloff: clampTo(LENS_BLUR_RANGES.falloff),
+  highlights: clampTo(LENS_BLUR_RANGES.highlights),
+  focusPoint: z.tuple([unit, unit]).nullable(),
+  protectSubject: z.boolean(),
+});
+
 export const EditStateSchema = z.object({
   version: z.literal(EDIT_SCHEMA_VERSION),
   adjustments: AdjustmentsSchema,
@@ -728,6 +772,7 @@ export const EditStateSchema = z.object({
     })
     .nullable(),
   adjustmentsVisible: z.boolean(),
+  lensBlur: LensBlurSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------

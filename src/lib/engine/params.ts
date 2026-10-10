@@ -14,6 +14,7 @@ import {
   isIdentityCurve,
   type Adjustments,
   type GradeWheel,
+  type LensBlur,
   type LocalAdjustments,
 } from '../schema/adjustments';
 
@@ -195,6 +196,104 @@ export function deriveLocalParams(l: LocalAdjustments): LocalParams {
     blur: l.blur / 100,
     tint: [ta, tb],
   };
+}
+
+// ---------------------------------------------------------------------------
+// Lens blur (depth of field)
+// ---------------------------------------------------------------------------
+
+export interface LensParams {
+  /** True when the pass changes the image (amount > 0). */
+  active: boolean;
+  /** Nearness (0 far .. 1 near) of the focal plane. */
+  focus: number;
+  /** Half-width of the band around the focal plane that stays perfectly sharp (nearness units). */
+  band: number;
+  /** Nearness distance over which the blur grows from none to full. */
+  width: number;
+  /** Full blur disc radius as a fraction of the image's long edge. */
+  maxRadius: number;
+  /** Highlight expansion strength for bokeh (0 = none). */
+  boost: number;
+}
+
+export const LENS = {
+  /** Disc radius at amount 100, as a fraction of the long edge. */
+  maxRadius: 0.04,
+  /** Nearness tolerance around the focal plane (absorbs depth-map noise). */
+  band: 0.03,
+  /** Linear-light luminance above which highlights are expanded before blurring. */
+  highlightThreshold: 0.5,
+  /** Expansion strength at highlights = 100. */
+  maxBoost: 24,
+  /** Low-resolution gather radius target (px); the working scale is chosen to stay near it. */
+  gatherRadius: 8,
+  maxFactor: 32,
+  maxSamples: 128,
+  minSamples: 16,
+} as const;
+
+export function deriveLensParams(l: LensBlur | undefined): LensParams {
+  const amount = l?.amount ?? 0;
+  const falloff = (l?.falloff ?? 50) / 100;
+  return {
+    active: amount > 0,
+    focus: 1 - (l?.focus ?? 0) / 100,
+    band: LENS.band,
+    width: 0.08 + 0.92 * Math.pow(falloff, 1.5),
+    maxRadius: (LENS.maxRadius * amount) / 100,
+    boost: LENS.maxBoost * ((l?.highlights ?? 50) / 100),
+  };
+}
+
+export interface LensLevelPlan {
+  /** Downscale factor of the level (power of two). */
+  factor: number;
+  /** Gather disc radius in level pixels. */
+  radius: number;
+  /** Disc samples per level pixel. */
+  samples: number;
+}
+
+export interface LensPlan extends LensLevelPlan {
+  /**
+   * Finer level for the near-focus range (blur up to 1.5x the coarse factor),
+   * used when the coarse level is downscaled 4x or more, so blur grows
+   * progressively instead of cross-fading a sharp and a heavily downscaled image.
+   */
+  fine: LensLevelPlan | null;
+}
+
+const lensSamples = (radius: number) =>
+  Math.min(LENS.maxSamples, Math.max(LENS.minSamples, Math.ceil((Math.PI * radius * radius) / 1.5)));
+
+/** Working resolutions and sample counts for a full blur radius of `rmaxPx` render pixels. */
+export function lensBlurPlan(rmaxPx: number): LensPlan {
+  let factor = 1;
+  while (rmaxPx / factor > LENS.gatherRadius && factor < LENS.maxFactor) factor *= 2;
+  const radius = rmaxPx / factor;
+  let fine: LensLevelPlan | null = null;
+  if (factor >= 4) {
+    const ff = factor / 4;
+    const fr = Math.min(rmaxPx, 1.5 * factor) / ff;
+    fine = { factor: ff, radius: fr, samples: lensSamples(fr) };
+  }
+  return { factor, radius, samples: lensSamples(radius), fine };
+}
+
+/**
+ * Source pixels a tile needs around its interior so lens blur matches the
+ * whole-image render: the gather reach plus one block for the prep average,
+ * the bilinear gather taps and the composite's upsample. Tile origins must
+ * also be multiples of the plan's factor so the low-resolution grids line up.
+ */
+export function lensTilePadding(rmaxPx: number): number {
+  return Math.ceil(rmaxPx + 3 * lensBlurPlan(rmaxPx).factor);
+}
+
+/** Blur radius in render pixels at full strength. */
+export function lensRadiusPx(L: LensParams, longEdgeFull: number, pxPerFull: number): number {
+  return L.maxRadius * longEdgeFull * pxPerFull;
 }
 
 /** Blur radii as fractions of the image long edge (resolution-independent). */

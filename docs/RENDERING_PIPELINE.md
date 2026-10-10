@@ -26,6 +26,7 @@ Source space (oriented original, before crop):
 3. **Retouch** (only when active): healing spots (clone from an automatically chosen offset,
    colour-matched at the spot boundary), skin smoothing (bilateral "surface blur" plus restored
    fine detail, limited to the face mask and skin-like colours), under-eye, teeth, eyes, face light.
+3b. **Lens blur** (only when `edit.lensBlur.amount > 0` and a depth map exists; see below).
 4. **Blur pyramid**: separable Gaussian blurs at three radii defined as fractions of the image's
    long edge (`BLUR_RADII`), so results are resolution independent. Large radii are computed
    on 2×-downsampled copies.
@@ -52,6 +53,43 @@ Output space:
 13. **Vignette** (in linear light, relative to the crop) and **grain** (value noise at full-resolution
     pixel coordinates; attenuated when grain is smaller than a preview pixel).
 14. **Dither** (±0.5/255) and 8-bit output.
+
+## Lens blur (depth of field)
+
+Inputs: the photo's **depth raster** (one byte per pixel, nearness 0 far … 255 near, full-image extent)
+and `edit.lensBlur` (`amount`, `focus`, `falloff`, `highlights`, `focusPoint`, `protectSubject`; optional
+in the edit state, absent = off). Both renderers implement the same passes: GLSL `lensPrepFrag`,
+`lensGatherFrag`, `lensCompositeFrag` (`gl/shaders.ts`) and the CPU reference `lensBlurLinear`
+(`cpu/cpuRender.ts`), built from the per-pixel helpers in `pixel.ts`. Parameters come from
+`deriveLensParams` / `lensBlurPlan` in `params.ts`. It runs in **linear light** on the source image right
+after retouching, before detail and develop, like a real lens.
+
+- **Depth raster**: Depth Anything V2 Small's relative inverse depth (computed once per photo in the ML
+  worker, normalized to its 0.5–99.5 % range, cached in IndexedDB `lumen-atelier-depth`) is resampled
+  to ≤ 1024 px (2048 px for export), optionally **flattened per person** (each connected region of
+  MediaPipe's subject mask is set to its own median depth when "Keep subject sharp" is on), then
+  refined with a colour-guided joint bilateral filter (half resolution, two passes) and a guided filter
+  on luminance, which pull the model's soft depth ramps onto the photo's edges (`src/lib/depth/raster.ts`).
+- **Circle of confusion**: `coc = sign · s(t)`, `t = clamp((|n − n_focus| − band) / width)`, `s = t(2 − t)`;
+  positive behind the focal plane, negative in front. `band` = 0.03 keeps the focal plane exactly sharp;
+  `width` comes from Falloff; the radius at full blur is `amount/100 × 4 %` of the long edge.
+- **Levels**: a coarse level at factor `f` (power of two, chosen so the radius is ≤ 8 level px) and, when
+  `f ≥ 4`, a fine level at `f/4` covering blur up to `1.5 f` px, so blur grows progressively instead of
+  cross-fading a sharp and a heavily downscaled image.
+- **Prep** (per level): highlights are expanded (`bokehExpand`, luminance-based and exactly invertible) so
+  out-of-focus lights keep their energy; each level pixel averages its `f × f` block using only texels at a
+  similar CoC to the block centre (no mixing across depth edges); alpha stores the CoC in level pixels.
+- **Gather**: scatter-as-gather disc blur with golden-angle samples (uniform disc, flat-topped bokeh). A
+  sample contributes when its own CoC reaches the centre (`lensGatherWeight`), tested **per texel** of the
+  bilinear footprint; samples behind the centre cannot spill over it by more than its own blur, so a sharp
+  subject never receives background colour; blurred foreground spill is recorded in alpha.
+- **Composite** (full resolution): joint-bilateral upsample of each level (weights by CoC similarity),
+  fine→coarse by CoC, then `mix(sharp, compress(blur), max(t, foreground spill))`; `t` is 0 below 0.5 px
+  of CoC, so in-focus pixels are bit-identical to the input. Amount 0 skips the passes (identity, tested).
+- **Export tiles**: tiles are padded by `lensTilePadding(r) = r + 3f` px and their source origin is aligned to
+  multiples of `f`, so the low-resolution grids line up and tiles match the whole-image render exactly
+  (unit-tested). The 8-bit fallback (no float render targets) stores expanded colour as `sqrt(v/4)` and
+  the CoC around 0.5.
 
 ## Colour-space assumptions
 

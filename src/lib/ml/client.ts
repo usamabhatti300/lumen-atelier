@@ -4,7 +4,7 @@
  * (ModelMissingError, ModelIntegrityError, AbortError) so the UI can
  * explain what to do.
  */
-import type { LoadResult, MlRequest, MlResponse, SelfTestResult, TensorData } from './protocol';
+import type { DepthImage, DepthResult, LoadResult, MlRequest, MlResponse, SelfTestResult, TensorData } from './protocol';
 import type { ModelInfo } from './registry';
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; onProgress?: (loaded: number, total: number) => void };
@@ -77,6 +77,15 @@ export function runModel(modelId: string, feeds: Record<string, TensorData>, opt
 
 export function releaseModel(modelId: string): Promise<boolean> {
   return call<boolean>({ type: 'release', modelId });
+}
+
+/**
+ * Estimates depth for an image (Depth Anything V2 Small). The first call
+ * downloads and starts the model, reporting real byte progress; later calls
+ * reuse it. The pixel buffer is transferred to the worker.
+ */
+export function estimateDepth(image: DepthImage, opts: Omit<CallOptions, 'transfer'> = {}): Promise<DepthResult> {
+  return call<DepthResult>({ type: 'depth', image }, { ...opts, transfer: [image.data.buffer as ArrayBuffer] });
 }
 
 export type InstallState = 'installed' | 'missing' | 'partial' | 'unknown';

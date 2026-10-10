@@ -8,6 +8,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import {
   defaultAdjustments,
   defaultEditState,
+  defaultLensBlur,
   defaultLocalAdjustments,
   getPath,
   leafPaths,
@@ -18,6 +19,7 @@ import {
   type EditState,
   type Geometry,
   type HealSpot,
+  type LensBlur,
   type LocalAdjustments,
   type MaskComponent,
   type MaskLayer,
@@ -42,7 +44,7 @@ export interface PhotoMeta {
 }
 
 export type CompareMode = 'off' | 'split' | 'side' | 'before';
-export type Tool = 'none' | 'crop' | 'brush' | 'linear' | 'radial' | 'heal';
+export type Tool = 'none' | 'crop' | 'brush' | 'linear' | 'radial' | 'heal' | 'focus';
 export type RightTab = 'adjust' | 'color' | 'detail' | 'portrait' | 'masks' | 'geometry';
 export type LeftTab = 'presets' | 'photos' | 'reference';
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -153,6 +155,9 @@ export interface EditorState {
   addSpot(spot: Omit<HealSpot, 'id'>): void;
   removeSpot(id: string): void;
   clearSpots(): void;
+
+  /** Updates lens blur (created with defaults on first use). */
+  setLensBlur(patch: Partial<LensBlur>, label?: string): void;
 
   setUi(patch: Partial<Pick<EditorState, 'compare' | 'split' | 'zoom' | 'tool' | 'showMaskOverlay' | 'leftTab' | 'rightTab' | 'leftOpen' | 'rightOpen' | 'density'>>): void;
   setBrush(patch: Partial<BrushSettings>): void;
@@ -337,6 +342,7 @@ export const useEditor = create<EditorState>()(
           layers: [],
           retouch: { ...e.retouch, skinSmoothing: 0, eyeEnhance: 0, teethWhitening: 0, faceLight: 0, underEye: 0, spots: [] },
           lut: null,
+          lensBlur: undefined,
         }));
       },
 
@@ -503,6 +509,15 @@ export const useEditor = create<EditorState>()(
 
       clearSpots() {
         change('Clear spots', (e) => ({ ...e, retouch: { ...e.retouch, spots: [] } }));
+      },
+
+      setLensBlur(patch, label = 'Lens blur') {
+        change(label, (e) => {
+          const cur = e.lensBlur ?? defaultLensBlur();
+          const next = { ...cur, ...patch };
+          if (JSON.stringify(next) === JSON.stringify(e.lensBlur)) return e;
+          return { ...e, lensBlur: next };
+        });
       },
 
       setUi(patch) {

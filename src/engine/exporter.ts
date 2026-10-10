@@ -14,7 +14,8 @@
  */
 import { GLRenderer } from '@/lib/engine/gl/renderer';
 import { cpuRender } from '@/lib/engine/cpu/cpuRender';
-import { deriveDevelopParams, BLUR_RADII } from '@/lib/engine/params';
+import { deriveDevelopParams, deriveLensParams, lensBlurPlan, lensRadiusPx, lensTilePadding, BLUR_RADII } from '@/lib/engine/params';
+import type { DepthRaster } from '@/lib/engine/cpu/cpuRender';
 import { apply, outputSize, outputToSourceMatrix, type Size } from '@/lib/engine/geometry';
 import { canvasToBlob, createCanvas } from '@/lib/image/decode';
 import { getLut } from '@/lib/storage/db';
@@ -33,6 +34,8 @@ export interface ExportOptions {
   scale: number;
   layerMasks: Map<string, TexImageSource>;
   portraitMask: TexImageSource | null;
+  /** Depth raster for lens blur (full-image extent), when the edit uses it. */
+  depth?: DepthRaster | null;
   signal?: AbortSignal;
   onProgress?: (fraction: number, stage: string) => void;
   tileSize?: number;
@@ -119,7 +122,7 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
         masks[id] = { width: img.width, height: img.height, data: img.data };
       }
       check();
-      const res = cpuRender({ source: data, fullSize, edit, out, layerMasks: masks });
+      const res = cpuRender({ source: data, fullSize, edit, out, layerMasks: masks, depth: opts.depth });
       fctx.putImageData(new ImageData(new Uint8ClampedArray(res.data), res.width, res.height), 0, 0);
     }
     check();
@@ -153,6 +156,7 @@ async function renderTiles(
   const params = deriveDevelopParams(effectiveAdjustments(edit));
   for (const [id, m] of opts.layerMasks) renderer.setLayerMask(id, m);
   renderer.setPortraitMask(opts.portraitMask);
+  renderer.setDepthMap(opts.depth ?? null);
   if (edit.lut) {
     const lut = await getLut(edit.lut.id);
     if (lut) renderer.setLut(lut.data, lut.size);
@@ -165,9 +169,17 @@ async function renderTiles(
     ...edit.retouch.spots.map((s) => (Math.hypot(s.dx * fullSize.width, s.dy * fullSize.height) / longEdge + s.r * 1.3)),
   );
   // Gaussian support ~3 sigma; layer blur, clarity and skin smoothing set the largest radius.
-  const pad = Math.ceil(
-    Math.max(BLUR_RADII.large * 3, BLUR_RADII.layerMax * maxLayerBlur * 3, BLUR_RADII.medium * 1.6 * 3, maxSpotReach) * longEdge,
-  ) + 8;
+  // Lens blur gathers from up to its full radius away and works on a factor-aligned low-resolution grid.
+  const lens = deriveLensParams(edit.lensBlur);
+  const lensPx = lens.active && opts.depth ? lensRadiusPx(lens, longEdge, 1) : 0;
+  const lensAlign = lensPx >= 0.5 ? lensBlurPlan(lensPx).factor : 1;
+  const pad = Math.max(
+    Math.ceil(
+      Math.max(BLUR_RADII.large * 3, BLUR_RADII.layerMax * maxLayerBlur * 3, BLUR_RADII.medium * 1.6 * 3, maxSpotReach) * longEdge,
+    ) + 8,
+    lensPx >= 0.5 ? lensTilePadding(lensPx) + 8 : 0,
+  );
+  const alignDown = (v: number) => Math.floor(v / lensAlign) * lensAlign;
 
   const mat = outputToSourceMatrix(fullSize, edit.geometry);
   const cols = Math.ceil(out.width / tile);
@@ -189,8 +201,8 @@ async function renderTiles(
         apply(mat, outRegion.x, outRegion.y + outRegion.h),
         apply(mat, outRegion.x + outRegion.w, outRegion.y + outRegion.h),
       ];
-      const sx0 = Math.max(0, Math.floor(Math.min(...corners.map((c) => c[0])) * fullSize.width) - pad);
-      const sy0 = Math.max(0, Math.floor(Math.min(...corners.map((c) => c[1])) * fullSize.height) - pad);
+      const sx0 = Math.max(0, alignDown(Math.floor(Math.min(...corners.map((c) => c[0])) * fullSize.width) - pad));
+      const sy0 = Math.max(0, alignDown(Math.floor(Math.min(...corners.map((c) => c[1])) * fullSize.height) - pad));
       const sx1 = Math.min(fullSize.width, Math.ceil(Math.max(...corners.map((c) => c[0])) * fullSize.width) + pad);
       const sy1 = Math.min(fullSize.height, Math.ceil(Math.max(...corners.map((c) => c[1])) * fullSize.height) + pad);
       const sw = Math.max(1, sx1 - sx0);

@@ -22,6 +22,8 @@ import { decodeImageBlob, resizeBitmap, bitmapToImageData, ImageImportError } fr
 import { getOriginal, getLut } from '@/lib/storage/db';
 import { rasterizeLayer, maskKey, type SegmentationMaps } from '@/lib/masks/rasterize';
 import type { Adjustments, EditState, MaskLayer } from '@/lib/schema/adjustments';
+import type { DepthRaster } from '@/lib/engine/cpu/cpuRender';
+import { DEPTH_EXPORT_SIDE, DEPTH_RASTER_SIDE, composeDepthRaster, subjectMask, type DepthMap } from '@/lib/depth/raster';
 
 type AnyCanvas = HTMLCanvasElement | OffscreenCanvas;
 
@@ -53,6 +55,12 @@ class EngineController {
   private maskCanvases = new Map<string, AnyCanvas>();
   private portrait = new Map<string, PortraitData>();
   private segVersion = 0;
+  /** Depth maps per photo (model output, cached in IndexedDB too). */
+  private depth = new Map<string, DepthMap>();
+  /** Composed lens-blur raster for the active photo, keyed by its inputs. */
+  private depthRaster: { key: string; raster: DepthRaster; subject: Float32Array | null } | null = null;
+  private depthUploaded = '';
+  private depthGuide: { photoId: string; img: ImageData } | null = null;
   private beforeKey = '';
   private lutKey = '';
   private raf = 0;
@@ -130,6 +138,7 @@ class EngineController {
     this.maskKeys.clear();
     this.beforeKey = '';
     this.lutKey = '';
+    this.depthUploaded = '';
     this.getCanvas();
     if (mode === 'webgl' && this.preview && this.renderer) {
       (this.renderer as GLRenderer).setSource(this.preview, { width: this.preview.width, height: this.preview.height });
@@ -206,6 +215,9 @@ class EngineController {
     this.renderer?.setSource(preview, { width: preview.width, height: preview.height });
     this.maskKeys.clear();
     this.beforeKey = '';
+    this.depthGuide = null;
+    this.depthRaster = null;
+    this.depthUploaded = '';
     this.applyPortraitToRenderer();
     useEngine.setState({ previewSize: { width: preview.width, height: preview.height } });
     this.requestRender();
@@ -221,6 +233,10 @@ class EngineController {
     this.maskKeys.clear();
     this.maskCanvases.clear();
     this.beforeKey = '';
+    this.depthRaster = null;
+    this.depthGuide = null;
+    this.depthUploaded = '';
+    this.renderer?.setDepthMap(null);
     this.renderer?.releaseIntermediates();
     this.renderer?.setPortraitMask(null);
     this.renderer?.pruneLayerMasks(new Set());
@@ -263,6 +279,64 @@ class EngineController {
 
   getSegmentation(): SegmentationMaps | null {
     return (this.photoId && this.portrait.get(this.photoId)?.segmentation) || null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Depth (lens blur)
+  // -------------------------------------------------------------------------
+
+  setDepthData(photoId: string, depth: DepthMap) {
+    this.depth.set(photoId, depth);
+    if (photoId === this.photoId) {
+      this.depthRaster = null;
+      this.requestRender();
+    }
+  }
+
+  getDepthData(photoId: string): DepthMap | undefined {
+    return this.depth.get(photoId);
+  }
+
+  /**
+   * The composed lens-blur raster for the active photo (refined with the
+   * photo's edges and, if enabled, with person segmentation). Null until depth
+   * has been estimated.
+   */
+  getDepthRaster(): { key: string; raster: DepthRaster; subject: Float32Array | null } | null {
+    const id = this.photoId;
+    const depth = id ? this.depth.get(id) : undefined;
+    if (!id || !depth || !this.preview) return null;
+    const protect = useEditor.getState().edit.lensBlur?.protectSubject ?? true;
+    const seg = this.getSegmentation();
+    const key = `${id}|${this.segVersion}|${protect && !!seg}|${this.preview.width}`;
+    if (this.depthRaster?.key !== key) {
+      if (this.depthGuide?.photoId !== id) this.depthGuide = { photoId: id, img: bitmapToImageData(this.preview, DEPTH_RASTER_SIDE) };
+      const guide = this.depthGuide.img;
+      const subject = protect && seg ? subjectMask(seg, guide.width, guide.height) : null;
+      this.depthRaster = { key, raster: composeDepthRaster(depth, guide, { subject }), subject };
+    }
+    return this.depthRaster;
+  }
+
+  /** Uploads the depth raster when lens blur needs it; returns it for the CPU path. */
+  private syncDepth(edit: EditState): DepthRaster | null {
+    if (!edit.lensBlur || edit.lensBlur.amount <= 0) return null;
+    const d = this.getDepthRaster();
+    if (!d) return null;
+    if (this.renderer && this.depthUploaded !== d.key) {
+      this.renderer.setDepthMap(d.raster);
+      this.depthUploaded = d.key;
+    }
+    return d.raster;
+  }
+
+  /** Depth raster for exporting a photo at full resolution (guided by the full-resolution original). */
+  exportDepthRaster(photoId: string, bitmap: ImageBitmap, edit: EditState, seg: SegmentationMaps | null): DepthRaster | null {
+    const depth = this.depth.get(photoId);
+    if (!depth || !edit.lensBlur || edit.lensBlur.amount <= 0) return null;
+    const guide = bitmapToImageData(bitmap, DEPTH_EXPORT_SIDE);
+    const subject = edit.lensBlur.protectSubject && seg ? subjectMask(seg, guide.width, guide.height) : null;
+    return composeDepthRaster(depth, guide, { subject });
   }
 
   private applyPortraitToRenderer() {
@@ -361,6 +435,7 @@ class EngineController {
     const layers = this.layersForRender(edit);
     const editForRender: EditState = layers === edit.layers ? edit : { ...edit, layers };
     const warnings = this.updateMasks(layers);
+    const depthRaster = this.syncDepth(edit);
     if (Object.keys(warnings).length || Object.keys(useEngine.getState().maskWarnings).length) {
       useEngine.setState({ maskWarnings: warnings });
     }
@@ -396,10 +471,10 @@ class EngineController {
       }
       return;
     }
-    if (this.cpuWorker) this.renderCpu(editForRender, out);
+    if (this.cpuWorker) this.renderCpu(editForRender, out, depthRaster);
   }
 
-  private renderCpu(edit: EditState, out: Size) {
+  private renderCpu(edit: EditState, out: Size, depth: DepthRaster | null) {
     if (!this.preview || !this.fullSize) return;
     if (!this.previewData) this.previewData = bitmapToImageData(this.preview, 1280);
     const id = ++this.cpuSeq;
@@ -420,6 +495,7 @@ class EngineController {
       edit,
       out: { width: Math.max(1, Math.round(out.width * scale)), height: Math.max(1, Math.round(out.height * scale)) },
       layerMasks: masks,
+      depth,
     });
   }
 
