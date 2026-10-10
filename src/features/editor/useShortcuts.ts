@@ -66,6 +66,9 @@ export function useShortcuts({ onImport, onPaste }: { onImport: () => void; onPa
         case 'j':
           s.setUi({ tool: s.tool === 'heal' ? 'none' : 'heal', rightTab: 'portrait' });
           break;
+        case 'e':
+          s.setUi({ tool: s.tool === 'remove' ? 'none' : 'remove', rightTab: 'remove' });
+          break;
         case '[':
           s.setBrush({ size: Math.max(0.002, s.brush.size / 1.15) });
           break;

@@ -32,11 +32,34 @@ async function vision() {
 }
 
 async function createWithFallback<T>(make: (delegate: 'GPU' | 'CPU') => Promise<T>): Promise<T> {
+  let task: T;
   try {
-    return await make('GPU');
+    task = await make('GPU');
   } catch {
-    return make('CPU');
+    task = await make('CPU');
   }
+  disableTelemetry(task);
+  return task;
+}
+
+/**
+ * MediaPipe Tasks (1.1.0) creates a usage logger per task that POSTs to
+ * https://odml.pa.googleapis.com/v1/log every 60 s. The production CSP blocks it,
+ * but nothing may leave the device in any build, so the logger is switched off:
+ * its interval is cleared and it is put in its "failed" state, in which flush()
+ * sends nothing. The field names are those of the pinned 1.1.0 bundle;
+ * e2e/network-isolation.spec.ts fails if this ever stops working.
+ */
+function disableTelemetry(task: unknown) {
+  const logger = (task as { o?: { m?: { h?: number; i?: unknown[]; error?: Error; flush?: unknown } } } | null)?.o?.m;
+  if (!logger || typeof logger.flush !== 'function') {
+    console.warn('[mediapipe] usage logger not found; telemetry could not be disabled.');
+    return;
+  }
+  clearInterval(logger.h);
+  logger.h = undefined;
+  logger.i = [];
+  logger.error = new Error('Telemetry disabled by Lumen Atelier.');
 }
 
 export function getFaceLandmarker(): Promise<FaceLandmarker> {

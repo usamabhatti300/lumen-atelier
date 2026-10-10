@@ -17,9 +17,11 @@ export default defineConfig({
     },
   },
   worker: { format: 'es' },
+  // Separate pre-bundle caches for git worktrees that share one node_modules (parallel checkouts).
+  cacheDir: process.env.VITE_CACHE_DIR ?? 'node_modules/.vite',
   // Pre-bundle the ML runtime at startup; discovered later (it is only imported by the ML worker),
   // its large optimisation finished mid-session and forced a full page reload.
-  optimizeDeps: { include: ['onnxruntime-web/webgpu', '@huggingface/transformers'] },
+  optimizeDeps: { include: ['onnxruntime-web/wasm', 'onnxruntime-web/webgpu', '@huggingface/transformers'] },
   server: {
     port: 5173,
     headers: isolation,

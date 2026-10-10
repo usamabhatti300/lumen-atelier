@@ -1,7 +1,7 @@
 // Copies the WebAssembly runtimes into public/ so they are served from our
 // own origin (no third-party CDN at runtime). Runs on `npm install`.
 //   MediaPipe Tasks Vision  -> public/mediapipe/wasm
-//   ONNX Runtime Web        -> public/ort  (the asyncify binary used by onnxruntime-web/webgpu)
+//   ONNX Runtime Web        -> public/ort  (WASM binaries for onnxruntime-web and /webgpu)
 import { cpSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,8 +19,9 @@ if (existsSync(mediapipe)) {
 }
 
 const ortDist = join(root, 'node_modules', 'onnxruntime-web', 'dist');
-// Only the binary: the onnxruntime-web/webgpu bundle embeds its JS loader.
-const ORT_FILES = ['ort-wasm-simd-threaded.asyncify.wasm'];
+// Only the binaries: the bundles embed their JS loaders. asyncify = onnxruntime-web/webgpu,
+// plain = onnxruntime-web/wasm (used when WebGPU is unavailable; much faster on the CPU).
+const ORT_FILES = ['ort-wasm-simd-threaded.asyncify.wasm', 'ort-wasm-simd-threaded.wasm'];
 if (existsSync(ortDist)) {
   const dest = join(root, 'public', 'ort');
   mkdirSync(dest, { recursive: true });

@@ -22,6 +22,7 @@ import { decodeImageBlob, resizeBitmap, bitmapToImageData, ImageImportError } fr
 import { getOriginal, getLut } from '@/lib/storage/db';
 import { rasterizeLayer, maskKey, type SegmentationMaps } from '@/lib/masks/rasterize';
 import type { Adjustments, EditState, MaskLayer } from '@/lib/schema/adjustments';
+import { RemovalPreview } from './removalPreview';
 
 type AnyCanvas = HTMLCanvasElement | OffscreenCanvas;
 
@@ -60,6 +61,15 @@ class EngineController {
   private histTimer = 0;
   private initialized = false;
   private listeners = new Set<() => void>();
+  /** Preview original with the edit's removals applied (null: none, use `preview`). */
+  private removalSource: AnyCanvas | null = null;
+  readonly removals = new RemovalPreview((source) => {
+    this.removalSource = source;
+    this.previewData = null;
+    this.beforeKey = '';
+    this.applySourceToRenderer();
+    this.requestRender();
+  });
 
   /** The canvas element the editor displays. Created lazily. */
   getCanvas(): HTMLCanvasElement {
@@ -93,6 +103,10 @@ class EngineController {
       (s) => [s.edit, s.compare, s.split, s.tool, s.activeLayerId, s.showMaskOverlay, s.liveStroke] as const,
       () => this.requestRender(),
       { equalityFn: shallow },
+    );
+    useEditor.subscribe(
+      (s) => s.edit.removals,
+      (removals) => this.removals.update(removals),
     );
     useSettings.subscribe((s, prev) => {
       if (s.previewQuality !== prev.previewQuality && this.photoId) void this.reloadPreview();
@@ -132,7 +146,7 @@ class EngineController {
     this.lutKey = '';
     this.getCanvas();
     if (mode === 'webgl' && this.preview && this.renderer) {
-      (this.renderer as GLRenderer).setSource(this.preview, { width: this.preview.width, height: this.preview.height });
+      this.applySourceToRenderer();
       this.applyPortraitToRenderer();
     }
     for (const fn of this.listeners) fn();
@@ -202,8 +216,10 @@ class EngineController {
     this.preview?.close();
     this.preview = preview;
     this.previewData = null;
+    this.removalSource = null;
     this.renderer?.releaseIntermediates();
     this.renderer?.setSource(preview, { width: preview.width, height: preview.height });
+    this.removals.setBase(this.photoId, preview, useEditor.getState().edit.removals);
     this.maskKeys.clear();
     this.beforeKey = '';
     this.applyPortraitToRenderer();
@@ -217,6 +233,8 @@ class EngineController {
     this.full = null;
     this.preview = null;
     this.previewData = null;
+    this.removalSource = null;
+    this.removals.setBase(null, null, undefined);
     this.fullSize = null;
     this.maskKeys.clear();
     this.maskCanvases.clear();
@@ -263,6 +281,12 @@ class EngineController {
 
   getSegmentation(): SegmentationMaps | null {
     return (this.photoId && this.portrait.get(this.photoId)?.segmentation) || null;
+  }
+
+  /** Gives the renderer the preview original, with removals applied when there are any. */
+  private applySourceToRenderer() {
+    if (!this.renderer || !this.preview) return;
+    this.renderer.setSource(this.removalSource ?? this.preview, { width: this.preview.width, height: this.preview.height });
   }
 
   private applyPortraitToRenderer() {
@@ -401,7 +425,7 @@ class EngineController {
 
   private renderCpu(edit: EditState, out: Size) {
     if (!this.preview || !this.fullSize) return;
-    if (!this.previewData) this.previewData = bitmapToImageData(this.preview, 1280);
+    if (!this.previewData) this.previewData = bitmapToImageData(this.removalSource ?? this.preview, 1280);
     const id = ++this.cpuSeq;
     this.cpuPending = { id, neutral: false };
     const masks: Record<string, { width: number; height: number; data: Uint8ClampedArray }> = {};

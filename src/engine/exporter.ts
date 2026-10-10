@@ -20,6 +20,8 @@ import { canvasToBlob, createCanvas } from '@/lib/image/decode';
 import { getLut } from '@/lib/storage/db';
 import type { EditState } from '@/lib/schema/adjustments';
 import { effectiveAdjustments } from '@/state/editorStore';
+import { activeRemovals } from '@/lib/removal/removal';
+import { applyRemovalsToBitmap } from '@/lib/removal/inpaint';
 
 export type ExportFormat = 'image/jpeg' | 'image/png' | 'image/webp';
 
@@ -37,6 +39,8 @@ export interface ExportOptions {
   onProgress?: (fraction: number, stage: string) => void;
   tileSize?: number;
   forceCpu?: boolean;
+  /** Cache scope for filled removal patches (the photo id); without it nothing is reused. */
+  removalScope?: string;
 }
 
 export class ExportCancelled extends Error {
@@ -84,6 +88,31 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
   const problem = exportSizeProblem(out);
   if (problem) throw new Error(problem);
 
+  // Object removals are applied to the original pixels at output resolution, before any adjustment.
+  let removed: ImageBitmap | null = null;
+  let tileBase = 0.02;
+  if (activeRemovals(edit.removals).length > 0) {
+    opts.onProgress?.(0.01, 'Removing objects');
+    try {
+      removed = await applyRemovalsToBitmap(source, edit.removals, {
+        scope: opts.removalScope ? `${opts.removalScope}/export` : `export-${Math.random()}`,
+        signal: opts.signal,
+        onProgress: (p) =>
+          p.phase === 'download'
+            ? opts.onProgress?.(0.01, `Loading the removal model (${Math.round((p.loaded / Math.max(1, p.total)) * 100)}%)`)
+            : opts.onProgress?.(0.02 + (p.index / p.count) * 0.3, `Removing object ${p.index + 1} of ${p.count}`),
+      });
+    } catch (e) {
+      scaled?.close();
+      if (opts.signal?.aborted) throw new ExportCancelled();
+      throw e;
+    }
+    if (removed) {
+      source = removed;
+      tileBase = 0.32;
+    }
+  }
+
   const final = createCanvas(out.width, out.height);
   const fctx = final.getContext('2d') as CanvasRenderingContext2D | null;
   if (!fctx) throw new Error('This browser could not allocate an image of this size. Choose a smaller output size.');
@@ -103,7 +132,7 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
       }
     }
     if (renderer) {
-      await renderTiles(renderer, source, fullSize, out, edit, opts, fctx, check);
+      await renderTiles(renderer, source, fullSize, out, edit, opts, fctx, check, tileBase);
       renderer.dispose();
     } else {
       opts.onProgress?.(0.05, 'Rendering on CPU');
@@ -133,6 +162,7 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
     return blob;
   } finally {
     scaled?.close();
+    removed?.close();
     if ('width' in final) {
       final.width = 1;
       final.height = 1;
@@ -149,6 +179,7 @@ async function renderTiles(
   opts: ExportOptions,
   fctx: CanvasRenderingContext2D,
   check: () => void,
+  tileBase = 0.02,
 ) {
   const params = deriveDevelopParams(effectiveAdjustments(edit));
   for (const [id, m] of opts.layerMasks) renderer.setLayerMask(id, m);
@@ -218,7 +249,7 @@ async function renderTiles(
         bmp.close();
       }
       done++;
-      opts.onProgress?.(0.02 + (done / total) * 0.93, `Rendering tile ${done} of ${total}`);
+      opts.onProgress?.(tileBase + (done / total) * (0.95 - tileBase), `Rendering tile ${done} of ${total}`);
       // Yield so the UI can update and the user can cancel.
       await new Promise((r) => setTimeout(r, 0));
     }

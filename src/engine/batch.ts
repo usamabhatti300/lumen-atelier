@@ -76,6 +76,7 @@ export async function exportPhoto(
       scale: opts.scale,
       layerMasks: masks,
       portraitMask: (portrait?.mask as TexImageSource | null) ?? null,
+      removalScope: id,
       signal,
       onProgress,
     });

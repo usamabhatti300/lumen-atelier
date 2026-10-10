@@ -10,6 +10,7 @@ import { getProject, saveProject, updatePhotoEdit } from '@/lib/storage/db';
 import { makeThumbnail } from '@/lib/image/decode';
 import type { EditState } from '@/lib/schema/adjustments';
 import { engine } from './controller';
+import { useRemovalStatus } from './removalPreview';
 
 const SAVE_DELAY = 500;
 const THUMB_DELAY = 1500;
@@ -93,6 +94,12 @@ export function startAutosave() {
     },
     { equalityFn: shallow },
   );
+  // Removals finish asynchronously, after the edit changed: refresh the thumbnail once they show.
+  useRemovalStatus.subscribe((s, prev) => {
+    if (s.applied === prev.applied || !useEditor.getState().activePhotoId) return;
+    window.clearTimeout(thumbTimer);
+    thumbTimer = window.setTimeout(() => void refreshThumbnail(), THUMB_DELAY);
+  });
   useEditor.subscribe(
     (s) => s.projectName,
     () => {
