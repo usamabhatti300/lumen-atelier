@@ -24,6 +24,7 @@ The product specification is `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`; progress is 
 | API server | `server/*` (Node http + Anthropic SDK; runs TS natively, so use erasable syntax and `.ts` imports) |
 | State | `src/state/*` (Zustand). Engine status in `src/engine/engineStore.ts` |
 | Storage | `src/lib/storage/db.ts` (IndexedDB via idb) |
+| On-device ML (ONNX Runtime Web, Transformers.js) | `src/lib/ml/*`: `registry.ts` (every model: pinned URL, size, SHA-256, licence), `verify.ts` (same-origin, checksum-verified downloads), `ml.worker.ts` + `client.ts` (WebGPU → WASM sessions, progress, cancel), `transformers.ts` (local-only config). Settings UI in `src/features/settings/AiModels.tsx` |
 
 ## Rules
 
@@ -35,6 +36,9 @@ The product specification is `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`; progress is 
   Numeric settings come from `src/lib/analysis/mapping.ts`; document new rules in
   `docs/AI_ARCHITECTURE.md`.
 - Never put secrets in `VITE_*` variables or browser code.
+- ML models: register every file in `src/lib/ml/registry.ts` with its SHA-256; load only through
+  `fetchVerified`/`guardedFetch` (same origin, no remote models); keep `e2e/network-isolation.spec.ts`
+  exercising every AI feature.
 - Don't fake progress: show percentages only for measurable work.
 - Keep the app runnable; run `npm run typecheck && npm test` before finishing a change, and the
   e2e suite for workflow changes. Report only tests you actually ran.

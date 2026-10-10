@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import Anthropic from '@anthropic-ai/sdk';
-import { createApp } from './app.ts';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createApp, listModelFiles } from './app.ts';
 import { loadConfig } from './config.ts';
 import type { CreateMessage } from './anthropic.ts';
 import { RateLimiter } from './rateLimit.ts';
@@ -150,5 +153,21 @@ describe('rate limiter', () => {
     expect(rl.take('a')).toBeGreaterThan(0);
     t += 1000;
     expect(rl.take('a')).toBe(0);
+  });
+});
+
+describe('model install state', () => {
+  it('lists model files with sizes, recursing into folders and skipping partial downloads', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'lumen-models-'));
+    try {
+      mkdirSync(join(dir, 'org', 'repo', 'onnx'), { recursive: true });
+      writeFileSync(join(dir, 'a.task'), Buffer.alloc(7));
+      writeFileSync(join(dir, 'org', 'repo', 'onnx', 'm.onnx'), Buffer.alloc(11));
+      writeFileSync(join(dir, 'org', 'repo', 'onnx', 'big.onnx.part'), Buffer.alloc(3));
+      expect(listModelFiles(dir)).toEqual({ 'a.task': 7, 'org/repo/onnx/m.onnx': 11 });
+      expect(listModelFiles(join(dir, 'missing'))).toEqual({});
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -36,7 +36,9 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
 - Last change the user asked for (done): in the reference studio, the generated look is now
   **auto-applied** to the target photo when analysis finishes, and **Save as preset / Intensity /
   Refine** sit directly under the preview (`src/features/reference/ReferenceStudio.tsx`).
-- Git: repository initialised; **nothing committed yet** (the user hasn't asked).
+- Git: committed and pushed to `origin` (https://github.com/usamabhatti300/lumen-atelier, `main`); one commit per integration step.
+- **AI integration progress** (`docs/INTEGRATION_GUIDE.md`): Step 0 done; **Step 1 (ML runtime) done**;
+  next is **Step 2 (SlimSAM click-to-select)**. See "ML runtime notes" below.
 
 ## What the user wants next
 
@@ -74,6 +76,32 @@ Non-ML upgrades that also lift quality:
 Step 2 SlimSAM click-to-select → Step 3 MI-GAN removal → Step 4 Depth Anything V2 Small lens blur →
 Step 5 Real-ESRGAN upscale → Step 6 optional BiRefNet). Check which steps are already done (git log,
 `src/lib/ml/`) before continuing.
+
+### ML runtime notes (Step 1, 2026-10-10)
+
+- `onnxruntime-web@1.30.0` + `@huggingface/transformers@4.3.1`. Transformers.js pins its own
+  `onnxruntime-web` dev build; an npm `overrides` entry in `package.json` dedupes it to 1.30.0, and
+  `src/lib/ml/ort.ts` registers our ORT instance on `globalThis[Symbol.for('onnxruntime')]` before
+  Transformers.js loads, so only one runtime ships.
+- ORT's WASM binary is copied to `public/ort/` on install (`scripts/copy-wasm-runtimes.mjs`); `wasmPaths`
+  points at the `.wasm` only, because Vite dev refuses runtime `import()` of `.mjs` files in `public/`
+  (the `/webgpu` bundle embeds its JS loader anyway).
+- COOP + COEP (`require-corp`) are now sent by `server/app.ts` and the Vite dev/preview servers, so the
+  page is cross-origin isolated and WASM runs multi-threaded (4 threads here).
+- `src/lib/ml/registry.ts` lists every model with a pinned revision URL, size and SHA-256 (verified at the
+  source on 2026-10-10). Planned models have `status: 'planned'`; flip to `'ready'` in the step that ships
+  the feature so `setup:models` downloads it. The SlimSAM (fp32) and Depth (fp16) file choices are
+  provisional: confirm them against the real graphs in Steps 2 and 4. BiRefNet is deliberately not in
+  the registry (no upstream digest; Step 6 needs the user's OK and an on-demand downloader).
+- Transformers.js: `allowRemoteModels = false`, `localModelPath = '/models/'`, browser/WASM caches off,
+  and `env.fetch = guardedFetch` (same origin only, registry files only, SHA-256 verified, 404 for anything
+  unregistered). Model loads report byte progress via `setTransformersContext`.
+- Graph inspection: Python `pip install onnx` fails here (Windows long-path limit); use the installed
+  `onnxruntime-node` (`inputNames`, `outputNames`, `inputMetadata`) from a scratch script instead.
+- `vite.config.ts` has `optimizeDeps.include` for the ML packages. Without it Vite discovered them late and
+  force-reloaded the page mid-test (broke the critical journey). `exclude` instead made every e2e test
+  ~3× slower, so don't switch to it.
+- Headless Chromium has no WebGPU, so tests cover the WASM path; WebGPU is only exercised on a real browser.
 
 ### Suggested integration architecture
 

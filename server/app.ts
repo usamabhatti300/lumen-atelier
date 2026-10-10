@@ -7,7 +7,7 @@
  * request, are never written to disk, and are never logged.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import {
   AnalyzeRequestSchema,
@@ -26,6 +26,8 @@ export interface AppDeps {
   createMessage: CreateMessage | null;
   /** Directory of the built frontend to serve, or null in development. */
   staticDir: string | null;
+  /** Where on-device model files live (public/models or dist/models), for the install-state endpoint. */
+  modelsDir?: string | null;
 }
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -33,6 +35,8 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Referrer-Policy': 'no-referrer',
   'X-Frame-Options': 'DENY',
   'Cross-Origin-Opener-Policy': 'same-origin',
+  // With COOP this makes the page cross-origin isolated, which multi-threaded WASM (ONNX Runtime) needs.
+  'Cross-Origin-Embedder-Policy': 'require-corp',
 };
 
 const CSP = [
@@ -64,6 +68,7 @@ const MIME: Record<string, string> = {
   '.wasm': 'application/wasm',
   '.task': 'application/octet-stream',
   '.tflite': 'application/octet-stream',
+  '.onnx': 'application/octet-stream',
   '.map': 'application/json',
 };
 
@@ -85,6 +90,10 @@ export function createApp(deps: AppDeps) {
           },
         };
         return sendJson(res, 200, body);
+      }
+
+      if (url.pathname === '/api/models' && req.method === 'GET') {
+        return sendJson(res, 200, { files: deps.modelsDir ? listModelFiles(deps.modelsDir) : {} });
       }
 
       if (url.pathname === '/api/analyze-style') {
@@ -255,4 +264,19 @@ function serveStatic(pathname: string, root: string, res: ServerResponse) {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   }
   createReadStream(filePath).pipe(res);
+}
+
+/** Sizes of the files under the models folder, keyed by path relative to it (so Settings can show what is installed). */
+export function listModelFiles(dir: string): Record<string, number> {
+  const out: Record<string, number> = {};
+  const walk = (abs: string, rel: string, depth: number) => {
+    if (depth > 6 || !existsSync(abs)) return;
+    for (const entry of readdirSync(abs, { withFileTypes: true })) {
+      const childRel = rel ? `${rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) walk(join(abs, entry.name), childRel, depth + 1);
+      else if (entry.isFile() && !entry.name.endsWith('.part')) out[childRel] = statSync(join(abs, entry.name)).size;
+    }
+  };
+  walk(dir, '', 0);
+  return out;
 }

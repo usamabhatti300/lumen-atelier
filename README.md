@@ -13,8 +13,8 @@ Requirements: **Node.js 22.18+** (24 recommended; the API server runs TypeScript
 browser with WebGL2 (current Chrome, Edge, Firefox or Safari).
 
 ```bash
-npm install            # also copies the MediaPipe WASM runtime into public/
-npm run setup:models   # downloads the portrait models (~20 MB) into public/models/
+npm install            # also copies the MediaPipe and ONNX Runtime WASM files into public/
+npm run setup:models   # downloads the on-device models (~20 MB today) into public/models/, checking SHA-256
 npm run dev            # web app on http://localhost:5173, API server on :8787
 ```
 
@@ -55,7 +55,7 @@ npm start       # serves dist/ and the API on http://127.0.0.1:8787
 | `npm test` | Unit and integration tests (Vitest) |
 | `npm run test:e2e` | End-to-end tests (Playwright; run `npx playwright install chromium` once) |
 | `npm run lint` / `npm run format` | ESLint / Prettier |
-| `npm run setup:models` | Download MediaPipe portrait models |
+| `npm run setup:models` | Download the on-device AI models the tools use (verified by SHA-256) |
 
 ## Features
 
@@ -100,9 +100,31 @@ Import: JPEG, PNG, WebP (validated by content, up to 150 MB and 150 MP). HEIC/HE
 RAW are detected and rejected with an explanation (not supported yet). Working space is sRGB; wide-gamut
 images are converted on import. Exports are sRGB without camera metadata.
 
+## On-device AI models
+
+All models run in the browser (MediaPipe via WebAssembly; the others via ONNX Runtime Web with WebGPU,
+falling back to multi-threaded WebAssembly) in a Web Worker. Photos never leave the device. Model and
+runtime files are served by this app from `/models/` and `/ort/`, never from Hugging Face or a CDN at
+runtime, and every model file is checked against the SHA-256 recorded in `src/lib/ml/registry.ts`.
+Only `.onnx`, `.json`, `.task` and `.tflite` files are loaded (no pickle formats). **Settings → AI
+models** shows each model's size, licence and download state, and can check the runtime on your device.
+
+| Model | Used for | Download | Licence | Status |
+| --- | --- | --- | --- | --- |
+| MediaPipe Face Landmarker | Portrait retouching | 3.8 MB | Apache-2.0 | In use |
+| MediaPipe Selfie Multiclass | Subject/background/hair/skin/clothes masks | 16.4 MB | Apache-2.0 | In use |
+| SlimSAM-77 (`Xenova/slimsam-77-uniform`) | Select object (planned) | 40 MB | Apache-2.0 | Not used yet |
+| MI-GAN (`migan_pipeline_v2.onnx`) | Remove tool (planned) | 28 MB | MIT (code and weights) | Not used yet |
+| Depth Anything V2 **Small** | Lens blur (planned) | 50 MB | Apache-2.0 (Base/Large are non-commercial and are not used) | Not used yet |
+| Real-ESRGAN general x4v3 | AI upscale on export (planned) | 4.9 MB | BSD-3-Clause | Not used yet |
+
+`npm run setup:models` downloads only the models a tool uses. Planned models are added to it as their
+features ship (see `docs/INTEGRATION_GUIDE.md`).
+
 ## Licences
 
 Code: project licence TBD by the owner. Third-party: React, Vite, Tailwind, Motion, Zustand, Zod,
-idb, Lucide (MIT/ISC); MediaPipe Tasks Vision and its models (Apache-2.0); Inter, Instrument Serif and
+idb, Lucide (MIT/ISC); ONNX Runtime Web (MIT); Transformers.js (Apache-2.0); MediaPipe Tasks Vision and its
+models (Apache-2.0); the AI models listed above under their own licences; Inter, Instrument Serif and
 IBM Plex Mono (SIL OFL). The built-in presets are original works and imply no affiliation with film
 manufacturers or other preset makers.

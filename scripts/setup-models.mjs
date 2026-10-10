@@ -1,44 +1,85 @@
-// Downloads the on-device MediaPipe models used for portrait retouching and
-// subject/background masks into public/models/. Run once: npm run setup:models
+// Downloads the on-device AI models listed in src/lib/ml/registry.ts into
+// public/models/, so the app serves them from its own origin. Run once:
+//   npm run setup:models
 //
-// Models (Apache-2.0, Google MediaPipe):
-//   face_landmarker.task            ~3.7 MB  478 face landmarks incl. irises
-//   selfie_multiclass_256x256.tflite ~16 MB  background/hair/body-skin/face-skin/clothes/other
-import { createWriteStream, existsSync, mkdirSync, statSync, renameSync } from 'node:fs';
+// Every file is pinned to a fixed upstream revision and checked against its
+// registered size and SHA-256; a mismatching file is deleted and reported.
+// Only models with status "ready" (used by a tool) are downloaded.
+import { createHash } from 'node:crypto';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dest = join(root, 'public', 'models');
-const MODELS = [
-  {
-    file: 'face_landmarker.task',
-    url: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-  },
-  {
-    file: 'selfie_multiclass_256x256.tflite',
-    url: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite',
-  },
-];
+const { MODELS, isSafeModelPath, modelBytes } = await import(pathToFileURL(join(root, 'src', 'lib', 'ml', 'registry.ts')).href);
 
-mkdirSync(dest, { recursive: true });
-for (const m of MODELS) {
-  const target = join(dest, m.file);
-  if (existsSync(target) && statSync(target).size > 100_000) {
-    console.log(`[models] ${m.file} already present`);
-    continue;
-  }
-  process.stdout.write(`[models] downloading ${m.file} … `);
-  const res = await fetch(m.url);
-  if (!res.ok || !res.body) {
-    console.error(`failed (${res.status})`);
-    process.exitCode = 1;
-    continue;
-  }
+const mb = (n) => `${(n / 1e6).toFixed(1)} MB`;
+
+async function sha256File(path) {
+  const h = createHash('sha256');
+  await pipeline(createReadStream(path), h);
+  return h.digest('hex');
+}
+
+async function download(file, target) {
+  const res = await fetch(file.url);
+  if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
   const tmp = `${target}.part`;
-  await pipeline(Readable.fromWeb(res.body), createWriteStream(tmp));
-  renameSync(tmp, target);
-  console.log(`${(statSync(target).size / 1e6).toFixed(1)} MB`);
+  const hash = createHash('sha256');
+  let received = 0;
+  const meter = new Transform({
+    transform(chunk, _enc, cb) {
+      hash.update(chunk);
+      received += chunk.length;
+      if (received > file.bytes) return cb(new Error(`larger than the registered ${file.bytes} bytes`));
+      cb(null, chunk);
+    },
+  });
+  try {
+    await pipeline(Readable.fromWeb(res.body), meter, createWriteStream(tmp));
+    if (received !== file.bytes) throw new Error(`got ${received} bytes, expected ${file.bytes}`);
+    const digest = hash.digest('hex');
+    if (digest !== file.sha256) throw new Error(`SHA-256 mismatch (got ${digest})`);
+    renameSync(tmp, target);
+  } catch (e) {
+    rmSync(tmp, { force: true });
+    throw e;
+  }
+}
+
+let failed = 0;
+for (const model of MODELS.filter((m) => m.status === 'ready')) {
+  console.log(`[models] ${model.name} (${model.licence}, ${mb(modelBytes(model))})`);
+  for (const file of model.files) {
+    if (!isSafeModelPath(file.path)) {
+      console.error(`  ${file.path}: refused (not an allowed model file type)`);
+      failed++;
+      continue;
+    }
+    const target = join(dest, ...file.path.split('/'));
+    mkdirSync(dirname(target), { recursive: true });
+    if (existsSync(target) && statSync(target).size === file.bytes && (await sha256File(target)) === file.sha256) {
+      console.log(`  ${file.path}: present, verified`);
+      continue;
+    }
+    if (existsSync(target)) {
+      console.log(`  ${file.path}: present but does not match its checksum; re-downloading`);
+      rmSync(target);
+    }
+    process.stdout.write(`  ${file.path}: downloading ${mb(file.bytes)} … `);
+    try {
+      await download(file, target);
+      console.log('verified');
+    } catch (e) {
+      console.log(`failed: ${e instanceof Error ? e.message : e}`);
+      failed++;
+    }
+  }
+}
+if (failed) {
+  console.error(`[models] ${failed} file(s) could not be installed. Nothing unverified was kept.`);
+  process.exitCode = 1;
 }

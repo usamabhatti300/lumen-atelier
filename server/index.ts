@@ -20,6 +20,7 @@ const app = createApp({
   config,
   createMessage: config.anthropicApiKey ? createAnthropicCaller(config.anthropicApiKey) : null,
   staticDir: serveStatic ? distDir : null,
+  modelsDir: join(serveStatic ? distDir : join(root, 'public'), 'models'),
 });
 
 const server = createServer((req, res) => {

@@ -15,3 +15,5 @@ public/models/*.task
 public/models/*.tflite
 *.tsbuildinfo
 .DS_Store
+public/ort
+public/models/*/

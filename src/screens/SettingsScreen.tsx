@@ -1,5 +1,5 @@
-/** Settings: performance, privacy, AI configuration, portrait models, data. */
-import { ArrowLeft, Cpu, Database, Gauge, Loader2, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
+/** Settings: performance, privacy, AI configuration, on-device AI models, data. */
+import { ArrowLeft, BrainCircuit, Cpu, Database, Gauge, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/Button';
@@ -9,7 +9,7 @@ import { useSettings, PREVIEW_SIZES, type PreviewQuality } from '@/state/setting
 import { useEngine } from '@/engine/engineStore';
 import { getAiHealth, type AiHealth } from '@/lib/analysis/client';
 import { clearAllData, listProjects, storageEstimate } from '@/lib/storage/db';
-import { FACE_MODEL_URL, SEGMENT_MODEL_URL } from '@/lib/portrait/mediapipe';
+import { AiModels } from '@/features/settings/AiModels';
 import { runBenchmark, type BenchmarkResult } from '@/engine/benchmark';
 import { Wordmark } from './GalleryScreen';
 
@@ -17,7 +17,6 @@ export default function SettingsScreen() {
   const s = useSettings();
   const engine = useEngine();
   const [health, setHealth] = useState<AiHealth | null>(null);
-  const [models, setModels] = useState<{ face: boolean; seg: boolean } | null>(null);
   const [usage, setUsage] = useState<{ usage: number; quota: number } | null>(null);
   const [projects, setProjects] = useState(0);
   const [bench, setBench] = useState<BenchmarkResult | 'running' | string | null>(null);
@@ -27,15 +26,6 @@ export default function SettingsScreen() {
     void getAiHealth(true).then(setHealth);
     void storageEstimate().then(setUsage);
     void listProjects().then((p) => setProjects(p.length));
-    const head = async (url: string) => {
-      try {
-        const r = await fetch(url, { method: 'HEAD' });
-        return r.ok && !(r.headers.get('content-type') ?? '').includes('text/html');
-      } catch {
-        return false;
-      }
-    };
-    void Promise.all([head(FACE_MODEL_URL), head(SEGMENT_MODEL_URL)]).then(([face, seg]) => setModels({ face, seg }));
   }, []);
 
   return (
@@ -141,23 +131,8 @@ export default function SettingsScreen() {
           )}
         </Block>
 
-        <Block icon={<UserRound size={16} />} title="Portrait models">
-          {models === null ? (
-            <p className="text-xs text-mute">Checking…</p>
-          ) : (
-            <div className="text-xs leading-relaxed text-mute">
-              <p>
-                Face landmarks: <span className={models.face ? 'text-verdigris' : 'text-amber'}>{models.face ? 'installed' : 'missing'}</span> · Person segmentation:{' '}
-                <span className={models.seg ? 'text-verdigris' : 'text-amber'}>{models.seg ? 'installed' : 'missing'}</span>
-              </p>
-              {(!models.face || !models.seg) && (
-                <p className="mt-2">
-                  Run <code className="text-ivory">npm run setup:models</code> to download them (about 20 MB, Apache-2.0, Google MediaPipe).
-                </p>
-              )}
-              <p className="mt-2">They run in the browser via WebAssembly; images are never uploaded.</p>
-            </div>
-          )}
+        <Block icon={<BrainCircuit size={16} />} title="AI models">
+          <AiModels />
         </Block>
 
         <Block icon={<Sparkles size={16} />} title="Motion">
