@@ -10,6 +10,7 @@ import {
   EyeOff,
   Layers,
   Loader2,
+  MousePointerClick,
   Plus,
   SquareDashedMousePointer,
   Trash2,
@@ -25,6 +26,8 @@ import { useEngine } from '@/engine/engineStore';
 import { ensurePortraitAnalysis, usePortrait } from '@/features/portrait/portraitState';
 import { LOCAL_RANGES, type LocalAdjustments, type MaskComponent, type SegmentTarget } from '@/lib/schema/adjustments';
 import { newId } from '@/lib/storage/db';
+import { SelectObjectPanel } from '@/features/masks/selectObject';
+import { activateSelectObject } from '@/features/masks/selectObjectActions';
 
 const LOCAL_LABELS: [keyof LocalAdjustments, string][] = [
   ['exposure', 'Exposure'],
@@ -53,6 +56,7 @@ function componentLabel(c: MaskComponent) {
   if (c.type === 'brush') return `${c.mode === 'erase' ? 'Erase' : 'Brush'} stroke`;
   if (c.type === 'linear') return 'Linear gradient';
   if (c.type === 'radial') return `Radial gradient${c.invert ? ' (outside)' : ''}`;
+  if (c.type === 'object') return `Selected object (${c.points.length} ${c.points.length === 1 ? 'point' : 'points'})`;
   return `${SEGMENT_LABEL[c.target]} (detected)`;
 }
 
@@ -77,6 +81,12 @@ export function MasksPanel() {
     const id = addLayer(SEGMENT_LABEL[target], [{ type: 'segment', id: newId('c_'), mode: 'add', target }]);
     setActive(id);
     await ensurePortraitAnalysis();
+  };
+
+  const addObjectLayer = () => {
+    setMenu(false);
+    addLayer('Object');
+    activateSelectObject();
   };
 
   const addDrawLayer = (kind: 'brush' | 'linear' | 'radial') => {
@@ -110,6 +120,15 @@ export function MasksPanel() {
               transition={{ duration: 0.16 }}
               className="mb-3 grid grid-cols-2 gap-1 rounded-sm border border-line bg-ink-900 p-1.5"
             >
+              <button
+                type="button"
+                onClick={addObjectLayer}
+                className="col-span-2 flex h-9 items-center gap-2 rounded-xs border border-amber/30 px-2 text-left text-xs text-ivory hover:border-amber/60 hover:bg-amber/5"
+              >
+                <MousePointerClick size={14} className="text-amber" />
+                <span className="flex-1">Select object</span>
+                <span className="text-[10px] text-faint">click anything</span>
+              </button>
               <MenuItem icon={<Brush size={14} />} label="Brush" onClick={() => addDrawLayer('brush')} />
               <MenuItem icon={<SquareDashedMousePointer size={14} />} label="Linear" onClick={() => addDrawLayer('linear')} />
               <MenuItem icon={<Circle size={14} />} label="Radial" onClick={() => addDrawLayer('radial')} />
@@ -126,7 +145,8 @@ export function MasksPanel() {
 
         {layers.length === 0 ? (
           <p className="py-2 text-xs leading-relaxed text-mute">
-            Masks apply adjustments to part of the photo. Add a brush, a gradient, or a detected subject or background.
+            Masks apply adjustments to part of the photo. Select any object by clicking it, paint with a brush, add a
+            gradient, or use a detected subject or background.
           </p>
         ) : (
           <ul className="space-y-1" aria-label="Mask layers">
@@ -248,6 +268,18 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
         className="mb-3 h-7 w-full rounded-xs border border-line bg-ink-950 px-2 text-xs text-ivory outline-none focus:border-amber/60"
       />
 
+      <button
+        type="button"
+        aria-pressed={tool === 'object'}
+        onClick={() => (tool === 'object' ? setUi({ tool: 'none' }) : activateSelectObject())}
+        className={`mb-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-xs border text-xs ${
+          tool === 'object' ? 'border-amber/60 bg-amber/10 text-amber' : 'border-line text-ivory-dim hover:border-line-strong'
+        }`}
+      >
+        <MousePointerClick size={13} />
+        Select object
+      </button>
+      {tool === 'object' && <SelectObjectPanel layerId={layerId} />}
       <div className="mb-2 flex gap-1">
         {toolBtn('brush', 'Paint', <Brush size={13} />, false)}
         {toolBtn('brush', 'Erase', <Eraser size={13} />, true)}
@@ -281,7 +313,12 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
           <Loader2 size={12} className="animate-spin" /> Detecting subject…
         </p>
       )}
-      {warning && !portraitBusy && <p className="mt-2 text-[11px] text-safelight">{warning} Open the Portrait tab to run detection.</p>}
+      {warning && !portraitBusy && (
+        <p className="mt-2 text-[11px] text-safelight">
+          {warning}
+          {warning.startsWith('Subject detection') ? ' Open the Portrait tab to run detection.' : ''}
+        </p>
+      )}
 
       {layer.components.length > 0 && (
         <ul className="mt-3 space-y-0.5" aria-label="Mask shapes">

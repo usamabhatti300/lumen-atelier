@@ -9,6 +9,8 @@ import type * as Ort from 'onnxruntime-web';
 import { createSession, getOrt, type Backend } from './ort';
 import type { BackendCheck, LoadResult, MlRequest, MlResponse, SelfTestResult, TensorData } from './protocol';
 import { getModel } from './registry';
+import { handleSam } from './sam';
+import { isSamRequest } from './samProtocol';
 import { SELFTEST_INPUT, buildSelfTestModel, selfTestPasses } from './selftest';
 import { getTransformers } from './transformers';
 import { fetchVerified, progressTracker } from './verify';
@@ -109,12 +111,14 @@ self.onmessage = async (e: MessageEvent<MlRequest>) => {
   controllers.set(msg.id, ac);
   try {
     let result: unknown;
-    if (msg.type === 'selftest') result = await selfTest();
+    let transfer: Transferable[] = [];
+    if (isSamRequest(msg)) {
+      ({ result, transfer } = await handleSam(msg, { signal: ac.signal, progress: (loaded, total) => post({ type: 'progress', id: msg.id, loaded, total }) }));
+    } else if (msg.type === 'selftest') result = await selfTest();
     else if (msg.type === 'load') result = await load(msg.id, msg.modelId, ac.signal);
     else if (msg.type === 'run') result = await run(msg.modelId, msg.file, msg.feeds);
     else result = await release(msg.modelId);
-    const transfer =
-      msg.type === 'run' ? Object.values(result as Record<string, TensorData>).map((t) => t.data.buffer as ArrayBuffer) : [];
+    if (msg.type === 'run') transfer = Object.values(result as Record<string, TensorData>).map((t) => t.data.buffer as ArrayBuffer);
     post({ type: 'result', id: msg.id, result }, transfer);
   } catch (err) {
     const error = err instanceof Error ? { name: err.name, message: err.message } : { name: 'Error', message: String(err) };

@@ -21,6 +21,8 @@ import { outputSize, outputToSourceMatrix, frameSize, type Size } from '@/lib/en
 import { decodeImageBlob, resizeBitmap, bitmapToImageData, ImageImportError } from '@/lib/image/decode';
 import { getOriginal, getLut } from '@/lib/storage/db';
 import { rasterizeLayer, maskKey, type SegmentationMaps } from '@/lib/masks/rasterize';
+import { OBJECT_MASK_SIDE } from '@/lib/masks/objectMask';
+import { objectMasks, useObjectSelect, type ImageProvider } from './objectMasks';
 import type { Adjustments, EditState, MaskLayer } from '@/lib/schema/adjustments';
 
 type AnyCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -94,6 +96,10 @@ class EngineController {
       () => this.requestRender(),
       { equalityFn: shallow },
     );
+    objectMasks.onChange(() => {
+      this.maskKeys.clear();
+      this.requestRender();
+    });
     useSettings.subscribe((s, prev) => {
       if (s.previewQuality !== prev.previewQuality && this.photoId) void this.reloadPreview();
       if (s.forceCpu !== prev.forceCpu) this.switchMode(s.forceCpu ? 'cpu' : 'webgl');
@@ -302,23 +308,39 @@ class EngineController {
     if (!this.fullSize) return warnings;
     const seg = this.getSegmentation();
     const keep = new Set<string>();
+    const photoId = this.photoId!;
+    const objects = objectMasks.lookup(photoId, true);
+    let anyMissing = false;
     for (const layer of layers) {
       keep.add(layer.id);
-      const key = maskKey(layer, this.segVersion);
+      const key = maskKey(layer, this.segVersion, objectMasks.version);
       if (this.maskKeys.get(layer.id) !== key) {
-        const { canvas, missingSegmentation } = rasterizeLayer(layer, this.fullSize, seg);
+        const { canvas, missingSegmentation, missingObjects } = rasterizeLayer(layer, this.fullSize, seg, undefined, objects);
         this.maskCanvases.set(layer.id, canvas);
         this.renderer?.setLayerMask(layer.id, canvas);
         this.maskKeys.set(layer.id, key);
         if (missingSegmentation) warnings[layer.id] = 'Subject detection has not run for this photo yet.';
+        if (missingObjects.length) {
+          anyMissing = true;
+          objectMasks.request(photoId, missingObjects, this.objectImage());
+          const st = useObjectSelect.getState();
+          if (st.phase === 'error' && st.error) warnings[layer.id] = `Selected object unavailable: ${st.error}`;
+        }
       }
     }
+    if (!anyMissing) objectMasks.settle();
     for (const id of [...this.maskKeys.keys()]) if (!keep.has(id)) {
       this.maskKeys.delete(id);
       this.maskCanvases.delete(id);
     }
     this.renderer?.pruneLayerMasks(keep);
     return warnings;
+  }
+
+  /** The active photo at Select-object resolution (a fresh copy per call). */
+  objectImage(): ImageProvider {
+    const full = this.full;
+    return () => (full && this.full === full ? bitmapToImageData(full, OBJECT_MASK_SIDE) : null);
   }
 
   getMaskCanvas(layerId: string): AnyCanvas | undefined {
@@ -494,8 +516,9 @@ class EngineController {
     const out = new Map<string, AnyCanvas>();
     if (!this.fullSize) return out;
     const seg = this.getSegmentation();
+    const objects = this.photoId ? objectMasks.lookup(this.photoId, false) : null;
     for (const layer of useEditor.getState().edit.layers) {
-      out.set(layer.id, rasterizeLayer(layer, this.fullSize, seg, maxSide).canvas);
+      out.set(layer.id, rasterizeLayer(layer, this.fullSize, seg, maxSide, objects).canvas);
     }
     return out;
   }

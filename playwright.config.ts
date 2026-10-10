@@ -5,6 +5,9 @@ import { defineConfig, devices } from '@playwright/test';
  * Anthropic key, so the AI path is exercised in its "not configured" state
  * deterministically. Headless Chromium renders WebGL2 via SwiftShader.
  */
+const WEB = process.env.E2E_WEB_PORT ?? '5199';
+const API = process.env.E2E_API_PORT ?? '8799';
+
 export default defineConfig({
   testDir: 'e2e',
   timeout: 240_000,
@@ -12,7 +15,7 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:5199',
+    baseURL: `http://localhost:${WEB}`,
     acceptDownloads: true,
     trace: 'retain-on-failure',
     actionTimeout: 60_000,
@@ -21,15 +24,15 @@ export default defineConfig({
   webServer: [
     {
       command: 'node server/index.ts --api-only',
-      env: { API_PORT: '8799', ANTHROPIC_API_KEY: '' },
-      url: 'http://127.0.0.1:8799/api/health',
+      env: { API_PORT: API, ANTHROPIC_API_KEY: '' },
+      url: `http://127.0.0.1:${API}/api/health`,
       reuseExistingServer: false,
       timeout: 60_000,
     },
     {
-      command: 'npx vite --port 5199 --strictPort',
-      env: { API_PORT: '8799' },
-      url: 'http://localhost:5199',
+      command: `npx vite --port ${WEB} --strictPort`,
+      env: { API_PORT: API },
+      url: `http://localhost:${WEB}`,
       reuseExistingServer: false,
       timeout: 120_000,
     },

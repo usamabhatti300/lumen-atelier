@@ -94,7 +94,7 @@ export const MODELS: readonly ModelInfo[] = [
     name: 'SlimSAM-77 (Segment Anything)',
     feature: 'Select object: click to mask anything',
     runtime: 'transformers',
-    status: 'planned',
+    status: 'ready',
     licence: 'Apache-2.0',
     licenceUrl: `${HF}/Xenova/slimsam-77-uniform`,
     source: 'Xenova/slimsam-77-uniform',
