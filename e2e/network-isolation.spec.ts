@@ -9,7 +9,7 @@ import { makeImage, waitForRender } from './helpers.ts';
  * is not run here.)
  */
 test('AI features make no requests to other hosts', async ({ page, context, baseURL }) => {
-  test.setTimeout(600_000);
+  test.setTimeout(1_200_000); // Select object's image embedding is slow on a shared CPU
   const origin = new URL(baseURL!).origin;
   const foreign: string[] = [];
   const seen: string[] = [];
@@ -34,6 +34,22 @@ test('AI features make no requests to other hosts', async ({ page, context, base
   await page.locator('#tab-portrait').click();
   await page.getByRole('button', { name: 'Detect faces & subject' }).click();
   await expect(page.getByText(/face(s)? found|No face found/)).toBeVisible({ timeout: 120_000 });
+  const mediapipeReadyAt = Date.now();
+
+  // Select object: SlimSAM through Transformers.js in the ML worker (model files, embedding, one decode).
+  await page.locator('#tab-masks').click();
+  await page.getByRole('button', { name: 'New mask' }).click();
+  await page.getByRole('button', { name: /Select object/ }).click();
+  const chip = page.getByTestId('select-object-chip');
+  await expect(chip).toContainText('Click an object', { timeout: 720_000 });
+  const canvas = (await page.locator('canvas.editor-canvas').boundingBox())!;
+  await page.mouse.click(canvas.x + canvas.width * 0.5, canvas.y + canvas.height * 0.12);
+  await expect(page.getByText('Selected object (1 point)')).toBeVisible();
+  await expect(chip).toContainText('Click an object', { timeout: 240_000 });
+  expect(seen.some((u) => u.includes('/models/Xenova/slimsam-77-uniform/onnx/vision_encoder.onnx'))).toBe(true);
+
+  // MediaPipe batches usage logs and sends them every 60 s (disabled in src/lib/portrait/mediapipe.ts); stay long enough to catch it.
+  await page.waitForTimeout(Math.max(0, 65_000 - (Date.now() - mediapipeReadyAt)));
 
   // Real-ESRGAN AI upscale on export (ML worker, ONNX Runtime). A small photo keeps it to a few tiles.
   await page.goto('/');
@@ -52,7 +68,7 @@ test('AI features make no requests to other hosts', async ({ page, context, base
   const models = page.getByRole('list', { name: 'AI models' });
   await expect(models.getByTestId('ai-model-state').filter({ hasText: 'Checking…' })).toHaveCount(0);
   await expect(page.getByTestId('ai-model-mediapipe-segmenter').getByTestId('ai-model-state')).toHaveText('Downloaded');
-  await expect(page.getByTestId('ai-model-slimsam').getByText('not used by any tool yet')).toBeVisible();
+  await expect(page.getByTestId('ai-model-slimsam').getByTestId('ai-model-state')).toHaveText('Downloaded');
   await expect(page.getByTestId('ai-model-realesrgan-x4v3').getByTestId('ai-model-state')).toHaveText('Downloaded');
   await page.getByRole('button', { name: 'Check AI runtime' }).click();
   const status = page.getByTestId('ai-runtime-status');

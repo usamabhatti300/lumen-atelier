@@ -37,13 +37,14 @@ function getWorker(): Worker {
   return worker;
 }
 
-interface CallOptions {
+export interface CallOptions {
   signal?: AbortSignal;
   onProgress?: (loaded: number, total: number) => void;
   transfer?: Transferable[];
 }
 
-function call<T>(body: RequestBody, opts: CallOptions = {}): Promise<T> {
+/** Sends one request to the ML worker (used by feature modules such as samClient.ts). */
+export function call<T>(body: RequestBody, opts: CallOptions = {}): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     if (opts.signal?.aborted) return reject(new DOMException('Cancelled', 'AbortError'));
     const id = ++seq;

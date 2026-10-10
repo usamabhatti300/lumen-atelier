@@ -14,6 +14,8 @@ import { findHealOffset, type PixelSource } from '@/lib/retouch/heal';
 import { newId } from '@/lib/storage/db';
 import type { BrushComponent, MaskComponent } from '@/lib/schema/adjustments';
 import type { ViewBox } from '../Viewport';
+import { ObjectToolChip } from '@/features/masks/selectObject';
+import { objectClick } from '@/features/masks/selectObjectActions';
 
 let healCache: { photoId: string; img: PixelSource } | null = null;
 function healPixels(): PixelSource | null {
@@ -60,7 +62,7 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
   const srcDist = (a: [number, number], b: [number, number]) =>
     Math.hypot((a[0] - b[0]) * full.width, (a[1] - b[1]) * full.height) / longEdge;
 
-  const needsLayer = tool === 'brush' || tool === 'linear' || tool === 'radial';
+  const needsLayer = tool === 'brush' || tool === 'linear' || tool === 'radial' || tool === 'object';
   const disabled = needsLayer && !activeLayerId;
 
   const onDown = (e: React.PointerEvent) => {
@@ -69,6 +71,10 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const uv = toUv(e);
     const s = toSrc(uv);
+    if (tool === 'object') {
+      if (s[0] >= 0 && s[0] <= 1 && s[1] >= 0 && s[1] <= 1) objectClick(s[0], s[1], e);
+      return;
+    }
     if (tool === 'heal') {
       const img = healPixels();
       if (!img) return;
@@ -161,6 +167,22 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
             }
             return null;
           })}
+        {tool === 'object' &&
+          shapes.flatMap((c) =>
+            c.type === 'object'
+              ? c.points.map((p, i) => {
+                  const t = toScreen([p.x, p.y]);
+                  return (
+                    <g key={`${c.id}-${i}`} data-testid={p.include ? 'object-point-include' : 'object-point-exclude'}>
+                      <circle cx={t.x} cy={t.y} r={7} fill="#000" fillOpacity={0.35} />
+                      <circle cx={t.x} cy={t.y} r={5.5} fill={p.include ? 'var(--color-amber)' : 'var(--color-ink-950)'} stroke="var(--color-ivory)" strokeWidth={1.4} />
+                      <line x1={t.x - 2.5} y1={t.y} x2={t.x + 2.5} y2={t.y} stroke={p.include ? 'var(--color-ink-950)' : 'var(--color-ivory)'} strokeWidth={1.4} />
+                      {p.include && <line x1={t.x} y1={t.y - 2.5} x2={t.x} y2={t.y + 2.5} stroke="var(--color-ink-950)" strokeWidth={1.4} />}
+                    </g>
+                  );
+                })
+              : [],
+          )}
         {tool === 'heal' &&
           spots.map((sp) => {
             const t = toScreen([sp.x, sp.y]);
@@ -201,6 +223,7 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
           </g>
         )}
       </svg>
+      {tool === 'object' && !disabled && <ObjectToolChip />}
       {disabled && (
         <p className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-xs bg-ink-950/85 px-2.5 py-1 text-xs text-mute">
           Select or add a mask layer first.

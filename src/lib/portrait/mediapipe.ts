@@ -32,11 +32,44 @@ async function vision() {
 }
 
 async function createWithFallback<T>(make: (delegate: 'GPU' | 'CPU') => Promise<T>): Promise<T> {
+  let task: T;
   try {
-    return await make('GPU');
+    task = await make('GPU');
   } catch {
-    return make('CPU');
+    task = await make('CPU');
   }
+  disableUsageLogging(task);
+  return task;
+}
+
+interface UsageLogger {
+  flush(done?: () => void): void;
+  i?: unknown[];
+  h?: ReturnType<typeof setInterval>;
+}
+
+/**
+ * Privacy: MediaPipe Tasks Vision 1.1.0 batches usage statistics and POSTs them
+ * to https://odml.pa.googleapis.com/v1/log every 60 s (no public option turns
+ * this off). The production CSP blocks it, but nothing may even try to leave
+ * the device, so the logger's flush is replaced with a no-op (on the shared
+ * prototype, which also covers a GPU attempt that fell back to CPU).
+ * `e2e/network-isolation.spec.ts` runs long enough to catch it if an upgrade
+ * renames these internals.
+ */
+function disableUsageLogging(task: unknown) {
+  const logger = (task as { o?: { m?: UsageLogger } } | null)?.o?.m;
+  if (!logger || typeof logger.flush !== 'function') {
+    console.warn('[mediapipe] usage logger not found; check that telemetry is still disabled after an upgrade.');
+    return;
+  }
+  const proto = Object.getPrototypeOf(logger) as UsageLogger;
+  proto.flush = function (this: UsageLogger, done?: () => void) {
+    this.i = [];
+    done?.();
+  };
+  if (logger.h !== undefined) clearInterval(logger.h);
+  logger.h = undefined;
 }
 
 export function getFaceLandmarker(): Promise<FaceLandmarker> {

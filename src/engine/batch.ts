@@ -4,12 +4,14 @@
  * cancellation is honoured between photos (and between export tiles).
  */
 import { useEditor } from '@/state/editorStore';
-import { decodeImageBlob, makeThumbnail } from '@/lib/image/decode';
+import { bitmapToImageData, decodeImageBlob, makeThumbnail } from '@/lib/image/decode';
 import { getOriginal, getPhoto, updatePhotoEdit } from '@/lib/storage/db';
 import { rasterizeLayer } from '@/lib/masks/rasterize';
 import type { EditState } from '@/lib/schema/adjustments';
 import { analyzePortraitBitmap } from '@/features/portrait/portraitState';
 import { engine } from './controller';
+import { objectComponentsOf, objectMasks } from './objectMasks';
+import { OBJECT_MASK_SIDE } from '@/lib/masks/objectMask';
 import { ExportCancelled, exportEdited, exportFileName, type ExportFormat } from './exporter';
 import type { UpscaleFactor } from '@/lib/ml/upscale';
 
@@ -73,9 +75,20 @@ export async function exportPhoto(
       const a = await analyzePortraitBitmap(bitmap, full);
       portrait = { mask: a.mask, segmentation: a.segmentation, faces: a.faces };
     }
+    const objects = objectComponentsOf(edit.layers);
+    if (objects.length) {
+      onProgress?.(0.02, 'Preparing selected objects');
+      try {
+        await objectMasks.ensure(id, objects, () => bitmapToImageData(bitmap, OBJECT_MASK_SIDE), signal);
+      } catch (e) {
+        if (signal?.aborted) throw new ExportCancelled();
+        throw new Error(`${name}: a "Select object" mask could not be computed (${e instanceof Error ? e.message : String(e)})`);
+      }
+    }
     const masks = new Map<string, TexImageSource>();
+    const lookup = objectMasks.lookup(id, false);
     for (const layer of edit.layers) {
-      masks.set(layer.id, rasterizeLayer(layer, full, portrait?.segmentation ?? null, 4096).canvas as TexImageSource);
+      masks.set(layer.id, rasterizeLayer(layer, full, portrait?.segmentation ?? null, 4096, lookup).canvas as TexImageSource);
     }
     const blob = await exportEdited({
       bitmap,

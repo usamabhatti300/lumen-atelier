@@ -42,7 +42,7 @@ export interface PhotoMeta {
 }
 
 export type CompareMode = 'off' | 'split' | 'side' | 'before';
-export type Tool = 'none' | 'crop' | 'brush' | 'linear' | 'radial' | 'heal';
+export type Tool = 'none' | 'crop' | 'brush' | 'linear' | 'radial' | 'heal' | 'object';
 export type RightTab = 'adjust' | 'color' | 'detail' | 'portrait' | 'masks' | 'geometry';
 export type LeftTab = 'presets' | 'photos' | 'reference';
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';

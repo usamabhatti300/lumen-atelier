@@ -256,7 +256,29 @@ export interface SegmentComponent {
   target: SegmentTarget;
 }
 
-export type MaskComponent = BrushComponent | LinearComponent | RadialComponent | SegmentComponent;
+/** A clicked prompt point for "Select object": normalized source coordinates; include = positive. */
+export interface ObjectPoint {
+  x: number;
+  y: number;
+  include: boolean;
+}
+
+/**
+ * "Select object" (Segment Anything). Only the clicked points are stored; the
+ * mask raster is derived from them on-device and cached outside the edit
+ * state (see src/lib/masks/objectMask.ts), so it is recomputed if the cache is
+ * missing.
+ */
+export interface ObjectComponent {
+  type: 'object';
+  id: string;
+  mode: MaskMode;
+  points: ObjectPoint[];
+}
+
+export const OBJECT_MAX_POINTS = 24;
+
+export type MaskComponent = BrushComponent | LinearComponent | RadialComponent | SegmentComponent | ObjectComponent;
 
 export interface LocalAdjustments {
   exposure: number;
@@ -659,6 +681,15 @@ export const MaskComponentSchema = z.discriminatedUnion('type', [
     id: z.string().max(64),
     mode: maskMode,
     target: z.enum(SEGMENT_TARGETS),
+  }),
+  z.object({
+    type: z.literal('object'),
+    id: z.string().max(64),
+    mode: maskMode,
+    points: z
+      .array(z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), include: z.boolean() }))
+      .min(1)
+      .max(OBJECT_MAX_POINTS),
   }),
 ]);
 

@@ -5,8 +5,12 @@
  * normalized source-image coordinates, so masks are resolution independent
  * and survive crops/rotations (which happen later in the pipeline).
  */
-import type { MaskComponent, MaskLayer, SegmentTarget } from '../schema/adjustments';
+import type { MaskComponent, MaskLayer, ObjectComponent, SegmentTarget } from '../schema/adjustments';
 import { createCanvas } from '../image/decode';
+import { coverageToRgba, resampleMask, type ObjectMaskRaster } from './objectMask';
+
+/** Looks up the cached raster of a "Select object" component (null while it is not computed). */
+export type ObjectMaskLookup = (component: ObjectComponent) => ObjectMaskRaster | null;
 
 type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 type AnyCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -29,6 +33,8 @@ export interface RasterResult {
   canvas: AnyCanvas;
   /** True when a segment component could not be drawn (no segmentation available). */
   missingSegmentation: boolean;
+  /** "Select object" components whose raster is not available yet. */
+  missingObjects: ObjectComponent[];
 }
 
 export function rasterizeLayer(
@@ -36,6 +42,7 @@ export function rasterizeLayer(
   full: { width: number; height: number },
   segmentation: SegmentationMaps | null,
   maxSide = MASK_MAX_SIDE,
+  objectMasks: ObjectMaskLookup | null = null,
 ): RasterResult {
   const { width, height } = maskCanvasSize(full, maxSide);
   const canvas = createCanvas(width, height);
@@ -43,6 +50,7 @@ export function rasterizeLayer(
   const temp = createCanvas(width, height);
   const tctx = temp.getContext('2d') as Ctx2D;
   let missingSegmentation = false;
+  const missingObjects: ObjectComponent[] = [];
 
   for (const comp of layer.components) {
     tctx.save();
@@ -51,8 +59,11 @@ export function rasterizeLayer(
     tctx.filter = 'none';
     tctx.clearRect(0, 0, width, height);
     let alpha = 1;
-    const drawn = drawComponent(tctx, comp, width, height, segmentation);
-    if (drawn === 'missing') missingSegmentation = true;
+    const drawn = drawComponent(tctx, comp, width, height, segmentation, objectMasks);
+    if (drawn === 'missing') {
+      if (comp.type === 'object') missingObjects.push(comp);
+      else missingSegmentation = true;
+    }
     if (comp.type === 'brush') alpha = comp.opacity;
     tctx.restore();
     if (drawn !== 'drawn') continue;
@@ -62,7 +73,7 @@ export function rasterizeLayer(
     ctx.drawImage(temp as CanvasImageSource, 0, 0);
     ctx.restore();
   }
-  return { canvas, missingSegmentation };
+  return { canvas, missingSegmentation, missingObjects };
 }
 
 function drawComponent(
@@ -71,6 +82,7 @@ function drawComponent(
   W: number,
   H: number,
   seg: SegmentationMaps | null,
+  objectMasks: ObjectMaskLookup | null,
 ): 'drawn' | 'missing' | 'empty' {
   const longEdge = Math.max(W, H);
   ctx.fillStyle = '#fff';
@@ -146,10 +158,18 @@ function drawComponent(
       ctx.drawImage(tmp as CanvasImageSource, 0, 0, W, H);
       return 'drawn';
     }
+    case 'object': {
+      const raster = objectMasks?.(comp);
+      if (!raster) return 'missing';
+      // Resampled in JS (bilinear) rather than by drawImage so export-size masks have clean edges everywhere.
+      const data = raster.width === W && raster.height === H ? raster.data : resampleMask(raster, W, H);
+      ctx.putImageData(new ImageData(coverageToRgba(data), W, H), 0, 0);
+      return 'drawn';
+    }
   }
 }
 
 /** Stable key for caching rasterized masks. */
-export function maskKey(layer: Pick<MaskLayer, 'components'>, segVersion: number): string {
-  return `${segVersion}:${JSON.stringify(layer.components)}`;
+export function maskKey(layer: Pick<MaskLayer, 'components'>, segVersion: number, objectVersion = 0): string {
+  return `${segVersion}:${objectVersion}:${JSON.stringify(layer.components)}`;
 }

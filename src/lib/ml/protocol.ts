@@ -1,5 +1,6 @@
 /** Messages between the main thread (client.ts) and the ML worker (ml.worker.ts). */
 import type { Backend } from './ort';
+import type { SamRequest } from './samProtocol';
 
 export type TensorType = 'float32' | 'uint8' | 'int64' | 'int32' | 'bool';
 
@@ -14,7 +15,8 @@ export type MlRequest =
   | { type: 'load'; id: number; modelId: string }
   | { type: 'run'; id: number; modelId: string; file?: string; feeds: Record<string, TensorData> }
   | { type: 'release'; id: number; modelId: string }
-  | { type: 'cancel'; id: number };
+  | { type: 'cancel'; id: number }
+  | SamRequest;
 
 export interface BackendCheck {
   backend: Backend;
