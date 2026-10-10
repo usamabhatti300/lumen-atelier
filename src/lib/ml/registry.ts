@@ -139,7 +139,7 @@ export const MODELS: readonly ModelInfo[] = [
     name: 'Real-ESRGAN general x4v3',
     feature: 'AI upscale 2× / 4× on export',
     runtime: 'onnxruntime',
-    status: 'planned',
+    status: 'ready',
     licence: 'BSD-3-Clause',
     licenceUrl: `${HF}/jonathanst29/tinier-upscale-models`,
     source: 'xinntao/Real-ESRGAN, jonathanst29/tinier-upscale-models',
