@@ -72,7 +72,28 @@ export async function decodeImageBlob(blob: Blob, displayName: string): Promise<
       `${displayName} is ${mp} megapixels. The current limit is ${MAX_PIXELS / 1e6} megapixels.`,
     );
   }
+  if (exif.orientation !== 1) bitmap = await bakeOrientation(bitmap);
   return { bitmap, width: bitmap.width, height: bitmap.height, mime: sniff.mime, exif };
+}
+
+/**
+ * Chrome keeps an EXIF-rotated bitmap's pixels in stored (unrotated) order and applies
+ * createImageBitmap(bitmap, sx, sy, sw, sh) crops to the *stored* pixels, whatever
+ * imageOrientation is set to, while drawImage and the bitmap's size use the rotated image.
+ * Tiled export and crops then took the wrong regions (scrambled exports). Redrawing once gives
+ * a plain upright bitmap. Only JPEGs carry EXIF orientation here, and they have no alpha, so the
+ * canvas round-trip is lossless.
+ */
+async function bakeOrientation(bitmap: ImageBitmap): Promise<ImageBitmap> {
+  const canvas = createCanvas(bitmap.width, bitmap.height);
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
+  if (!ctx) return bitmap;
+  ctx.drawImage(bitmap, 0, 0);
+  const upright = await createImageBitmap(canvas, { premultiplyAlpha: 'none' });
+  bitmap.close();
+  canvas.width = 1;
+  canvas.height = 1;
+  return upright;
 }
 
 /** Downscaled copy for interactive editing (never upscales). */
