@@ -12,20 +12,36 @@ import {
   type StyleInterpretation,
 } from '@shared/ai-schema';
 import type { ImageStats, PixelImage } from './stats';
+import type { MatchResult } from './match';
+import type { AnalysisRequest } from './analysis.worker';
+import type { MatchFeatures } from '../schema/matchFeatures';
+import type { PartialAdjustments } from '../schema/adjustments';
 import { canvasToBlob, createCanvas } from '../image/decode';
 
 let worker: Worker | null = null;
 let seq = 0;
-const pending = new Map<number, { resolve: (s: ImageStats) => void; reject: (e: Error) => void }>();
+interface Pending {
+  resolve: (v: never) => void;
+  reject: (e: Error) => void;
+  onProgress?: (iteration: number, max: number) => void;
+}
+const pending = new Map<number, Pending>();
 
 function getWorker(): Worker {
   if (!worker) {
     worker = new Worker(new URL('./analysis.worker.ts', import.meta.url), { type: 'module' });
-    worker.onmessage = (e: MessageEvent<{ id: number; stats?: ImageStats; error?: string }>) => {
+    worker.onmessage = (
+      e: MessageEvent<{ id: number; stats?: ImageStats; match?: MatchResult; progress?: { iteration: number; max: number }; error?: string }>,
+    ) => {
       const p = pending.get(e.data.id);
       if (!p) return;
+      if (e.data.progress) {
+        p.onProgress?.(e.data.progress.iteration, e.data.progress.max);
+        return;
+      }
       pending.delete(e.data.id);
-      if (e.data.stats) p.resolve(e.data.stats);
+      if (e.data.stats) p.resolve(e.data.stats as never);
+      else if (e.data.match) p.resolve(e.data.match as never);
       else p.reject(new Error(e.data.error ?? 'Analysis failed.'));
     };
     worker.onerror = () => {
@@ -37,15 +53,46 @@ function getWorker(): Worker {
   return worker;
 }
 
-export function statsInWorker(image: PixelImage, detail?: PixelImage, signal?: AbortSignal): Promise<ImageStats> {
-  return new Promise((resolve, reject) => {
+type WithoutId<T> = T extends unknown ? Omit<T, 'id'> : never;
+
+function request<T>(msg: WithoutId<AnalysisRequest>, signal?: AbortSignal, onProgress?: Pending['onProgress']): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
     const id = ++seq;
-    pending.set(id, { resolve, reject });
+    pending.set(id, { resolve: resolve as (v: never) => void, reject, onProgress });
     signal?.addEventListener('abort', () => {
       if (pending.delete(id)) reject(new DOMException('Cancelled', 'AbortError'));
     });
-    getWorker().postMessage({ id, image, detail });
+    getWorker().postMessage({ ...msg, id });
   });
+}
+
+export function statsInWorker(image: PixelImage, detail?: PixelImage, signal?: AbortSignal): Promise<ImageStats> {
+  return request<ImageStats>({ kind: 'stats', image, detail }, signal);
+}
+
+/**
+ * Target-aware matching (closed loop) in the worker. `onProgress` reports
+ * completed render-and-measure passes, never a percentage.
+ */
+export function matchInWorker(
+  ref: MatchFeatures,
+  target: PixelImage,
+  generic: PartialAdjustments,
+  opts: { keepExposure?: number; signal?: AbortSignal; onProgress?: (iteration: number, max: number) => void } = {},
+): Promise<MatchResult> {
+  return request<MatchResult>({ kind: 'match', ref, target, generic, keepExposure: opts.keepExposure }, opts.signal, opts.onProgress);
+}
+
+/** Small copy of a bitmap for matching (the loop renders it several times). */
+export function matchSampleFor(bitmap: ImageBitmap, maxSide = 360): PixelImage {
+  const k = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * k));
+  const h = Math.max(1, Math.round(bitmap.height * k));
+  const c = createCanvas(w, h);
+  const ctx = c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  return { width: w, height: h, data: ctx.getImageData(0, 0, w, h).data };
 }
 
 /** Pixel data at reduced size plus a native-resolution centre crop for grain. */

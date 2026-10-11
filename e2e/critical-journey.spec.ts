@@ -34,8 +34,8 @@ test('reference to preset to export', async ({ page }) => {
   await expect(page.getByText('AI is not configured on the server (no API key). Using measurements only.')).toBeVisible();
   await expect(page.getByText('Written from measurements (no AI)')).toBeVisible();
 
-  // The look is applied to the target automatically; refine intensity.
-  await expect(page.getByText(/look applied/)).toBeVisible();
+  // The look is matched to the target (closed loop in the worker) and applied automatically; refine intensity.
+  await expect(page.getByText(/look applied \(matched\)/)).toBeVisible();
   await expect(page.getByRole('slider', { name: 'Intensity' })).toBeVisible();
   await setRange(page, 'Intensity', 80);
   await expect(page.getByRole('slider', { name: 'Intensity' })).toHaveValue('80');
@@ -62,6 +62,9 @@ test('reference to preset to export', async ({ page }) => {
   await page.getByRole('tab', { name: 'From references' }).click();
   await page.getByRole('button', { name: 'Apply E2E Reference Look' }).click();
   await expect(page.getByText('E2E Reference Look', { exact: true }).first()).toBeVisible();
+  // The saved reference preset carries the reference's statistics, so it can be matched to this photo.
+  await page.getByTestId('match-preset-to-photo').click();
+  await expect(page.getByText('E2E Reference Look · matched').first()).toBeVisible({ timeout: 60_000 });
 
   // Export and verify the file.
   await page.getByTestId('export-open').click();

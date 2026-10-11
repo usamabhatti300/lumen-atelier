@@ -9,6 +9,7 @@
  */
 import { z } from 'zod';
 import { PartialAdjustmentsSchema, type PartialAdjustments } from './adjustments';
+import { MatchFeaturesSchema } from './matchFeatures';
 
 export const PRESET_SCHEMA_ID = 'lumen-atelier/presets';
 export const PRESET_FORMAT_VERSION = 1;
@@ -40,6 +41,11 @@ export const ReferenceInfoSchema = z.object({
     .max(200_000)
     .regex(/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/)
     .optional(),
+  /**
+   * Compact colour/tone statistics of the reference (additive, optional), so the look can later be
+   * matched to another photo ("Match to this photo"). Older presets simply lack it.
+   */
+  features: MatchFeaturesSchema.optional(),
 });
 export type ReferenceInfo = z.infer<typeof ReferenceInfoSchema>;
 
