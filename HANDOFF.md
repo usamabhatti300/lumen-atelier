@@ -37,8 +37,11 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   **auto-applied** to the target photo when analysis finishes, and **Save as preset / Intensity /
   Refine** sit directly under the preview (`src/features/reference/ReferenceStudio.tsx`).
 - Git: committed and pushed to `origin` (https://github.com/usamabhatti300/lumen-atelier, `main`); one commit per integration step.
-- **AI integration progress** (`docs/INTEGRATION_GUIDE.md`): Step 0 done; **Step 1 (ML runtime) done**;
-  next is **Step 2 (SlimSAM click-to-select)**. See "ML runtime notes" below.
+- **AI integration progress** (`docs/INTEGRATION_GUIDE.md`): **Steps 0–5 done** (2026-10-11): Select object,
+  Remove, Lens blur and AI upscale. Steps 2–5 were built in parallel worktrees and merged; details in
+  `docs/steps/STEP_2.md` … `STEP_5.md`. **Step 6 (BiRefNet, 214 MB) needs the owner's OK.**
+- Open owner questions: AI upscale 64 MP cap OK? Warn about slow CPU-only upscaling? Keep AI upscale in
+  batch export? Keep the MediaPipe telemetry workaround (vs another approach)?
 
 ## What the user wants next
 
@@ -93,6 +96,10 @@ Step 5 Real-ESRGAN upscale → Step 6 optional BiRefNet). Check which steps are 
   the feature so `setup:models` downloads it. The SlimSAM (fp32) and Depth (fp16) file choices are
   provisional: confirm them against the real graphs in Steps 2 and 4. BiRefNet is deliberately not in
   the registry (no upstream digest; Step 6 needs the user's OK and an on-demand downloader).
+- Transformers.js ends up with an empty device list because ORT is pre-registered: pass `device: 'auto'`
+  plus explicit `session_options.executionProviders: [backend]` (see `src/lib/ml/sam.ts`, `depth.ts`).
+- Without WebGPU, `ort.ts` loads `onnxruntime-web/wasm` (plain `ort-wasm-simd-threaded.wasm`, also
+  copied to `public/ort/`); with WebGPU the `/webgpu` bundle (asyncify binary).
 - Transformers.js: `allowRemoteModels = false`, `localModelPath = '/models/'`, browser/WASM caches off,
   and `env.fetch = guardedFetch` (same origin only, registry files only, SHA-256 verified, 404 for anything
   unregistered). Model loads report byte progress via `setTransformersContext`.

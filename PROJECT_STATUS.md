@@ -28,10 +28,10 @@ there is presented as finished in the UI.
 | --- | --- | --- |
 | 0 Commit | Done | On GitHub (`origin/main`) |
 | 1 ML runtime | Done | ONNX Runtime Web 1.30.0 + Transformers.js 4.3.1 in a Web Worker (WebGPU → multi-threaded WASM), checksum-verified same-origin model loading, Settings → AI models, network-isolation e2e test |
-| 2 SlimSAM select object | Next | Registry entry verified (planned) |
-| 3 MI-GAN remove | Not started | Registry entry verified (planned) |
-| 4 Depth Anything V2 Small lens blur | Not started | Registry entry verified (planned) |
-| 5 Real-ESRGAN upscale | Not started | Registry entry verified (planned) |
+| 2 SlimSAM select object | Done | `docs/steps/STEP_2.md`. New `object` mask component (points stored; mask cached in IndexedDB) |
+| 3 MI-GAN remove | Done | `docs/steps/STEP_3.md`. `EditState.removals` (strokes), applied to the original before adjustments; weak on very large areas |
+| 4 Depth Anything V2 Small lens blur | Done | `docs/steps/STEP_4.md`. `EditState.lensBlur`; disc bokeh pass in GLSL + CPU; fp16 model on WebGPU and WASM |
+| 5 Real-ESRGAN upscale | Done | `docs/steps/STEP_5.md`. Export 2×/4×, 256 px tiles with ≥32 px blended overlap, 64 MP cap |
 | 6 BiRefNet (optional, 214 MB) | Needs owner's OK | Not in the registry |
 
 ## Technical decisions
@@ -145,6 +145,16 @@ there is presented as finished in the UI.
   flagged as low confidence). It cannot recover original editing settings.
 - XMP export is approximate (different colour maths); omitted settings are listed on export.
 - Batch export triggers one download per file (no ZIP).
+- Steps 2–5 were built in parallel git worktrees by separate agents and merged on 2026-10-11; see
+  `docs/steps/STEP_N.md` for each step's verified ONNX contract, design and tests. Without WebGPU the
+  plain `onnxruntime-web/wasm` build is used (the WebGPU bundle's asyncify CPU path was ~5× slower).
+- MediaPipe Tasks 1.1.0 sent usage telemetry to `odml.pa.googleapis.com` every 60 s (blocked by the
+  production CSP, not in dev). Disabled in `src/lib/portrait/mediapipe.ts` (relies on the pinned
+  version's internals; the network-isolation test waits 65 s to catch a regression).
+- CPU-only (no WebGPU) inference is slow on this machine: depth 14 s – 2.5 min, Select object analysis
+  8 s – minutes, AI upscale minutes for a small photo. WebGPU speed is unmeasured here.
+- Remove (MI-GAN) smears on very large areas (~40% of the frame); before/after compare shows removals on
+  both sides (use the eye toggle).
 - WebGPU is not available in headless Chromium, so automated tests cover the WASM path only. WebGPU
   has to be confirmed in a real browser (Settings → AI models → Check AI runtime).
 - The production build also emits ORT's WASM binary as a hashed asset (27 MB, unused, because the app

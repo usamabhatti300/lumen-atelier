@@ -14,7 +14,7 @@ browser with WebGL2 (current Chrome, Edge, Firefox or Safari).
 
 ```bash
 npm install            # also copies the MediaPipe and ONNX Runtime WASM files into public/
-npm run setup:models   # downloads the on-device models (~20 MB today) into public/models/, checking SHA-256
+npm run setup:models   # downloads the on-device models (~159 MB) into public/models/, checking SHA-256
 npm run dev            # web app on http://localhost:5173, API server on :8787
 ```
 
@@ -86,6 +86,13 @@ npm start       # serves dist/ and the API on http://127.0.0.1:8787
 - **Export**: JPEG (quality), PNG, WebP; full resolution via tiled GPU rendering; real progress and
   cancellation.
 
+### AI tools (on-device)
+
+- **Select object** (Masks): click an object to mask it; Shift-click adds, Alt-click subtracts. Stored as points, recomputed if needed, exported at full resolution.
+- **Remove** (Remove tab, E): paint over an object and it is filled from its surroundings. Non-destructive (strokes stored; hide, delete, undo), re-run at full resolution on export. Best on small and medium areas.
+- **Lens blur** (Detail): depth-aware blur with click-to-focus, falloff and bokeh highlights; the detected person stays sharp. Rendered in tiles at full resolution on export.
+- **AI upscale** (Export): 2× or 4× with Real-ESRGAN on overlapping tiles, with real per-tile progress and cancel.
+
 ## Documentation
 
 - [docs/RENDERING_PIPELINE.md](docs/RENDERING_PIPELINE.md): order of operations, colour spaces, export tiling, performance.
@@ -113,13 +120,13 @@ models** shows each model's size, licence and download state, and can check the 
 | --- | --- | --- | --- | --- |
 | MediaPipe Face Landmarker | Portrait retouching | 3.8 MB | Apache-2.0 | In use |
 | MediaPipe Selfie Multiclass | Subject/background/hair/skin/clothes masks | 16.4 MB | Apache-2.0 | In use |
-| SlimSAM-77 (`Xenova/slimsam-77-uniform`) | Select object (planned) | 40 MB | Apache-2.0 | Not used yet |
-| MI-GAN (`migan_pipeline_v2.onnx`) | Remove tool (planned) | 28 MB | MIT (code and weights) | Not used yet |
-| Depth Anything V2 **Small** | Lens blur (planned) | 50 MB | Apache-2.0 (Base/Large are non-commercial and are not used) | Not used yet |
-| Real-ESRGAN general x4v3 | AI upscale on export (planned) | 4.9 MB | BSD-3-Clause | Not used yet |
+| SlimSAM-77 (`Xenova/slimsam-77-uniform`) | Masks → Select object | 40 MB | Apache-2.0 | In use |
+| MI-GAN (`migan_pipeline_v2.onnx`) | Remove tool | 28 MB | MIT (code and weights) | In use |
+| Depth Anything V2 **Small** (fp16) | Detail → Lens blur | 50 MB | Apache-2.0 (Base/Large are non-commercial and are not used) | In use |
+| Real-ESRGAN general x4v3 | Export → AI upscale 2×/4× | 4.9 MB | BSD-3-Clause | In use |
 
-`npm run setup:models` downloads only the models a tool uses. Planned models are added to it as their
-features ship (see `docs/INTEGRATION_GUIDE.md`).
+`npm run setup:models` downloads every model a tool uses. Without WebGPU these run on the CPU
+(multi-threaded WebAssembly), which works but is slow for depth, Select object and AI upscale.
 
 ## Licences
 
