@@ -1,6 +1,6 @@
 # Project status: Lumen Atelier
 
-_Last updated: 2026-10-10. Source of truth for requirements: `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`._
+_Last updated: 2026-10-11. Source of truth for requirements: `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`._
 
 ## Summary
 
@@ -16,7 +16,7 @@ there is presented as finished in the UI.
 | 1 Foundation | Done | Vite 8 + React 19 + TS 6 (strict) + Tailwind 4, design tokens, workspace, dev runner |
 | 2 Working editor | Done | Import (drag/drop, picker, multi), GPU render, basic adjustments, undo/redo, export |
 | 3 Advanced colour | Done | HSL ×8, RGB curves, 3-way + global wheels, mixer, levels, versioned schema |
-| 4 Preset library | Done | 70 original presets, real previews, search, categories, favourites, intensity |
+| 4 Preset library | Done | 111 original presets (Signature Collection: 41, first/default tab; 10 in each of 7 other families), real previews, search, categories, favourites, intensity |
 | 5 Reference → preset | Done | Stats worker, optional Claude interpretation, deterministic mapping, adaptation, suggestions, save |
 | 6 Portrait & masks | Done | MediaPipe landmarks + segmentation, retouch tools, healing, brush/gradient/segment masks, layers |
 | 7 Persistence & interop | Done | IndexedDB projects + autosave/recovery, preset JSON, `.cube` import/export, XMP export, batch apply/export |
@@ -63,6 +63,20 @@ there is presented as finished in the UI.
 
 ## Tests actually run (2026-10-10)
 
+- **Signature Collection (2026-10-11)**: 30 presets from `docs/PREMIUM_PRESETS.md` added unchanged, plus
+  11 from `docs/PRO_PRESET_LIBRARY.md` (overlaps merged; record at the end of that doc), so the library grows from
+  **70 to 111** presets. All 41 parse with `PartialAdjustmentsSchema` with no value changed. Type-check clean;
+  ESLint 0 errors (same 10 warnings); Vitest **15 files, 186 passed, 1 skipped**, including a new test that
+  renders a bright sky fixture with `cpuRender` and checks no Signature preset clips more pure white than the
+  untouched render. Playwright `e2e/editor.spec.ts` + `e2e/mobile.spec.ts`: **8/8 passed** (3.5 min; the presets
+  test now checks the default tab, 41 cards, favourites, intensity and library-wide search). Manual check on the
+  dev server (Playwright, real GPU): Signature Collection is the first, selected tab in the editor and the
+  preset library page; all 41 cards have real rendered thumbnails; search, favourites and Intensity work
+  (50 % gives about half the change of 100 %); 23 presets applied to 4 wallpaper photos (lake, beach and
+  blossom, sunset, night glow) and reviewed as contact sheets; no page errors. **Not verified:** real
+  portraits (no portrait photos on this machine). The haze/matte looks (Golden Hour Glow, Moody Forest Fog,
+  Soft Pastel Dream) lift a near-black night background to flat grey, which is their style but a poor fit
+  for night photos.
 - **Step 1 (ML runtime)**: Vitest **8 files, 99 tests passed** (adds the model registry: hashes, pinned
   URLs, safe formats, no non-commercial Depth Anything sizes; verified fetch: progress, checksum mismatch,
   truncated/oversized files, 404/HTML fallback, cancel, unsafe paths; origin guard; the hand-built

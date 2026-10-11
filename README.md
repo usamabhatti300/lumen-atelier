@@ -1,7 +1,7 @@
 # Lumen Atelier
 
 A local-first photo editing studio for photographers and creators. It has GPU colour grading,
-portrait retouching, masks, seventy original presets, and **reference matching**: give it a
+portrait retouching, masks, 111 original presets, and **reference matching**: give it a
 photo whose look you love and it builds an editable preset you can refine and reuse.
 
 > The preset approximates a reference's look from the finished image. A JPEG doesn't contain its
@@ -76,9 +76,11 @@ npm start       # serves dist/ and the API on http://127.0.0.1:8787
   visibility toggle, and autosave with session recovery.
 - **Compare**: before/after split (draggable), side by side, hold for before; fit, 100% and wheel zoom
   with pan; live RGB histogram with clipping readout.
-- **Presets**: 70 original presets in seven families with real previews rendered on your photo,
-  search, category filters, favourites, intensity, and your own presets (create, duplicate, rename,
-  delete, JSON import/export).
+- **Presets**: 111 original presets with real previews rendered on your photo. The **Signature
+  Collection** (41 premium film, cinema, editorial, portrait, landscape and night looks, tuned not to
+  blow out skies) is the first, default tab; the other 70 sit in seven families. Search covers the whole
+  library; also category filters, favourites, intensity, and your own presets (create, duplicate,
+  rename, delete, JSON import/export).
 - **Reference matching**: crop or trim the reference (screenshot borders are detected), staged
   analysis with cancel and retry, palette and tonal-zone readout, plain-language description,
   confidence and warnings, preview on your photo, optional brightness and cast adaptation,

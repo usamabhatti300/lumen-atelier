@@ -16,6 +16,7 @@ export const PRESET_FORMAT_VERSION = 1;
 export const MAX_PRESET_FILE_BYTES = 2 * 1024 * 1024;
 
 export const PRESET_CATEGORY_IDS = [
+  'signature',
   'cinematic',
   'pale-blue',
   'film',

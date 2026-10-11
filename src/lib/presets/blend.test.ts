@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { defaultAdjustments, PartialAdjustmentsSchema, leafPaths, type PartialAdjustments } from '../schema/adjustments';
+import { defaultAdjustments, defaultEditState, PartialAdjustmentsSchema, leafPaths, type Adjustments, type PartialAdjustments } from '../schema/adjustments';
+import { cpuRender } from '../engine/cpu/cpuRender';
 import { blendPreset, blendWheel } from './blend';
 import { BUILTIN_PRESETS, PRESET_CATEGORIES } from './library';
 import { deriveDevelopParams } from '../engine/params';
@@ -56,11 +57,15 @@ describe('preset blending', () => {
 });
 
 describe('built-in preset library', () => {
-  it('has 70 presets, 10 per category, unique ids and names', () => {
-    expect(BUILTIN_PRESETS).toHaveLength(70);
-    for (const c of PRESET_CATEGORIES) expect(BUILTIN_PRESETS.filter((p) => p.category === c)).toHaveLength(10);
-    expect(new Set(BUILTIN_PRESETS.map((p) => p.id)).size).toBe(70);
-    expect(new Set(BUILTIN_PRESETS.map((p) => p.name)).size).toBe(70);
+  it('has 111 presets: 41 in the Signature Collection, 10 per other category, unique ids and names', () => {
+    expect(BUILTIN_PRESETS).toHaveLength(111);
+    expect(PRESET_CATEGORIES[0]).toBe('signature');
+    expect(BUILTIN_PRESETS.filter((p) => p.category === 'signature')).toHaveLength(41);
+    for (const c of PRESET_CATEGORIES.filter((c) => c !== 'signature')) {
+      expect(BUILTIN_PRESETS.filter((p) => p.category === c)).toHaveLength(10);
+    }
+    expect(new Set(BUILTIN_PRESETS.map((p) => p.id)).size).toBe(111);
+    expect(new Set(BUILTIN_PRESETS.map((p) => p.name)).size).toBe(111);
   });
 
   it('every preset is schema-valid without clamping', () => {
@@ -97,4 +102,33 @@ describe('built-in preset library', () => {
   it('every preset changes the image', () => {
     for (const p of BUILTIN_PRESETS) expect(leafPaths(p.adjustments).length).toBeGreaterThan(5);
   });
+
+  it('Signature Collection presets do not clip a bright sky more than the untouched render', () => {
+    // Pale hazy sky (blue at the top to near-white at the horizon), a sun disc with a glow, and sand.
+    const W = 120;
+    const H = 90;
+    const data = new Uint8ClampedArray(W * H * 4);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const t = y / (H - 1);
+        let rgb = [150 + 105 * t, 190 + 65 * t, 235 + 20 * t];
+        const d = Math.hypot(x - 82, y - 30);
+        if (d < 23) rgb = rgb.map((v) => v + (255 - v) * Math.min(1, (23 - d) / 12));
+        if (y > H * 0.7) rgb = [225, 205, 170];
+        data.set([...rgb, 255], (y * W + x) * 4);
+      }
+    }
+    const source = { data, width: W, height: H, colorSpace: 'srgb' } as ImageData;
+    const whiteFraction = (adjustments: Adjustments) => {
+      const out = cpuRender({ source, fullSize: { width: W, height: H }, edit: { ...defaultEditState(), adjustments }, out: { width: W, height: H } });
+      let n = 0;
+      for (let i = 0; i < out.data.length; i += 4) if (out.data[i] === 255 && out.data[i + 1] === 255 && out.data[i + 2] === 255) n++;
+      return n / (W * H);
+    };
+    const untouched = whiteFraction(defaultAdjustments());
+    expect(untouched).toBeGreaterThan(0.01); // the fixture really has clipped highlights to protect
+    for (const p of BUILTIN_PRESETS.filter((p) => p.category === 'signature')) {
+      expect(whiteFraction(blendPreset(defaultAdjustments(), p.adjustments, 100)), p.name).toBeLessThanOrEqual(untouched);
+    }
+  }, 60_000);
 });

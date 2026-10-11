@@ -26,7 +26,8 @@ export function PresetBrowser({
   const favorites = usePresets((s) => s.favorites);
   const all = usePresets((s) => s.all);
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
+  // The Signature Collection is the first and default tab.
+  const [filter, setFilter] = useState<Filter>('signature');
   const [editing, setEditing] = useState<Preset | null>(null);
   const [deleting, setDeleting] = useState<Preset | null>(null);
   const appliedId = useEditor((s) => s.edit.appliedPreset?.id);
@@ -46,7 +47,14 @@ export function PresetBrowser({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, filter, favorites, user, all]);
 
-  const filters: Filter[] = ['all', 'favorites', ...PRESET_CATEGORY_IDS.filter((c) => c !== 'reference' || user.some((p) => p.category === 'reference')).filter((c) => c !== 'custom' || user.some((p) => p.category === 'custom'))];
+  const filters: Filter[] = [
+    'signature',
+    'all',
+    'favorites',
+    ...PRESET_CATEGORY_IDS.filter((c) => c !== 'signature')
+      .filter((c) => c !== 'reference' || user.some((p) => p.category === 'reference'))
+      .filter((c) => c !== 'custom' || user.some((p) => p.category === 'custom')),
+  ];
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -57,8 +65,12 @@ export function PresetBrowser({
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search 70+ presets"
+            onChange={(e) => {
+              setQuery(e.target.value);
+              // Search the whole library, not only the open category (Favourites stays a filter).
+              if (e.target.value.trim() && filter !== 'all' && filter !== 'favorites') setFilter('all');
+            }}
+            placeholder={`Search ${all().length} presets`}
             className="h-8 w-full rounded-sm border border-line bg-ink-950 pr-2 pl-8 text-xs text-ivory placeholder:text-faint focus:border-amber/60 focus:outline-none"
           />
         </label>

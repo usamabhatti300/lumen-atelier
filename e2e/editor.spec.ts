@@ -96,14 +96,23 @@ test.describe('editor', () => {
     await page.goto('/');
     await page.getByTestId('gallery-file-input').setInputFiles({ name: 'a.jpg', mimeType: 'image/jpeg', buffer: await makeImage(page, 'target') });
     await waitForRender(page);
-    await page.getByRole('button', { name: 'Apply Bleach Bypass' }).click();
+    // The Signature Collection is the first and default tab.
+    const tabs = page.getByRole('tablist', { name: 'Preset categories' }).getByRole('tab');
+    await expect(tabs.first()).toHaveText('Signature Collection');
+    await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(41);
+    await page.getByRole('button', { name: 'Apply Velvet Slide' }).click();
     await expect(page.getByText(/^Applied /)).toBeVisible();
     await setRange(page, 'Amount', 40);
     await expect(page.getByRole('slider', { name: 'Amount' })).toHaveValue('40');
-    await page.getByRole('button', { name: 'Add Bleach Bypass to favourites' }).click();
+    await page.getByRole('button', { name: 'Add Velvet Slide to favourites' }).click();
     await page.getByRole('tab', { name: '★ Favourites' }).click();
-    await expect(page.getByRole('button', { name: 'Apply Bleach Bypass' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Apply Velvet Slide' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(1);
+    // Search covers the whole library, not just the open tab.
+    await page.getByRole('tab', { name: 'Signature Collection' }).click();
+    await page.getByRole('searchbox', { name: 'Search presets' }).fill('bleach');
+    await expect(page.getByRole('button', { name: 'Apply Bleach Bypass' })).toBeVisible();
   });
 
   test('masks: a radial mask affects only part of the image', async ({ page }) => {

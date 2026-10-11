@@ -143,7 +143,7 @@ export function GalleryScreen() {
               <em className="text-champagne">Borrow the look</em> of any reference.
             </h1>
             <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-mute">
-              Precise colour grading, retouching and masks, with seventy original presets. Show the studio a photo
+              Precise colour grading, retouching and masks, with 111 original presets. Show the studio a photo
               whose look you love and it builds an editable preset from it. You can refine that preset and use it on
               any photo.
             </p>
