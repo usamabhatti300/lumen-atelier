@@ -2,8 +2,12 @@
  * Tone-curve editor. Click the curve to add a point, drag to move, drag a
  * point off the graph or double-click it to remove. Points are focusable;
  * arrow keys nudge the focused point (Shift for larger steps), Delete removes it.
+ *
+ * Touch: a swipe that starts on the graph scrolls the panel (only points capture the
+ * finger, through large invisible handles); a tap on the graph adds a point; a point
+ * dragged by finger stays on the graph (no accidental removal) and a double tap removes it.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createCurveEvaluator } from '@/lib/color/curves';
 import { normalizeCurve, type CurveChannel, type CurvePoint } from '@/lib/schema/adjustments';
 import { useEditor } from '@/state/editorStore';
@@ -24,7 +28,23 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
   const histogram = useEngine((s) => s.histogram);
   const svg = useRef<SVGSVGElement>(null);
   const [drag, setDrag] = useState<number | null>(null);
+  const touchDrag = useRef(false);
+  const lastPointTap = useRef<{ i: number; t: number } | null>(null);
   const [focus, setFocus] = useState<number | null>(null);
+  // A finger on the graph background: becomes a new point if it lifts without scrolling.
+  const tap = useRef<{ id: number; x: number; y: number } | null>(null);
+
+  // `touch-action` is ignored on SVG shapes, so a finger on a point handle would also scroll
+  // the panel. Cancelling the touch start (not the pointer events) keeps the panel still.
+  useEffect(() => {
+    const el = svg.current;
+    if (!el) return;
+    const onTouchStart = (e: TouchEvent) => {
+      if ((e.target as Element).getAttribute?.('data-testid') === 'curve-point-handle') e.preventDefault();
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    return () => el.removeEventListener('touchstart', onTouchStart);
+  }, []);
   const size = 232;
   const pad = 6;
   const inner = size - pad * 2;
@@ -62,6 +82,14 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
 
   const onPointerDownBg = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
+    if (e.pointerType === 'touch') {
+      tap.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      return;
+    }
+    addPointAt(e, true);
+  };
+
+  const addPointAt = (e: React.PointerEvent, startDrag: boolean) => {
     const [x, y] = toLocal(e);
     if (x < 0 || x > 1) return;
     const f = createCurveEvaluator(points);
@@ -72,8 +100,10 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
     const idx = next.findIndex((p) => Math.abs(p[0] - x) < 1e-6);
     begin('Curve point');
     commit(next);
-    setDrag(idx);
-    svg.current?.setPointerCapture(e.pointerId);
+    if (startDrag) {
+      setDrag(idx);
+      svg.current?.setPointerCapture(e.pointerId);
+    } else end();
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -81,7 +111,7 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
     const [x, y] = toLocal(e);
     const next = points.map((p) => [...p] as CurvePoint);
     const isEnd = drag === 0 || drag === points.length - 1;
-    const remove = !isEnd && (y < -0.12 || y > 1.12);
+    const remove = !isEnd && !touchDrag.current && (y < -0.12 || y > 1.12);
     if (remove) {
       next.splice(drag, 1);
       setDrag(null);
@@ -94,7 +124,10 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
     commit(next);
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
+    const t = tap.current;
+    tap.current = null;
+    if (t && t.id === e.pointerId && e.type === 'pointerup' && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 10) addPointAt(e, false);
     if (drag !== null) {
       setDrag(null);
       end();
@@ -106,7 +139,7 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
       <svg
         ref={svg}
         viewBox={`0 0 ${size} ${size}`}
-        className="aspect-square w-full touch-none select-none rounded-xs bg-ink-950"
+        className="mx-auto block aspect-square w-full max-w-[300px] touch-none select-none rounded-xs bg-ink-950 coarse:touch-pan-y"
         onPointerDown={onPointerDownBg}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -125,6 +158,47 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
         <line x1={pad} y1={pad + inner} x2={pad + inner} y2={pad} stroke="var(--color-line)" strokeDasharray="2 3" />
         <path d={path} fill="none" stroke={CHANNEL_COLOR[channel]} strokeWidth={1.6} />
         {points.map(([x, y], i) => (
+          // Large invisible handle (the finger's target), drawn under the visible point.
+          <circle
+            key={`hit${i}`}
+            cx={pad + x * inner}
+            cy={pad + (1 - y) * inner}
+            r={14}
+            fill="transparent"
+            className="cursor-grab touch-none"
+            data-testid="curve-point-handle"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              tap.current = null;
+              touchDrag.current = e.pointerType === 'touch';
+              if (touchDrag.current) {
+                // Double tap removes a point (the browser's dblclick is suppressed for touches here).
+                const last = lastPointTap.current;
+                lastPointTap.current = { i, t: e.timeStamp };
+                if (last && last.i === i && e.timeStamp - last.t < 350 && i > 0 && i < points.length - 1) {
+                  lastPointTap.current = null;
+                  commit(
+                    points.filter((_, j) => j !== i),
+                    'Remove curve point',
+                  );
+                  return;
+                }
+              }
+              begin('Curve point');
+              setDrag(i);
+              svg.current?.setPointerCapture(e.pointerId);
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              if (i === 0 || i === points.length - 1) return;
+              commit(
+                points.filter((_, j) => j !== i),
+                'Remove curve point',
+              );
+            }}
+          />
+        ))}
+        {points.map(([x, y], i) => (
           <circle
             key={i}
             cx={pad + x * inner}
@@ -139,7 +213,7 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
             aria-valuenow={Math.round(y * 255)}
             aria-valuemin={0}
             aria-valuemax={255}
-            className="cursor-grab focus:outline-none"
+            className="pointer-events-none focus:outline-none"
             onFocus={() => setFocus(i)}
             onBlur={() => setFocus(null)}
             onPointerDown={(e) => {
@@ -172,7 +246,10 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
           />
         ))}
       </svg>
-      <p className="mt-1.5 text-[11px] text-faint">Click to add a point. Drag a point off the graph to remove it.</p>
+      <p className="mt-1.5 text-[11px] text-faint">
+        <span className="coarse:hidden">Click to add a point. Drag a point off the graph to remove it.</span>
+        <span className="hidden coarse:inline">Tap the graph to add a point, drag a point to move it, double-tap a point to remove it.</span>
+      </p>
     </div>
   );
 }

@@ -282,7 +282,10 @@ export function Viewport({ onImport }: { onImport: () => void }) {
           <button type="button" onClick={onImport} className="group flex max-w-sm flex-col items-center rounded-md border border-dashed border-line px-10 py-12 text-center hover:border-line-strong">
             <ImagePlus className="mb-3 text-faint group-hover:text-amber" size={26} />
             <span className="font-display text-2xl text-ivory-dim">Add a photo to edit</span>
-            <span className="mt-1 text-sm text-mute">Drop files here or click to choose. JPEG, PNG and WebP.</span>
+            <span className="mt-1 text-sm text-mute">
+              <span className="coarse:hidden">Drop files here or click to choose.</span>
+              <span className="hidden coarse:inline">Tap to choose from your library or camera.</span> JPEG, PNG and WebP.
+            </span>
           </button>
         </div>
       )}

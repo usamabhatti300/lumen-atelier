@@ -57,7 +57,7 @@ export function AppSettings() {
             {!standalone && <span className="block text-faint">Photos stay in this browser's storage either way.</span>}
           </span>
         </p>
-        {!standalone && (installEvent ? <InstallButton className="border border-amber/40" /> : isIosSafari() && <Button size="sm" variant="secondary" onClick={() => setIosHelp(true)}>How to install</Button>)}
+        {!standalone && (installEvent ? <InstallButton className="flex border border-amber/40" /> : isIosSafari() && <Button size="sm" variant="secondary" onClick={() => setIosHelp(true)}>How to install</Button>)}
       </div>
 
       <div className="rounded-sm border border-line-soft p-3">

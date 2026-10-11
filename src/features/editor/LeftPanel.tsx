@@ -14,8 +14,22 @@ import { matchInWorker, matchSampleFor } from '@/lib/analysis/client';
 import type { PresetCategoryId } from '@/lib/schema/preset';
 import { PhotosPanel } from './PhotosPanel';
 
-/** `compact`: inside the mobile presets sheet, where the bottom bar already has "Match look". */
-export function LeftPanel({ onOpenReference, compact = false }: { onOpenReference: () => void; compact?: boolean }) {
+/**
+ * `compact`: inside the mobile presets sheet, where the bottom bar already has "Match look".
+ * The tab row then also carries the sheet's close button (`onClose`), and presets show as a
+ * sideways strip unless the sheet is expanded (`expanded`).
+ */
+export function LeftPanel({
+  onOpenReference,
+  compact = false,
+  expanded = false,
+  onClose,
+}: {
+  onOpenReference: () => void;
+  compact?: boolean;
+  expanded?: boolean;
+  onClose?: () => void;
+}) {
   const tab = useEditor((s) => s.leftTab);
   const setUi = useEditor((s) => s.setUi);
   const hasPhoto = useEditor((s) => !!s.activePhotoId);
@@ -40,7 +54,7 @@ export function LeftPanel({ onOpenReference, compact = false }: { onOpenReferenc
           </span>
         </button>
       </div>
-      <div className={`flex shrink-0 items-center justify-between px-3 ${compact ? 'pt-0.5' : 'pt-2.5'}`}>
+      <div className={`flex shrink-0 items-center justify-between gap-2 ${compact ? 'pr-1 pl-3' : 'px-3 pt-2.5'}`}>
         <Segmented
           label="Left panel"
           size="xs"
@@ -56,18 +70,23 @@ export function LeftPanel({ onOpenReference, compact = false }: { onOpenReferenc
             type="button"
             disabled={!hasPhoto}
             onClick={() => setSaving(true)}
-            className="flex items-center gap-1 rounded-xs px-1.5 py-1 text-[11px] text-amber hover:bg-amber/10 disabled:text-faint"
+            className={`flex items-center gap-1 rounded-xs px-1.5 py-1 text-[11px] text-amber hover:bg-amber/10 disabled:text-faint coarse:h-9 coarse:px-2.5 coarse:text-xs ${compact ? 'ml-auto' : ''}`}
           >
             <Plus size={12} /> Save look
           </button>
         )}
+        {onClose && (
+          <button type="button" aria-label="Close panel" onClick={onClose} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-mute ${tab === 'photos' ? 'ml-auto' : ''}`}>
+            <X size={17} />
+          </button>
+        )}
       </div>
-      {tab !== 'photos' && <AppliedPresetBar />}
+      {tab !== 'photos' && <AppliedPresetBar compact={compact} />}
       <div className="min-h-0 flex-1">
         {tab === 'photos' ? (
           <PhotosPanel />
         ) : (
-          <PresetBrowser onApply={(p) => applyPreset(p, 100)} canApply={hasPhoto} />
+          <PresetBrowser variant={compact && !expanded ? 'strip' : 'panel'} onApply={(p) => applyPreset(p, 100)} canApply={hasPhoto} />
         )}
       </div>
       <SavePresetDialog open={saving} onClose={() => setSaving(false)} />
@@ -75,7 +94,7 @@ export function LeftPanel({ onOpenReference, compact = false }: { onOpenReferenc
   );
 }
 
-function AppliedPresetBar() {
+function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
   const applied = useEditor((s) => s.edit.appliedPreset);
   const setAmount = useEditor((s) => s.setPresetAmount);
   const clear = useEditor((s) => s.clearAppliedPreset);
@@ -116,13 +135,13 @@ function AppliedPresetBar() {
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="shrink-0 overflow-hidden"
         >
-          <div className="mx-3 mt-2.5 rounded-sm border border-line bg-ink-900 px-2.5 pt-1.5 pb-1">
+          <div className={`rounded-sm border border-line bg-ink-900 px-2.5 pt-1.5 pb-1 ${compact ? 'mx-3 mt-1' : 'mx-3 mt-2.5'}`}>
             <div className="flex items-center justify-between">
               <p className="truncate text-[11px] text-mute">
                 Applied <span className="text-ivory">{applied.name}</span>
               </p>
-              <button type="button" onClick={clear} aria-label="Remove preset" title="Remove preset" className="rounded-xs p-0.5 text-faint hover:text-ivory">
-                <X size={12} />
+              <button type="button" onClick={clear} aria-label="Remove preset" title="Remove preset" className="rounded-xs p-0.5 text-faint hover:text-ivory coarse:-my-1.5 coarse:p-2">
+                <X size={compact ? 15 : 12} />
               </button>
             </div>
             <Slider

@@ -32,7 +32,7 @@ export function FocusOverlay({ box }: { box: ViewBox }) {
       className="absolute inset-0 touch-none"
       style={{ cursor: 'crosshair' }}
       data-testid="focus-overlay"
-      aria-label="Click the photo to set the focus"
+      aria-label="Tap or click the photo to set the focus"
       onPointerDown={(e) => {
         if (e.button !== 0) return;
         e.stopPropagation();

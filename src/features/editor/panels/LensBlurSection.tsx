@@ -62,7 +62,7 @@ export function LensBlurSection() {
           aria-pressed={tool === 'focus'}
           onClick={() => setUi({ tool: tool === 'focus' ? 'none' : 'focus' })}
         >
-          {tool === 'focus' ? 'Click the photo to focus' : 'Pick focus'}
+          {tool === 'focus' ? 'Tap the photo to focus' : 'Pick focus'}
         </Button>
         {tool === 'focus' && (
           <Button size="sm" variant="ghost" onClick={() => setUi({ tool: 'none' })}>

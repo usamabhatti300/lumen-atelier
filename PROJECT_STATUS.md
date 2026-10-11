@@ -45,7 +45,8 @@ there is presented as finished in the UI.
 | Mobile layout | Done | Panels dock under the photo (or beside it in phone landscape); full left panel in the Presets sheet (Photos tab, Save look, Amount); histogram; ⋮ menu below 1024 px; top bar fits 320–1023 px |
 | Touch | Done | Pinch / two-finger pan / double-tap zoom; touch-mode chip for Remove (Add to last), Select object (Add / Subtract), Heal (Delete spot); larger targets via `coarse:`; hover-only controls visible on touch (`fine:`); no tooltips on touch |
 | Export on phones | Done | Touch devices that can share files get *Save / Share* (system share sheet → Save to Photos) and *Download* (≤10 files) |
-| Real phones | Not verified | Only Chromium mobile emulation (Pixel 7, 320–1023 px, landscape). iOS Safari, WebGPU on phones and phone performance are untested. Install needs an HTTPS host (not chosen yet) |
+| Owner's phone feedback (2026-10-11) | Fixed | Presets panel too small (now a strip of large cards + expandable panel); faces not found on a full-length portrait (second detection pass on face-skin crops for small faces, plus a CPU retry when a phone GPU returns nothing); tone curve hijacked scrolling and added points (fixed for curve, wheels and sliders: scrolling never changes edits); Install button wrapping (install banner on phones). Audit with real touch input also fixed: reference studio overlap on phones, crop box not touch-locked, small icon buttons, mouse-only wording |
+| Real phones | Partly verified | Only Chromium mobile emulation (Pixel 7, 320–1023 px, landscape). iOS Safari, WebGPU on phones and phone performance are untested. Install needs an HTTPS host (not chosen yet) |
 
 ## Technical decisions
 

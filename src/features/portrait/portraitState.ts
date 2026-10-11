@@ -8,7 +8,7 @@ import { engine } from '@/engine/controller';
 import { useEditor } from '@/state/editorStore';
 import { resizeBitmap } from '@/lib/image/decode';
 import { buildPortraitMask } from '@/lib/portrait/faceMask';
-import { ModelsMissingError, detectFaces, regionsForFace, segmentPerson } from '@/lib/portrait/mediapipe';
+import { ModelsMissingError, detectFacesThorough, regionsForFace, segmentPerson, type PersonSegmentation } from '@/lib/portrait/mediapipe';
 import { maskCanvasSize, type SegmentationMaps } from '@/lib/masks/rasterize';
 
 export type PortraitStatus = 'idle' | 'running' | 'ready' | 'missing-models' | 'error';
@@ -66,7 +66,7 @@ export interface PortraitAnalysis {
 export async function analyzePortraitBitmap(source: ImageBitmap, full: { width: number; height: number }): Promise<PortraitAnalysis> {
   const input = await resizeBitmap(source, 1280);
   try {
-    let segmentation: SegmentationMaps | null = null;
+    let segmentation: PersonSegmentation | null = null;
     let segError = '';
     try {
       segmentation = await segmentPerson(input);
@@ -74,7 +74,7 @@ export async function analyzePortraitBitmap(source: ImageBitmap, full: { width: 
       if (e instanceof ModelsMissingError) throw e;
       segError = 'Subject segmentation failed on this device.';
     }
-    const faces = await detectFaces(input);
+    const faces = await detectFacesThorough(input, segmentation);
     let personFraction = 0;
     if (segmentation) {
       const m = segmentation.maps.subject;

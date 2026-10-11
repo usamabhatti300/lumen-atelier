@@ -61,7 +61,7 @@ export function Segmented<T extends string>({
           aria-checked={value === o.value}
           title={o.title}
           onClick={() => onChange(o.value)}
-          className={`relative rounded-xs font-medium transition-colors ${size === 'xs' ? 'h-6 px-2 text-[11px] coarse:h-8' : 'min-h-7 px-2.5 text-xs leading-tight coarse:min-h-9'} ${
+          className={`relative rounded-xs font-medium transition-colors ${size === 'xs' ? 'h-6 px-2 text-[11px] coarse:h-8 coarse:min-w-10' : 'min-h-7 px-2.5 text-xs leading-tight coarse:min-h-9 coarse:min-w-10'} ${
             value === o.value ? 'text-ink-950' : 'text-mute hover:text-ivory'
           }`}
         >

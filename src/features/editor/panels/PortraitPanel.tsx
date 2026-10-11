@@ -119,7 +119,8 @@ export function PortraitPanel() {
 
       <Section title="Spot healing">
         <p className="mb-2 text-xs leading-relaxed text-mute">
-          Click blemishes to heal them. A matching patch nearby is chosen automatically. Alt-click a spot to remove it.
+          <span className="coarse:hidden">Click blemishes to heal them. A matching patch nearby is chosen automatically. Alt-click a spot to remove it.</span>
+          <span className="hidden coarse:inline">Tap blemishes to heal them. A matching patch nearby is chosen automatically. Choose Delete spot on the photo to remove one.</span>
         </p>
         <div className="flex gap-2">
           <Button

@@ -3,6 +3,10 @@
  * custom track that fills from the default value, a click-to-type numeric
  * field, double-click to reset, and gesture callbacks so one drag becomes one
  * undo step.
+ *
+ * Touch: the native input ignores fingers (it would jump to wherever a scroll
+ * starts). A horizontal drag on the row moves the value relative to where the
+ * finger landed; a vertical swipe scrolls the panel; a tap changes nothing.
  */
 import { memo, useId, useRef, useState, type CSSProperties } from 'react';
 import type { Range } from '@/lib/schema/adjustments';
@@ -40,6 +44,7 @@ export const Slider = memo(function Slider({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const dragging = useRef(false);
+  const touch = useRef<{ id: number; x: number; y: number; start: number; width: number; active: boolean } | null>(null);
   const span = range.max - range.min;
   const pct = ((value - range.min) / span) * 100;
   const origin = ((Math.min(Math.max(range.default, range.min), range.max) - range.min) / span) * 100;
@@ -61,6 +66,38 @@ export const Slider = memo(function Slider({
     onGestureStart?.();
     onChange(range.default);
     onGestureEnd?.();
+  };
+
+  const snap = (v: number) => Math.min(range.max, Math.max(range.min, range.min + Math.round((v - range.min) / range.step) * range.step));
+
+  const onTouchDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch' || disabled) return;
+    touch.current = { id: e.pointerId, x: e.clientX, y: e.clientY, start: value, width: e.currentTarget.getBoundingClientRect().width, active: false };
+  };
+  const onTouchMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const t = touch.current;
+    if (!t || t.id !== e.pointerId) return;
+    const dx = e.clientX - t.x;
+    const dy = e.clientY - t.y;
+    if (!t.active) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      // Mostly vertical: the browser is scrolling the panel; leave the value alone.
+      if (Math.abs(dy) >= Math.abs(dx)) {
+        touch.current = null;
+        return;
+      }
+      t.active = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      onGestureStart?.();
+    }
+    const next = snap(t.start + (dx / Math.max(1, t.width)) * span);
+    if (next !== value) onChange(next);
+  };
+  const onTouchEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    const t = touch.current;
+    if (!t || t.id !== e.pointerId) return;
+    touch.current = null;
+    if (t.active) onGestureEnd?.();
   };
 
   const endDrag = () => {
@@ -113,7 +150,15 @@ export const Slider = memo(function Slider({
           {display}
         </button>
       )}
-      <div className="relative col-span-2 h-[22px] coarse:h-8" onDoubleClick={reset}>
+      <div
+        className="relative col-span-2 h-[22px] touch-pan-y coarse:h-8"
+        onDoubleClick={reset}
+        onPointerDown={onTouchDown}
+        onPointerMove={onTouchMove}
+        onPointerUp={onTouchEnd}
+        onPointerCancel={onTouchEnd}
+        data-testid="slider-track"
+      >
         <div
           className="pointer-events-none absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-line"
           style={track ? { background: track, height: 3, opacity: 0.85 } : undefined}
@@ -133,7 +178,7 @@ export const Slider = memo(function Slider({
         <input
           id={id}
           type="range"
-          className="slider-input relative"
+          className="slider-input relative coarse:pointer-events-none"
           min={range.min}
           max={range.max}
           step={range.step}

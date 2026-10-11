@@ -29,6 +29,8 @@ export const ColorWheel = memo(function ColorWheel({
   label: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const tap = useRef<{ id: number; x: number; y: number } | null>(null);
   const gradient = useMemo(() => {
     const stops: string[] = [];
     for (let a = 0; a <= 360; a += 15) stops.push(`${hueCss((360 - a) % 360)} ${a}deg`);
@@ -59,16 +61,41 @@ export const ColorWheel = memo(function ColorWheel({
       aria-valuenow={Math.round(value.saturation)}
       aria-valuemin={0}
       aria-valuemax={100}
-      className="relative shrink-0 cursor-crosshair touch-none rounded-full ring-1 ring-line"
+      className="relative shrink-0 cursor-crosshair touch-none rounded-full ring-1 ring-line coarse:touch-pan-y"
       style={{ width: size, height: size, background: gradient }}
       onPointerDown={(e) => {
+        // Touch: dragging starts only from the marker (its handle blocks scrolling); a swipe
+        // elsewhere scrolls the panel and a tap moves the marker there.
+        if (e.pointerType === 'touch' && !(e.target as HTMLElement).dataset.puck) {
+          tap.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+          return;
+        }
         (e.target as Element).setPointerCapture(e.pointerId);
+        dragging.current = true;
         onStart?.();
         fromPointer(e);
       }}
-      onPointerMove={(e) => e.buttons & 1 && fromPointer(e)}
-      onPointerUp={() => onEnd?.()}
-      onLostPointerCapture={() => onEnd?.()}
+      onPointerMove={(e) => dragging.current && fromPointer(e)}
+      onPointerUp={(e) => {
+        const t = tap.current;
+        tap.current = null;
+        if (t && t.id === e.pointerId && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 10) {
+          onStart?.();
+          fromPointer(e);
+          onEnd?.();
+        }
+        if (dragging.current) {
+          dragging.current = false;
+          onEnd?.();
+        }
+      }}
+      onPointerCancel={() => {
+        tap.current = null;
+        if (dragging.current) {
+          dragging.current = false;
+          onEnd?.();
+        }
+      }}
       onDoubleClick={() => {
         onStart?.();
         onChange({ ...value, hue: 0, saturation: 0 });
@@ -89,8 +116,10 @@ export const ColorWheel = memo(function ColorWheel({
       }}
     >
       <div className="pointer-events-none absolute top-1/2 left-1/2 h-1 w-1 -translate-1/2 rounded-full bg-ivory/40" />
+      {/* Touch handle around the marker: a finger that lands here drags it. */}
+      <div data-puck="1" className="absolute hidden h-11 w-11 -translate-1/2 touch-none rounded-full coarse:block" style={{ left: px, top: py }} />
       <div
-        className="pointer-events-none absolute h-3 w-3 -translate-1/2 rounded-full border-2 border-ivory shadow-[0_0_0_1px_rgba(0,0,0,0.6)]"
+        className="pointer-events-none absolute h-3 w-3 -translate-1/2 rounded-full border-2 border-ivory shadow-[0_0_0_1px_rgba(0,0,0,0.6)] coarse:h-4 coarse:w-4"
         style={{ left: px, top: py, background: value.saturation > 0 ? hueCss(value.hue, 0.7, 0.15) : 'transparent' }}
       />
     </div>

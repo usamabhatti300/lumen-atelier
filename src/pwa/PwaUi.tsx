@@ -1,6 +1,6 @@
 /** Installable-app UI: the update banner, the offline notice, and the Install button with iPhone instructions. */
 import { AnimatePresence, motion } from 'motion/react';
-import { CloudOff, Download, RefreshCw, Share, SquarePlus } from 'lucide-react';
+import { CloudOff, Download, RefreshCw, Share, SquarePlus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
@@ -49,7 +49,8 @@ export function PwaPrompts() {
 }
 
 /** "Install app": Chromium's prompt where available, otherwise step-by-step instructions on iPhone/iPad. */
-export function InstallButton({ className = '' }: { className?: string }) {
+/** `className` sets the display (default `flex`), e.g. `hidden sm:flex`. */
+export function InstallButton({ className = 'flex' }: { className?: string }) {
   const installEvent = usePwa((s) => s.installEvent);
   const standalone = usePwa((s) => s.standalone);
   const [iosHelp, setIosHelp] = useState(false);
@@ -60,13 +61,59 @@ export function InstallButton({ className = '' }: { className?: string }) {
       <button
         type="button"
         onClick={() => (installEvent ? void promptInstall() : setIosHelp(true))}
-        className={`flex h-8 items-center gap-2 rounded-sm px-3 text-[13px] text-amber hover:bg-amber/10 coarse:h-10 ${className}`}
+        className={`h-8 shrink-0 items-center gap-2 rounded-sm px-3 text-[13px] whitespace-nowrap text-amber hover:bg-amber/10 coarse:h-10 ${className}`}
         data-testid="install-app"
       >
         <Download size={15} /> <span>Install app</span>
       </button>
       <IosInstallDialog open={iosHelp} onClose={() => setIosHelp(false)} />
     </>
+  );
+}
+
+const BANNER_KEY = 'lumen.installBannerDismissed';
+
+/** Phones: a full-width install card under the header (the header has no room for a labelled button). */
+export function InstallBanner() {
+  const installEvent = usePwa((s) => s.installEvent);
+  const standalone = usePwa((s) => s.standalone);
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem(BANNER_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [iosHelp, setIosHelp] = useState(false);
+  const ios = isIosSafari();
+  if (hidden || standalone || (!installEvent && !ios)) return null;
+  return (
+    <div className="mx-4 mt-1 mb-2 flex items-center gap-3 rounded-md border border-amber/35 bg-gradient-to-r from-amber/10 to-transparent py-2 pr-1 pl-3 sm:hidden" data-testid="install-banner">
+      <Download size={18} className="shrink-0 text-amber" />
+      <p className="min-w-0 flex-1 text-[13px] leading-snug text-ivory">
+        Install Lumen Atelier
+        <span className="block text-xs text-mute">Full screen, works offline. Photos stay on this phone.</span>
+      </p>
+      <Button size="sm" variant="primary" onClick={() => (installEvent ? void promptInstall() : setIosHelp(true))}>
+        Install
+      </Button>
+      <button
+        type="button"
+        aria-label="Hide install suggestion"
+        onClick={() => {
+          setHidden(true);
+          try {
+            localStorage.setItem(BANNER_KEY, '1');
+          } catch {
+            // Private mode: hidden for this visit only.
+          }
+        }}
+        className="flex h-9 w-9 shrink-0 items-center justify-center text-faint"
+      >
+        <X size={15} />
+      </button>
+      <IosInstallDialog open={iosHelp} onClose={() => setIosHelp(false)} />
+    </div>
   );
 }
 

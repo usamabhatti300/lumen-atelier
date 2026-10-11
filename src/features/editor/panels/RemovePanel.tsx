@@ -112,7 +112,7 @@ export function RemovePanel() {
               {removals.map((r, i) => {
                 const pending = r.visible && !applied.has(r.id);
                 return (
-                  <li key={r.id} className="flex h-8 items-center gap-2 rounded-xs px-1.5 hover:bg-ink-750" data-testid="removal-item">
+                  <li key={r.id} className="flex h-8 coarse:h-11 items-center gap-2 rounded-xs px-1.5 hover:bg-ink-750" data-testid="removal-item">
                     <span className={`flex-1 text-xs ${r.visible ? 'text-ivory-dim' : 'text-faint line-through'}`}>
                       Removal {i + 1}
                       {r.strokes.length > 1 && <span className="text-faint"> · {r.strokes.length} strokes</span>}
@@ -120,7 +120,7 @@ export function RemovePanel() {
                     {pending && <span className="text-[10px] text-amber">{status.phase === 'error' || status.phase === 'cancelled' ? 'not applied' : 'filling…'}</span>}
                     <button
                       type="button"
-                      className="rounded-xs p-1 text-mute hover:bg-ink-700 hover:text-ivory"
+                      className="coarse:p-2.5 rounded-xs p-1 text-mute hover:bg-ink-700 hover:text-ivory"
                       aria-label={r.visible ? `Hide removal ${i + 1}` : `Show removal ${i + 1}`}
                       title={r.visible ? 'Hide' : 'Show'}
                       onClick={() => setVisible(r.id, !r.visible)}
@@ -129,7 +129,7 @@ export function RemovePanel() {
                     </button>
                     <button
                       type="button"
-                      className="rounded-xs p-1 text-mute hover:bg-ink-700 hover:text-safelight"
+                      className="coarse:p-2.5 rounded-xs p-1 text-mute hover:bg-ink-700 hover:text-safelight"
                       aria-label={`Delete removal ${i + 1}`}
                       title="Delete"
                       onClick={() => deleteRemoval(r.id)}

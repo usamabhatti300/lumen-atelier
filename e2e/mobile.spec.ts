@@ -137,3 +137,103 @@ test('mobile landscape: panels sit beside the photo and nothing overflows', asyn
   await expect(page.getByRole('heading', { name: 'Match a reference look' })).toBeInViewport({ ratio: 1 });
   await expectFitsScreen(page);
 });
+
+/** Real touch input (Chrome DevTools Protocol), so scrolling and touch-action behave as on a phone. */
+async function touchInput(page: Page) {
+  const cdp = await page.context().newCDPSession(page);
+  const send = (type: 'touchStart' | 'touchMove' | 'touchEnd', x = 0, y = 0) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+  return {
+    async swipe(x: number, y: number, dx: number, dy: number) {
+      await send('touchStart', x, y);
+      for (let i = 1; i <= 8; i++) {
+        await send('touchMove', x + (dx * i) / 8, y + (dy * i) / 8);
+        await page.waitForTimeout(16);
+      }
+      await send('touchEnd');
+      await page.waitForTimeout(400);
+    },
+    async tap(x: number, y: number) {
+      await send('touchStart', x, y);
+      await send('touchEnd');
+      await page.waitForTimeout(300);
+    },
+  };
+}
+
+test('mobile touch: scrolling panels never changes edits; strip, curve and sliders respond to fingers', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('gallery-file-input').setInputFiles({ name: 'a.jpg', mimeType: 'image/jpeg', buffer: await makeImage(page, 'target') });
+  await waitForRender(page);
+  const t = await touchInput(page);
+  const nav = page.getByRole('navigation', { name: 'Editing tools' });
+  const scroller = page.locator('[data-testid="compact-sheet"] .overflow-y-auto').first();
+
+  // Presets: a sideways strip of large cards; a tap applies.
+  await nav.getByRole('button', { name: 'Presets' }).click();
+  const strip = page.locator('[data-testid="compact-sheet"] ul[aria-label="Presets"]');
+  const sb = (await strip.boundingBox())!;
+  expect(sb.height).toBeGreaterThan(120);
+  await t.swipe(sb.x + sb.width * 0.8, sb.y + sb.height / 2, -sb.width * 0.5, 0);
+  await expect.poll(() => strip.evaluate((e) => e.scrollLeft)).toBeGreaterThan(40);
+  const card = strip.locator('li > button').first();
+  await strip.evaluate((e) => (e.scrollLeft = 0));
+  const cb = (await card.boundingBox())!;
+  await t.tap(cb.x + cb.width / 2, cb.y + cb.height / 2);
+  await expect(card).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Close panel' }).click();
+
+  // Light: a vertical swipe over a slider scrolls and leaves it alone; a sideways drag changes it.
+  await nav.getByRole('button', { name: 'Light' }).click();
+  const exposure = page.getByRole('slider', { name: 'Exposure', exact: true });
+  await exposure.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  const before = await exposure.inputValue();
+  const top0 = await scroller.evaluate((e) => e.scrollTop);
+  let eb = (await exposure.boundingBox())!;
+  await t.swipe(eb.x + eb.width * 0.3, eb.y + eb.height / 2, 0, -200);
+  expect(await scroller.evaluate((e) => e.scrollTop)).toBeGreaterThan(top0 + 30);
+  expect(await exposure.inputValue()).toBe(before);
+  await exposure.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+  eb = (await exposure.boundingBox())!;
+  await t.swipe(eb.x + eb.width * 0.5, eb.y + eb.height / 2, eb.width * 0.25, 0);
+  expect(Number(await exposure.inputValue())).toBeGreaterThan(Number(before));
+
+  // Colour: a swipe on the curve scrolls without adding points; a tap adds one; double tap removes it.
+  await nav.getByRole('button', { name: 'Colour' }).click();
+  await scroller.evaluate((e) => (e.scrollTop = 0));
+  const curve = page.locator('svg[aria-label="master tone curve"]');
+  const handles = page.getByTestId('curve-point-handle');
+  const n0 = await handles.count();
+  const c = (await curve.boundingBox())!;
+  // Start the swipe on the graph, away from every point (points capture the finger).
+  const pts = await handles.evaluateAll((els) => els.map((e) => [e.getBoundingClientRect().x + e.getBoundingClientRect().width / 2, e.getBoundingClientRect().y + e.getBoundingClientRect().height / 2]));
+  let start = [c.x + c.width / 2, c.y + c.height / 2];
+  let far = -1;
+  const view = (await scroller.boundingBox())!;
+  for (let fx = 0.1; fx <= 0.9; fx += 0.05)
+    for (let fy = 0.05; fy <= 0.95; fy += 0.05) {
+      const p = [c.x + c.width * fx, c.y + c.height * fy];
+      if (p[1] < view.y + 20 || p[1] > view.y + view.height - 20) continue; // only the visible part of the graph
+      const d = Math.min(...pts.map(([x, y]) => Math.hypot(x - p[0], y - p[1])));
+      if (d > far) [far, start] = [d, p];
+    }
+  await t.swipe(start[0], start[1], 0, -200);
+  expect(await scroller.evaluate((e) => e.scrollTop)).toBeGreaterThan(30);
+  expect(await handles.count()).toBe(n0);
+  await scroller.evaluate((e) => (e.scrollTop = 0));
+  const c2 = (await curve.boundingBox())!;
+  const at = [start[0], start[1] - c.y + c2.y];
+  await t.tap(at[0], at[1]);
+  await expect(handles).toHaveCount(n0 + 1);
+  // Double tap the new point (two taps within 350 ms).
+  const added = await handles.evaluateAll((els, [x, y]) => {
+    const r = els.map((e) => e.getBoundingClientRect()).sort((a, b) => Math.hypot(a.x + a.width / 2 - x, a.y + a.height / 2 - y) - Math.hypot(b.x + b.width / 2 - x, b.y + b.height / 2 - y))[0];
+    return [r.x + r.width / 2, r.y + r.height / 2];
+  }, at);
+  const cdp = await page.context().newCDPSession(page);
+  for (let i = 0; i < 2; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: added[0], y: added[1] }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  }
+  await expect(handles).toHaveCount(n0);
+});

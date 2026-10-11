@@ -205,11 +205,12 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
   };
 
   return (
-    <div className="flex min-h-0 flex-col p-4 sm:p-6">
-      <div className="relative flex min-h-[260px] flex-1 items-center justify-center overflow-hidden rounded-sm bg-ink-950">
+    // One column on phones: the pane keeps its full height (min-h-0 only in the two-column layout).
+    <div className="flex flex-col p-4 sm:p-6 lg:min-h-0">
+      <div className="relative flex h-[min(44dvh,420px)] shrink-0 items-center justify-center overflow-hidden rounded-sm bg-ink-950 lg:h-auto lg:min-h-[260px] lg:flex-1 lg:shrink">
         <div
           ref={box}
-          className="relative max-h-full"
+          className={`relative max-h-full ${cropping ? 'touch-none' : ''}`}
           style={{ aspectRatio: `${shown.width} / ${shown.height}`, height: '100%', maxWidth: '100%' }}
           onPointerDown={(e) => {
             if (!cropping) return;
@@ -716,9 +717,11 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
                 onPointerDown={() => setUi({ compare: 'before' })}
                 onPointerUp={() => setUi({ compare: 'off' })}
                 onPointerLeave={() => setUi({ compare: 'off' })}
+                onPointerCancel={() => setUi({ compare: 'off' })}
+                onContextMenu={(e) => e.preventDefault()}
                 onKeyDown={(e) => e.key === ' ' && setUi({ compare: 'before' })}
                 onKeyUp={() => setUi({ compare: 'off' })}
-                className="absolute right-2 bottom-2 rounded-xs bg-ink-950/80 px-2 py-1 text-[11px] text-ivory"
+                className="absolute right-2 bottom-2 touch-none rounded-xs bg-ink-950/80 px-2 py-1 text-[11px] text-ivory select-none [-webkit-touch-callout:none] coarse:px-3 coarse:py-2 coarse:text-xs"
               >
                 Hold to see before
               </button>

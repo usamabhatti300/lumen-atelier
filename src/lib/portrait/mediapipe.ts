@@ -7,6 +7,7 @@
 import type { FaceLandmarker, ImageSegmenter } from '@mediapipe/tasks-vision';
 import type { SegmentationMaps } from '../masks/rasterize';
 import { regionsFromConnections, type FaceRegions, type Landmark } from './faceMask';
+import { faceSearchCrops, fromCrop, landmarkBox, mergeFaces } from './faceRegions';
 
 export const FACE_MODEL_URL = '/models/face_landmarker.task';
 export const SEGMENT_MODEL_URL = '/models/selfie_multiclass_256x256.tflite';
@@ -15,6 +16,7 @@ const WASM_BASE = '/mediapipe/wasm';
 export class ModelsMissingError extends Error {}
 
 let facePromise: Promise<FaceLandmarker> | null = null;
+let faceCpuPromise: Promise<FaceLandmarker> | null = null;
 let segPromise: Promise<ImageSegmenter> | null = null;
 
 async function assertModel(url: string) {
@@ -72,25 +74,48 @@ function disableUsageLogging(task: unknown) {
   logger.h = undefined;
 }
 
+async function makeFaceLandmarker(delegate: 'GPU' | 'CPU'): Promise<FaceLandmarker> {
+  await assertModel(FACE_MODEL_URL);
+  const { FilesetResolver, FaceLandmarker } = await vision();
+  const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
+  return FaceLandmarker.createFromOptions(fileset, {
+    baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate },
+    runningMode: 'IMAGE',
+    numFaces: 6,
+    minFaceDetectionConfidence: 0.45,
+    minFacePresenceConfidence: 0.45,
+  });
+}
+
+/** Which delegate the main face landmarker started with. */
+let faceDelegate: 'GPU' | 'CPU' = 'GPU';
+
 export function getFaceLandmarker(): Promise<FaceLandmarker> {
   if (!facePromise) {
-    facePromise = (async () => {
-      await assertModel(FACE_MODEL_URL);
-      const { FilesetResolver, FaceLandmarker } = await vision();
-      const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
-      return createWithFallback((delegate) =>
-        FaceLandmarker.createFromOptions(fileset, {
-          baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate },
-          runningMode: 'IMAGE',
-          numFaces: 6,
-          minFaceDetectionConfidence: 0.45,
-          minFacePresenceConfidence: 0.45,
-        }),
-      );
-    })();
+    facePromise = createWithFallback((delegate) =>
+      makeFaceLandmarker(delegate).then((t) => {
+        faceDelegate = delegate;
+        return t;
+      }),
+    );
     facePromise.catch(() => (facePromise = null));
   }
   return facePromise;
+}
+
+/**
+ * CPU landmarker. Some phone GPUs run the GPU delegate without errors but return no
+ * faces at all, so a GPU pass that finds nothing is repeated on the CPU.
+ */
+function getCpuFaceLandmarker(): Promise<FaceLandmarker> {
+  if (!faceCpuPromise) {
+    faceCpuPromise = makeFaceLandmarker('CPU').then((t) => {
+      disableUsageLogging(t);
+      return t;
+    });
+    faceCpuPromise.catch(() => (faceCpuPromise = null));
+  }
+  return faceCpuPromise;
 }
 
 export function getSegmenter(): Promise<ImageSegmenter> {
@@ -131,14 +156,62 @@ export async function regionsForFace(face: Landmark[]): Promise<FaceRegions> {
   );
 }
 
-export async function detectFaces(image: ImageBitmap): Promise<Landmark[][]> {
-  const lm = await getFaceLandmarker();
+export async function detectFaces(image: ImageBitmap, landmarker?: FaceLandmarker): Promise<Landmark[][]> {
+  const lm = landmarker ?? (await getFaceLandmarker());
   const res = lm.detect(image);
   return res.faceLandmarks.map((f) => f.map((p) => ({ x: p.x, y: p.y })));
 }
 
+/** Smallest side a crop is enlarged to before the second pass, so a small face fills the detector's input. */
+const CROP_DETECT_SIDE = 512;
+
+/**
+ * Full-frame detection, then a second pass on crops around likely faces the
+ * first pass missed (small faces of people further from the camera). See faceRegions.ts.
+ */
+export async function detectFacesThorough(image: ImageBitmap, seg: PersonSegmentation | null): Promise<Landmark[][]> {
+  const faces = await detectPasses(image, seg, await getFaceLandmarker());
+  if (faces.length || faceDelegate === 'CPU') return faces;
+  // Nothing on the GPU: repeat on the CPU (see getCpuFaceLandmarker).
+  try {
+    return await detectPasses(image, seg, await getCpuFaceLandmarker());
+  } catch {
+    return faces;
+  }
+}
+
+async function detectPasses(image: ImageBitmap, seg: PersonSegmentation | null, lm: FaceLandmarker): Promise<Landmark[][]> {
+  let faces = await detectFaces(image, lm);
+  const crops = faceSearchCrops(
+    seg ? { width: seg.width, height: seg.height, faceSkin: seg.faceSkin, subject: seg.maps.subject } : null,
+    image.width,
+    image.height,
+    faces.map(landmarkBox),
+  );
+  for (const crop of crops) {
+    const up = Math.max(1, CROP_DETECT_SIDE / Math.max(crop.w, crop.h));
+    const bmp = await createImageBitmap(image, crop.x, crop.y, crop.w, crop.h, {
+      resizeWidth: Math.round(crop.w * up),
+      resizeHeight: Math.round(crop.h * up),
+      resizeQuality: 'high',
+    });
+    try {
+      const found = await detectFaces(bmp, lm);
+      faces = mergeFaces(faces, found.map((f) => fromCrop(f, crop, image.width, image.height)));
+    } finally {
+      bmp.close();
+    }
+  }
+  return faces;
+}
+
+/** Segmentation maps plus the face-skin channel on its own (used to find small faces). */
+export interface PersonSegmentation extends SegmentationMaps {
+  faceSkin: Uint8ClampedArray;
+}
+
 /** Confidence maps for background, hair, skin (body + face), clothes and subject. */
-export async function segmentPerson(image: ImageBitmap): Promise<SegmentationMaps> {
+export async function segmentPerson(image: ImageBitmap): Promise<PersonSegmentation> {
   const seg = await getSegmenter();
   const res = seg.segment(image);
   try {
@@ -150,15 +223,17 @@ export async function segmentPerson(image: ImageBitmap): Promise<SegmentationMap
     const n = width * height;
     const mk = () => new Uint8ClampedArray(n);
     const maps = { background: mk(), hair: mk(), skin: mk(), clothes: mk(), subject: mk() };
+    const faceSkin = mk();
     for (let i = 0; i < n; i++) {
       const bg = f[0][i];
       maps.background[i] = bg * 255;
       maps.subject[i] = (1 - bg) * 255;
       maps.hair[i] = f[1][i] * 255;
       maps.skin[i] = Math.max(f[2][i], f[3][i]) * 255;
+      faceSkin[i] = f[3][i] * 255;
       maps.clothes[i] = f[4][i] * 255;
     }
-    return { width, height, maps };
+    return { width, height, maps, faceSkin };
   } finally {
     res.close();
   }

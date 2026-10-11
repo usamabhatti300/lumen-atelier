@@ -47,8 +47,17 @@ only where it is measurable (import, export tiles, batch); otherwise as an indet
   visible), or **beside it** on phones held sideways (`(orientation: landscape) and (max-height: 540px)`).
   The Presets panel is the full left panel (Presets / Photos, Save look, preset Amount); Light adds
   the histogram. Top-bar actions that don't fit move into the ⋮ *More actions* menu (below 1024 px).
+- Phone panels have a grab handle: tap or drag up to expand to 78 dvh, drag down to shrink or close.
+  Presets on phones are a sideways strip of 3:4 cards (search behind an icon); expanded, a grid.
+  Card menus render in a portal so scrolling containers never clip them. No `scroll-snap` on the
+  strip (with mandatory snap Chrome drops the first tap after a swipe).
 - Touch: pinch to zoom and pan with two fingers, double-tap to toggle fit / zoom, one finger pans
-  when zoomed. Canvas tools that use Shift / Alt on a keyboard get an on-photo mode chip on touch
+  when zoomed. **Scrolling a panel must never change an edit**: sliders ignore fingers on the native
+  input and take horizontal drags on the row (relative to where the finger landed; vertical swipes
+  scroll; taps do nothing); the tone curve and colour wheels let vertical swipes scroll and only
+  capture fingers on their points / marker (large invisible handles; `touch-action` is ignored on
+  SVG shapes, so curve handles cancel `touchstart` instead); a tap adds a curve point or moves a
+  wheel; a finger-dragged curve point stays on the graph and a double tap removes it. Canvas tools that use Shift / Alt on a keyboard get an on-photo mode chip on touch
   screens (Remove: *Add to last*; Select object: *Add* / *Subtract*; Heal: *Delete spot*) with *Done*.
 - Touch targets: Tailwind variants `coarse:` (`pointer: coarse`) enlarge buttons, segmented
   controls, slider rows/thumbs (20 px) and crop handles (44 px); `fine:` (`hover: hover` and

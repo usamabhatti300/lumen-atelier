@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Aperture, ImagePlus, Pencil, Settings, SwatchBook, Trash2, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { InstallButton } from '@/pwa/PwaUi';
+import { InstallBanner, InstallButton } from '@/pwa/PwaUi';
 import { takeSharedFiles } from '@/pwa/pwa';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
@@ -154,7 +154,7 @@ export function GalleryScreen() {
       <header className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-4 sm:px-8">
         <Wordmark />
         <nav className="flex items-center gap-1">
-          <InstallButton />
+          <InstallButton className="hidden sm:flex" />
           <Link to="/presets" aria-label="Presets" className="flex h-8 items-center gap-2 rounded-sm px-3 coarse:h-10 text-[13px] text-ivory-dim hover:bg-ink-700 hover:text-ivory">
             <SwatchBook size={15} /> <span className="hidden sm:inline">Presets</span>
           </Link>
@@ -163,6 +163,7 @@ export function GalleryScreen() {
           </Link>
         </nav>
       </header>
+      <InstallBanner />
 
       <main className="mx-auto max-w-7xl px-4 pb-20 sm:px-8">
         <section className="grid gap-10 border-b border-line-soft pt-10 pb-14 lg:grid-cols-[1.15fr_1fr] lg:pt-16">

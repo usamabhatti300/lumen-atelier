@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, Copy, Download, MoreHorizontal, Pencil, Search, Star, Trash2, Wand2 } from 'lucide-react';
-import { memo, useEffect, useMemo, useState } from 'react';
+import { Check, Copy, Download, MoreHorizontal, Pencil, Search, Star, Trash2, Wand2, X } from 'lucide-react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { usePresets, ALL_CATEGORY_LABELS, downloadText } from '@/state/presetStore';
 import { useEditor } from '@/state/editorStore';
 import { presetThumb, thumbSourceListeners, previewSourceId } from '@/engine/presetThumbs';
@@ -10,13 +11,17 @@ import { Button } from '@/components/ui/Button';
 
 type Filter = 'all' | 'favorites' | PresetCategoryId;
 
+/**
+ * `panel`: side panel grid. `page`: the preset library. `strip`: phones, one row of large
+ * cards that scrolls sideways under the photo, with search behind an icon.
+ */
 export function PresetBrowser({
   variant = 'panel',
   onApply,
   canApply = true,
   actionVerb = 'Apply',
 }: {
-  variant?: 'panel' | 'page';
+  variant?: 'panel' | 'page' | 'strip';
   onApply?: (p: Preset) => void;
   canApply?: boolean;
   actionVerb?: string;
@@ -31,6 +36,8 @@ export function PresetBrowser({
   const [editing, setEditing] = useState<Preset | null>(null);
   const [deleting, setDeleting] = useState<Preset | null>(null);
   const appliedId = useEditor((s) => s.edit.appliedPreset?.id);
+  const strip = variant === 'strip';
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     void load();
@@ -58,7 +65,8 @@ export function PresetBrowser({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className={`shrink-0 space-y-2 ${variant === 'panel' ? 'px-3 pt-3 pb-2' : 'pb-4'}`}>
+      <div className={`shrink-0 space-y-2 ${variant === 'panel' ? 'px-3 pt-3 pb-2' : strip ? 'px-3 pt-1 pb-2' : 'pb-4'}`}>
+        {strip && !searching ? null : (
         <label className="relative block">
           <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-faint" />
           <span className="sr-only">Search presets</span>
@@ -71,10 +79,35 @@ export function PresetBrowser({
               if (e.target.value.trim() && filter !== 'all' && filter !== 'favorites') setFilter('all');
             }}
             placeholder={`Search ${all().length} presets`}
-            className="h-8 w-full rounded-sm border border-line bg-ink-950 pr-2 pl-8 text-xs text-ivory placeholder:text-faint focus:border-amber/60 focus:outline-none"
+            autoFocus={strip}
+            className="h-8 w-full rounded-sm border border-line bg-ink-950 pr-9 pl-8 text-xs text-ivory placeholder:text-faint focus:border-amber/60 focus:outline-none coarse:h-10 coarse:text-sm"
           />
+          {strip && (
+            <button
+              type="button"
+              aria-label="Close search"
+              onClick={() => {
+                setSearching(false);
+                setQuery('');
+              }}
+              className="absolute top-1/2 right-1 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-mute"
+            >
+              <X size={15} />
+            </button>
+          )}
         </label>
-        <div className={`flex gap-1 ${variant === 'panel' ? 'scroll-quiet -mx-3 overflow-x-auto px-3 pb-1' : 'flex-wrap'}`} role="tablist" aria-label="Preset categories">
+        )}
+        <div className={`flex gap-1 ${variant === 'page' ? 'flex-wrap' : 'scroll-quiet -mx-3 overflow-x-auto px-3 pb-1'}`} role="tablist" aria-label="Preset categories">
+          {strip && !searching && (
+            <button
+              type="button"
+              aria-label="Search presets"
+              onClick={() => setSearching(true)}
+              className="flex h-6 w-8 shrink-0 items-center justify-center rounded-full border border-line text-mute coarse:h-8 coarse:w-10"
+            >
+              <Search size={14} />
+            </button>
+          )}
           {filters.map((f) => (
             <button
               key={f}
@@ -82,7 +115,7 @@ export function PresetBrowser({
               role="tab"
               aria-selected={filter === f}
               onClick={() => setFilter(f)}
-              className={`h-6 shrink-0 rounded-full border px-2.5 text-[11px] whitespace-nowrap transition-colors ${
+              className={`h-6 shrink-0 rounded-full border px-2.5 text-[11px] whitespace-nowrap transition-colors coarse:h-8 coarse:px-3 coarse:text-xs ${
                 filter === f ? 'border-champagne bg-champagne text-ink-950' : 'border-line text-mute hover:border-line-strong hover:text-ivory'
               }`}
             >
@@ -91,13 +124,20 @@ export function PresetBrowser({
           ))}
         </div>
       </div>
-      <div className={`scroll-quiet min-h-0 flex-1 overflow-y-auto ${variant === 'panel' ? 'px-3 pb-4' : ''}`}>
+      <div className={`scroll-quiet min-h-0 flex-1 ${strip ? 'overflow-hidden' : 'overflow-y-auto'} ${variant === 'panel' ? 'px-3 pb-4' : ''}`}>
         {presets.length === 0 ? (
           <p className="py-8 text-center text-xs text-mute">
             {filter === 'favorites' ? 'No favourites yet. Star a preset to keep it here.' : 'No presets match your search.'}
           </p>
         ) : (
-          <ul className={`grid gap-x-2.5 gap-y-3 ${variant === 'panel' ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'}`}>
+          <ul
+            className={
+              strip
+                ? 'scroll-quiet flex h-full gap-2 overflow-x-auto overscroll-x-contain px-3 pb-2'
+                : `grid gap-x-2.5 gap-y-3 ${variant === 'panel' ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'}`
+            }
+            aria-label="Presets"
+          >
             {presets.map((p) => (
               <PresetCard
                 key={p.id}
@@ -108,6 +148,7 @@ export function PresetBrowser({
                 onEdit={() => setEditing(p)}
                 onDelete={() => setDeleting(p)}
                 large={variant === 'page'}
+                strip={strip}
                 actionVerb={actionVerb}
               />
             ))}
@@ -152,9 +193,11 @@ const PresetCard = memo(function PresetCard({
   onEdit,
   onDelete,
   large,
+  strip,
   actionVerb,
 }: {
   actionVerb: string;
+  strip?: boolean;
   preset: Preset;
   active: boolean;
   favorite: boolean;
@@ -166,6 +209,7 @@ const PresetCard = memo(function PresetCard({
   const [thumb, setThumb] = useState<{ key: string; url: string } | null>(null);
   const [sourceId, setSourceId] = useState(previewSourceId());
   const [menu, setMenu] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const toggleFavorite = usePresets((s) => s.toggleFavorite);
   const duplicate = usePresets((s) => s.duplicate);
   const isUser = preset.origin !== 'builtin';
@@ -187,7 +231,7 @@ const PresetCard = memo(function PresetCard({
   const url = thumb?.key === thumbKey ? thumb.url : null;
 
   return (
-    <li className="group relative">
+    <li className={`group relative ${strip ? 'aspect-[3/4] h-full max-w-[44vw] min-w-24 shrink-0' : ''}`}>
       <button
         type="button"
         onClick={() => onApply?.(preset)}
@@ -195,11 +239,11 @@ const PresetCard = memo(function PresetCard({
         aria-pressed={active}
         aria-label={`${onApply ? actionVerb : 'Preset'} ${preset.name}`}
         title={preset.description}
-        className={`block w-full overflow-hidden rounded-xs text-left ring-1 transition-[box-shadow,transform] duration-200 enabled:active:scale-[0.98] ${
+        className={`w-full overflow-hidden rounded-xs text-left ring-1 transition-[box-shadow,transform] duration-200 enabled:active:scale-[0.98] ${strip ? 'flex h-full flex-col' : 'block'} ${
           active ? 'ring-2 ring-amber' : 'ring-line-soft hover:ring-line-strong'
         }`}
       >
-        <div className={`relative bg-ink-800 ${large ? 'aspect-[4/3]' : 'aspect-[3/2]'}`}>
+        <div className={`relative bg-ink-800 ${strip ? 'min-h-0 flex-1' : large ? 'aspect-[4/3]' : 'aspect-[3/2]'}`}>
           <AnimatePresence>
             {url && (
               <motion.img
@@ -229,8 +273,8 @@ const PresetCard = memo(function PresetCard({
             </span>
           )}
         </div>
-        <div className="bg-ink-850 px-2 py-1.5">
-          <p className="truncate text-[11.5px] leading-tight text-ivory">{preset.name}</p>
+        <div className="shrink-0 bg-ink-850 px-2 py-1.5">
+          <p className={`truncate leading-tight text-ivory ${strip ? 'text-xs' : 'text-[11.5px]'}`}>{preset.name}</p>
           {large && <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-faint">{preset.description}</p>}
         </div>
       </button>
@@ -250,6 +294,7 @@ const PresetCard = memo(function PresetCard({
           </motion.span>
         </motion.button>
         <button
+          ref={menuButton}
           type="button"
           aria-label={`More actions for ${preset.name}`}
           aria-expanded={menu}
@@ -261,14 +306,7 @@ const PresetCard = memo(function PresetCard({
       </div>
       <AnimatePresence>
         {menu && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.14 }}
-            className="absolute top-8 right-1 z-20 w-40 rounded-sm border border-line bg-ink-900 p-1 shadow-float"
-            onMouseLeave={() => setMenu(false)}
-          >
+          <CardMenu anchor={menuButton} onClose={() => setMenu(false)}>
             <MenuButton icon={<Copy size={12} />} label="Duplicate" onClick={() => { setMenu(false); void duplicate(preset.id); }} />
             <MenuButton
               icon={<Download size={12} />}
@@ -280,16 +318,60 @@ const PresetCard = memo(function PresetCard({
             />
             {isUser && <MenuButton icon={<Pencil size={12} />} label="Rename / edit" onClick={() => { setMenu(false); onEdit(); }} />}
             {isUser && <MenuButton icon={<Trash2 size={12} />} label="Delete" danger onClick={() => { setMenu(false); onDelete(); }} />}
-          </motion.div>
+          </CardMenu>
         )}
       </AnimatePresence>
     </li>
   );
 });
 
+/**
+ * A card's actions menu, drawn over everything (a portal) next to its button, so it is never
+ * clipped by the scrolling grid or the sideways strip. Closes on outside tap, Escape or scroll.
+ */
+function CardMenu({ anchor, onClose, children }: { anchor: React.RefObject<HTMLButtonElement | null>; onClose: () => void; children: ReactNode }) {
+  const panel = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  useLayoutEffect(() => {
+    const r = anchor.current?.getBoundingClientRect();
+    if (!r) return;
+    const w = 168;
+    const h = panel.current?.offsetHeight ?? 130;
+    const below = r.bottom + 4 + h <= window.innerHeight - 8;
+    setPos({ left: Math.min(window.innerWidth - w - 8, Math.max(8, r.right - w)), top: below ? r.bottom + 4 : Math.max(8, r.top - 4 - h) });
+  }, [anchor]);
+  useEffect(() => {
+    const away = (e: PointerEvent) => !panel.current?.contains(e.target as Node) && !anchor.current?.contains(e.target as Node) && onClose();
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('pointerdown', away, true);
+    window.addEventListener('keydown', key);
+    window.addEventListener('scroll', onClose, true);
+    return () => {
+      window.removeEventListener('pointerdown', away, true);
+      window.removeEventListener('keydown', key);
+      window.removeEventListener('scroll', onClose, true);
+    };
+  }, [anchor, onClose]);
+  return createPortal(
+    <motion.div
+      ref={panel}
+      role="menu"
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -4 }}
+      transition={{ duration: 0.14 }}
+      className="fixed z-[95] w-42 rounded-sm border border-line bg-ink-900 p-1 shadow-float"
+      style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999 }}
+    >
+      {children}
+    </motion.div>,
+    document.body,
+  );
+}
+
 function MenuButton({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className={`flex h-7 w-full items-center gap-2 rounded-xs px-2 text-xs hover:bg-ink-700 ${danger ? 'text-safelight' : 'text-ivory-dim hover:text-ivory'}`}>
+    <button type="button" role="menuitem" onClick={onClick} className={`flex h-7 w-full items-center gap-2 rounded-xs px-2 text-xs hover:bg-ink-700 coarse:h-10 coarse:text-[13px] ${danger ? 'text-safelight' : 'text-ivory-dim hover:text-ivory'}`}>
       {icon}
       {label}
     </button>

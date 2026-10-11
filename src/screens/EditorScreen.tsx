@@ -266,41 +266,92 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
 
 const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Presets', adjust: 'Light', color: 'Colour' };
 
-/** The open panel: docked under the photo (portrait) or beside it (phone landscape), so edits stay visible. */
+/**
+ * The open panel: docked under the photo (portrait) or beside it (phone landscape), so edits
+ * stay visible. Under the photo it has a grab handle: tap or drag up to expand it (presets then
+ * show as a full grid), drag down to shrink or close.
+ */
 function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; setSheet: (s: Sheet | null) => void; side?: boolean }) {
+  const [tall, setTall] = useState(false);
+  const drag = useRef<{ y: number; moved: boolean } | null>(null);
   const inner = side ? 'w-[min(320px,46vw)]' : '';
+  const close = () => {
+    setTall(false);
+    setSheet(null);
+  };
+  const expanded = side || tall;
   return (
     <AnimatePresence initial={false}>
       {sheet && (
         <motion.div
           initial={side ? { width: 0 } : { height: 0 }}
-          animate={side ? { width: 'min(320px, 46vw)' } : { height: '46dvh' }}
+          animate={side ? { width: 'min(320px, 46vw)' } : { height: tall ? '78dvh' : '46dvh' }}
           exit={side ? { width: 0 } : { height: 0 }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-          className={`flex shrink-0 flex-col overflow-hidden bg-ink-850 ${side ? 'border-l border-line-soft' : 'rounded-t-md border-t border-line'}`}
+          className={`flex shrink-0 flex-col overflow-hidden bg-ink-850 ${side ? 'border-l border-line-soft' : 'rounded-t-md border-t border-line shadow-[0_-12px_30px_-12px_rgba(0,0,0,0.6)]'}`}
           role="region"
           aria-label={`${SHEET_TITLE[sheet] ?? 'More'} panel`}
           data-testid="compact-sheet"
+          data-expanded={expanded}
         >
-          <div className={`flex h-10 shrink-0 items-center justify-between gap-2 pr-1 pl-3 ${inner}`}>
-            {SHEET_TITLE[sheet] ? (
-              <span className="text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase">{SHEET_TITLE[sheet]}</span>
-            ) : (
-              <MoreTabs
-                value={sheet as RightTab}
-                onChange={(t) => {
-                  selectRightTab(t);
-                  setSheet(t);
-                }}
-              />
-            )}
-            <button type="button" aria-label="Close panel" onClick={() => setSheet(null)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-mute">
-              <X size={17} />
+          {!side && (
+            <button
+              type="button"
+              aria-label={tall ? 'Shrink panel' : 'Expand panel'}
+              aria-expanded={tall}
+              className="flex h-5 w-full shrink-0 touch-none items-center justify-center"
+              onPointerDown={(e) => {
+                drag.current = { y: e.clientY, moved: false };
+                (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+              }}
+              onPointerMove={(e) => {
+                const d = drag.current;
+                if (d && Math.abs(e.clientY - d.y) > 8) d.moved = true;
+              }}
+              onPointerUp={(e) => {
+                const d = drag.current;
+                drag.current = null;
+                if (!d) return;
+                const dy = e.clientY - d.y;
+                if (!d.moved) setTall(!tall);
+                else if (dy < -30) setTall(true);
+                else if (dy > 30) {
+                  if (tall) setTall(false);
+                  else close();
+                }
+              }}
+              onPointerCancel={() => (drag.current = null)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setTall(!tall);
+                }
+              }}
+            >
+              <span className="h-1 w-10 rounded-full bg-line-strong" />
             </button>
-          </div>
-          <div className={`scroll-quiet min-h-0 flex-1 ${sheet === 'presets' ? '' : 'overflow-y-auto'} ${inner}`}>
+          )}
+          {sheet !== 'presets' && (
+            <div className={`flex h-10 shrink-0 items-center justify-between gap-2 pr-1 pl-3 ${inner}`}>
+              {SHEET_TITLE[sheet] ? (
+                <span className="text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase">{SHEET_TITLE[sheet]}</span>
+              ) : (
+                <MoreTabs
+                  value={sheet as RightTab}
+                  onChange={(t) => {
+                    selectRightTab(t);
+                    setSheet(t);
+                  }}
+                />
+              )}
+              <button type="button" aria-label="Close panel" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-mute">
+                <X size={17} />
+              </button>
+            </div>
+          )}
+          <div className={`scroll-quiet min-h-0 flex-1 overscroll-contain ${sheet === 'presets' ? 'flex flex-col' : 'overflow-y-auto'} ${inner}`}>
             {sheet === 'presets' ? (
-              <LeftPanel compact onOpenReference={() => undefined} />
+              <LeftPanel compact expanded={expanded} onClose={close} onOpenReference={() => undefined} />
             ) : (
               <>
                 {sheet === 'adjust' && <Histogram />}

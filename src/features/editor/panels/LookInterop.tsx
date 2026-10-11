@@ -28,7 +28,7 @@ export function LookInterop() {
         <div className="mb-3 rounded-xs bg-ink-900 px-2 py-1.5">
           <div className="flex items-center justify-between text-xs">
             <span className="truncate text-ivory">{lut.name}</span>
-            <button type="button" aria-label="Remove LUT" onClick={() => commit('Remove LUT', (e) => ({ ...e, lut: null }))} className="p-0.5 text-faint hover:text-ivory">
+            <button type="button" aria-label="Remove LUT" onClick={() => commit('Remove LUT', (e) => ({ ...e, lut: null }))} className="coarse:p-2.5 p-0.5 text-faint hover:text-ivory">
               <X size={12} />
             </button>
           </div>

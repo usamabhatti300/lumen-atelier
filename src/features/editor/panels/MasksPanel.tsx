@@ -127,7 +127,10 @@ export function MasksPanel() {
               >
                 <MousePointerClick size={14} className="text-amber" />
                 <span className="flex-1">Select object</span>
-                <span className="text-[10px] text-faint">click anything</span>
+                <span className="text-[10px] text-faint">
+                  <span className="coarse:hidden">click anything</span>
+                  <span className="hidden coarse:inline">tap anything</span>
+                </span>
               </button>
               <MenuItem icon={<Brush size={14} />} label="Brush" onClick={() => addDrawLayer('brush')} />
               <MenuItem icon={<SquareDashedMousePointer size={14} />} label="Linear" onClick={() => addDrawLayer('linear')} />
@@ -161,7 +164,7 @@ export function MasksPanel() {
                     type="button"
                     aria-label={l.visible ? `Hide ${l.name}` : `Show ${l.name}`}
                     onClick={() => updateLayer(l.id, { visible: !l.visible }, 'Toggle mask')}
-                    className="rounded-xs p-1 text-mute hover:text-ivory"
+                    className="coarse:p-2.5 rounded-xs p-1 text-mute hover:text-ivory"
                   >
                     {l.visible ? <Eye size={13} /> : <EyeOff size={13} />}
                   </button>
@@ -176,10 +179,10 @@ export function MasksPanel() {
                     {warnings[l.id] && <span className="text-[10px] text-safelight">!</span>}
                   </button>
                   <span className="tabular text-[10px] text-faint">{Math.round(l.opacity)}%</span>
-                  <button type="button" aria-label={`Move ${l.name} up`} onClick={() => moveLayer(l.id, 1)} className="rounded-xs p-0.5 text-faint hover:text-ivory">
+                  <button type="button" aria-label={`Move ${l.name} up`} onClick={() => moveLayer(l.id, 1)} className="coarse:p-2.5 rounded-xs p-0.5 text-faint hover:text-ivory">
                     <ArrowUp size={12} />
                   </button>
-                  <button type="button" aria-label={`Move ${l.name} down`} onClick={() => moveLayer(l.id, -1)} className="rounded-xs p-0.5 text-faint hover:text-ivory">
+                  <button type="button" aria-label={`Move ${l.name} down`} onClick={() => moveLayer(l.id, -1)} className="coarse:p-2.5 rounded-xs p-0.5 text-faint hover:text-ivory">
                     <ArrowDown size={12} />
                   </button>
                 </div>
@@ -194,10 +197,10 @@ export function MasksPanel() {
           title={active.name}
           aside={
             <div className="flex">
-              <button type="button" aria-label="Duplicate mask" title="Duplicate" onClick={() => duplicateLayer(active.id)} className="rounded-xs p-1 text-faint hover:text-ivory">
+              <button type="button" aria-label="Duplicate mask" title="Duplicate" onClick={() => duplicateLayer(active.id)} className="coarse:p-2.5 rounded-xs p-1 text-faint hover:text-ivory">
                 <Copy size={12} />
               </button>
-              <button type="button" aria-label="Delete mask" title="Delete" onClick={() => removeLayer(active.id)} className="rounded-xs p-1 text-faint hover:text-safelight">
+              <button type="button" aria-label="Delete mask" title="Delete" onClick={() => removeLayer(active.id)} className="coarse:p-2.5 rounded-xs p-1 text-faint hover:text-safelight">
                 <Trash2 size={12} />
               </button>
             </div>
@@ -212,7 +215,7 @@ export function MasksPanel() {
 
 function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex h-8 items-center gap-2 rounded-xs px-2 text-xs text-ivory-dim hover:bg-ink-700 hover:text-ivory">
+    <button type="button" onClick={onClick} className="flex h-8 coarse:h-11 items-center gap-2 rounded-xs px-2 text-xs text-ivory-dim hover:bg-ink-700 hover:text-ivory">
       <span className="text-faint">{icon}</span>
       {label}
     </button>
@@ -327,16 +330,16 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
               <span>{componentLabel(c)}</span>
               <span className="flex items-center gap-1">
                 {c.type === 'radial' && (
-                  <button type="button" onClick={() => updateComponent(layerId, { ...c, invert: !c.invert })} className="rounded-xs px-1 text-faint hover:text-ivory">
+                  <button type="button" onClick={() => updateComponent(layerId, { ...c, invert: !c.invert })} className="rounded-xs px-1 coarse:px-2.5 coarse:py-2 text-faint hover:text-ivory">
                     {c.invert ? 'inside' : 'outside'}
                   </button>
                 )}
                 {c.type !== 'brush' && (
-                  <button type="button" onClick={() => updateComponent(layerId, { ...c, mode: c.mode === 'add' ? 'erase' : 'add' })} className="rounded-xs px-1 text-faint hover:text-ivory">
+                  <button type="button" onClick={() => updateComponent(layerId, { ...c, mode: c.mode === 'add' ? 'erase' : 'add' })} className="rounded-xs px-1 coarse:px-2.5 coarse:py-2 text-faint hover:text-ivory">
                     {c.mode === 'add' ? 'add' : 'subtract'}
                   </button>
                 )}
-                <button type="button" aria-label={`Remove ${componentLabel(c)}`} onClick={() => removeComponent(layerId, c.id)} className="rounded-xs p-0.5 text-faint hover:text-safelight">
+                <button type="button" aria-label={`Remove ${componentLabel(c)}`} onClick={() => removeComponent(layerId, c.id)} className="coarse:p-2.5 rounded-xs p-0.5 text-faint hover:text-safelight">
                   <X size={11} />
                 </button>
               </span>

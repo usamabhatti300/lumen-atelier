@@ -75,7 +75,7 @@ export function PhotosPanel() {
       <ul className="scroll-quiet min-h-0 flex-1 space-y-1 overflow-y-auto px-3" aria-label="Photos in this project">
         {photos.map((p) => (
           <li key={p.id} className={`flex items-center gap-2 rounded-xs p-1 ${p.id === activeId ? 'bg-ink-700' : 'hover:bg-ink-800'}`}>
-            <button type="button" onClick={() => toggle(p.id)} aria-label={`${selected.includes(p.id) ? 'Deselect' : 'Select'} ${p.name}`} className="text-mute hover:text-ivory">
+            <button type="button" onClick={() => toggle(p.id)} aria-label={`${selected.includes(p.id) ? 'Deselect' : 'Select'} ${p.name}`} className="coarse:p-2.5 text-mute hover:text-ivory">
               {selected.includes(p.id) ? <CheckSquare size={15} className="text-amber" /> : <Square size={15} />}
             </button>
             <button type="button" onClick={() => setActive(p.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">

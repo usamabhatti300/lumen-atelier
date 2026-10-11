@@ -11,7 +11,8 @@ import { createCanvas, canvasToBlob } from '@/lib/image/decode';
 import { defaultAdjustments, defaultEditState, type PartialAdjustments } from '@/lib/schema/adjustments';
 import { linearToSrgb } from '@/lib/color/srgb';
 
-const THUMB_SIDE = 220;
+// Sharp on high-density phone screens (larger cards there), unchanged on standard desktop screens.
+const THUMB_SIDE = typeof window === 'undefined' ? 220 : Math.round(Math.min(360, Math.max(220, 150 * (window.devicePixelRatio || 1))));
 
 interface Job {
   key: string;

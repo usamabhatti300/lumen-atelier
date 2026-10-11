@@ -79,7 +79,7 @@ export function SelectObjectPanel({ layerId }: { layerId: string }) {
       ) : (
         <div className="text-[11px] leading-relaxed text-mute">
           <p className="text-ivory-dim">
-            {startNew || !hasObject ? 'Click an object in the photo to select it.' : 'Refine the selection, or click elsewhere to start over.'}
+            {startNew || !hasObject ? 'Tap or click an object in the photo to select it.' : 'Refine the selection, or tap elsewhere to start over.'}
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 coarse:hidden">
             <Kbd>Shift</Kbd> click adds · <Kbd>Alt</Kbd> click subtracts
@@ -96,7 +96,7 @@ export function SelectObjectPanel({ layerId }: { layerId: string }) {
           aria-pressed={startNew}
           className={`mt-2 flex items-center gap-1 rounded-xs px-1.5 py-0.5 text-[11px] ${startNew ? 'bg-amber/10 text-amber' : 'text-mute hover:bg-ink-700 hover:text-ivory'}`}
         >
-          <Plus size={11} /> {startNew ? 'Click the next object' : 'Add another object'}
+          <Plus size={11} /> {startNew ? 'Tap the next object' : 'Add another object'}
         </button>
       )}
       <p className="mt-2 border-t border-line-soft pt-1.5 text-[10px] leading-snug text-faint">
