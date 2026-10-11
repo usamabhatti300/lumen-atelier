@@ -95,7 +95,7 @@ export default function SettingsScreen() {
           <ul className="mb-3 list-disc space-y-1 pl-4 text-xs leading-relaxed text-mute">
             <li>Photos, edits, projects and presets are stored only in this browser (IndexedDB). There are no accounts and no analytics.</li>
             <li>Editing, portrait detection and masking run on this device.</li>
-            <li>Only the reference-matching feature can send an image off the device, and only with your permission.</li>
+            <li>Only the reference-matching feature can send an image off the device, and only with your permission. With a local model (Ollama) nothing is sent.</li>
           </ul>
           <Toggle
             checked={s.aiConsent}
@@ -118,13 +118,16 @@ export default function SettingsScreen() {
               <p>
                 Status:{' '}
                 <span className={health.configured ? 'text-verdigris' : 'text-amber'}>
-                  {health.configured ? `configured (${health.model})` : 'not configured'}
+                  {health.configured ? `configured (${health.model}${health.local ? ', running on this computer' : ''})` : 'not configured'}
                 </span>
               </p>
               {!health.configured && (
                 <p className="mt-2">
-                  Add <code className="text-ivory">ANTHROPIC_API_KEY=…</code> to a <code className="text-ivory">.env</code> file in the project folder
-                  and restart the server. The key stays on the server; it is never sent to the browser. Without it, presets are built from measurements only.
+                  Free and private: install <span className="text-ivory">Ollama</span> and run{' '}
+                  <code className="text-ivory">ollama pull qwen3-vl:4b</code> (3.3 GB, Apache-2.0). The app uses it automatically while Ollama
+                  is running, and the reference never leaves this computer. Or add <code className="text-ivory">ANTHROPIC_API_KEY=…</code> to a{' '}
+                  <code className="text-ivory">.env</code> file and restart the server to use Claude. Without either, presets are built from
+                  measurements only.
                 </p>
               )}
             </div>

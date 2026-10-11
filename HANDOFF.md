@@ -25,7 +25,9 @@ npm run setup:models   # MediaPipe models into public/models (already done on th
 npm run dev            # web app + API. Port 5173 is used by another app on this PC, so Vite picks 5174/5175
 ```
 
-No `ANTHROPIC_API_KEY` is configured yet; reference matching then uses measurements only and says so.
+No `ANTHROPIC_API_KEY` is configured. Reference analysis uses the **local Ollama model `qwen3-vl:4b`** (Apache-2.0,
+server/ollama.ts, loopback only) when Ollama is running, otherwise measurements only. The owner's laptop is an
+i7-8665U with 16 GB RAM and Intel UHD 620, so local inference is CPU-only (slow).
 To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run dev`. Never use `VITE_` for secrets.
 
 ## State as of the last session

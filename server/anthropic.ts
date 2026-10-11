@@ -40,7 +40,7 @@ export function createAnthropicCaller(apiKey: string): CreateMessage {
   return (params, options) => client.beta.messages.create(params, options);
 }
 
-const SYSTEM_PROMPT = `You are a senior photo editor and colorist. You describe the visual style ("look") of a reference photograph so that a separate, deterministic program can build an editable preset from your description combined with its own pixel measurements.
+export const SYSTEM_PROMPT = `You are a senior photo editor and colorist. You describe the visual style ("look") of a reference photograph so that a separate, deterministic program can build an editable preset from your description combined with its own pixel measurements.
 
 Rules:
 - Describe only what is visible in the image. Do not guess the camera, the software, or the original editing settings, and do not claim the look can be reproduced exactly.
@@ -50,15 +50,10 @@ Rules:
 - The measured statistics are computed from the full image and are reliable for overall brightness and contrast; use your eyes for everything they cannot capture.
 - Keep styleSummary to one or two plain sentences a photographer would write. Keep notes short.`;
 
-export async function interpretStyle(
-  create: CreateMessage,
-  model: string,
-  request: AnalyzeRequest,
-  signal: AbortSignal,
-  timeoutMs: number,
-): Promise<StyleInterpretation> {
+/** The measured statistics as one line of text for the vision model. */
+export function measuredPrompt(request: AnalyzeRequest): string {
   const m = request.measured;
-  const measuredText = [
+  return [
     `mean luminance ${m.meanLuminance.toFixed(3)} (0 black, 1 white)`,
     `contrast (luminance spread) ${m.contrast.toFixed(3)}`,
     `black floor ${m.blackFloor.toFixed(3)}, white ceiling ${m.whiteCeiling.toFixed(3)}`,
@@ -66,6 +61,16 @@ export async function interpretStyle(
     `warmth ${m.warmth.toFixed(3)} (negative cool, positive warm)`,
     `dominant colors ${m.dominantColors.join(', ')}`,
   ].join('; ');
+}
+
+export async function interpretStyle(
+  create: CreateMessage,
+  model: string,
+  request: AnalyzeRequest,
+  signal: AbortSignal,
+  timeoutMs: number,
+): Promise<StyleInterpretation> {
+  const measuredText = measuredPrompt(request);
 
   const params: MessageCreateParamsNonStreaming = {
     model,

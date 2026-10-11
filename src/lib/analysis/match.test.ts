@@ -258,5 +258,5 @@ describe('evaluation thresholds (generated scenes, old vs new)', () => {
     expect(sum.neu.chroma).toBeLessThan(sum.old.chroma * 0.7);
     expect(sum.neu.band).toBeLessThanOrEqual(sum.old.band);
     expect(sum.neu.drift).toBeLessThanOrEqual(sum.old.drift + 1);
-  });
+  }, 120_000); // ~49 matches with closed-loop renders: seconds on a busy machine
 });

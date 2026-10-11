@@ -179,8 +179,14 @@ export const HealthResponseSchema = z.strictObject({
   ok: z.literal(true),
   ai: z.strictObject({
     configured: z.boolean(),
-    provider: z.literal('anthropic'),
+    provider: z.enum(['anthropic', 'ollama']),
     model: z.string(),
+    /** True when the model runs on this computer (the reference never leaves the device). */
+    local: z.boolean(),
+    /** Longest image side to send; smaller for slow local models. */
+    maxImageSide: z.number().int().min(256).max(2048),
+    /** How long the browser should wait for an answer. */
+    timeoutMs: z.number().int().positive(),
   }),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;

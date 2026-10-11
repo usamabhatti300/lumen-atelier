@@ -398,7 +398,9 @@ function AnalysisPane() {
           stage={stages.interpret}
           detail={
             health?.configured
-              ? consent
+              ? health.local
+                ? `A vision model running on this computer (${health.model}) describes the look. The reference never leaves the device; on a laptop CPU this can take a minute or two.`
+                : consent
                 ? `A vision model (${health.model}) describes the look. A downscaled copy of the reference is sent via this app's server.`
                 : 'Optional. Asks before sending the reference to the AI provider.'
               : health && !health.reachable

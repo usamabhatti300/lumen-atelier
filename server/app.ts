@@ -15,8 +15,11 @@ import {
   type ApiError,
   type ApiErrorCode,
   type HealthResponse,
+  type AnalyzeRequest,
+  type StyleInterpretation,
 } from '../shared/ai-schema.ts';
 import { AnalysisError, interpretStyle, type CreateMessage } from './anthropic.ts';
+import type { LocalInterpreter } from './ollama.ts';
 import type { ServerConfig } from './config.ts';
 import { RateLimiter } from './rateLimit.ts';
 
@@ -24,6 +27,8 @@ export interface AppDeps {
   config: ServerConfig;
   /** Null when no API key is configured. */
   createMessage: CreateMessage | null;
+  /** Local vision model (Ollama), used when no Anthropic key is configured. */
+  local?: LocalInterpreter | null;
   /** Directory of the built frontend to serve, or null in development. */
   staticDir: string | null;
   /** Where on-device model files live (public/models or dist/models), for the install-state endpoint. */
@@ -81,13 +86,12 @@ export function createApp(deps: AppDeps) {
 
     try {
       if (url.pathname === '/api/health' && req.method === 'GET') {
+        const ai = await activeProvider(deps);
         const body: HealthResponse = {
           ok: true,
-          ai: {
-            configured: deps.createMessage !== null,
-            provider: 'anthropic',
-            model: deps.config.model,
-          },
+          ai: ai
+            ? { configured: true, provider: ai.provider, model: ai.model, local: ai.provider === 'ollama', maxImageSide: ai.maxImageSide, timeoutMs: ai.timeoutMs }
+            : { configured: false, provider: 'anthropic', model: deps.config.model, local: false, maxImageSide: 1024, timeoutMs: deps.config.requestTimeoutMs + 20_000 },
         };
         return sendJson(res, 200, body);
       }
@@ -122,18 +126,53 @@ export function createApp(deps: AppDeps) {
   };
 }
 
+interface ActiveProvider {
+  provider: 'anthropic' | 'ollama';
+  model: string;
+  maxImageSide: number;
+  timeoutMs: number;
+  interpret(request: AnalyzeRequest, signal: AbortSignal): Promise<StyleInterpretation>;
+}
+
+/** Claude when a key is configured; otherwise the local model if Ollama is running with it. */
+async function activeProvider(deps: AppDeps): Promise<ActiveProvider | null> {
+  const { config } = deps;
+  if (deps.createMessage && config.aiProvider !== 'ollama' && config.aiProvider !== 'none') {
+    const create = deps.createMessage;
+    return {
+      provider: 'anthropic',
+      model: config.model,
+      maxImageSide: 1024,
+      timeoutMs: config.requestTimeoutMs + 20_000,
+      interpret: (request, signal) => interpretStyle(create, config.model, request, signal, config.requestTimeoutMs),
+    };
+  }
+  const local = deps.local;
+  if (local && config.aiProvider !== 'anthropic' && config.aiProvider !== 'none' && (await local.available())) {
+    return {
+      provider: 'ollama',
+      model: local.model,
+      maxImageSide: 640,
+      timeoutMs: config.localTimeoutMs + 20_000,
+      interpret: (request, signal) => local.interpret(request, signal, config.localTimeoutMs),
+    };
+  }
+  return null;
+}
+
 async function handleAnalyze(
   req: IncomingMessage,
   res: ServerResponse,
   deps: AppDeps,
   limiter: RateLimiter,
 ): Promise<void> {
-  if (!deps.createMessage) {
+  const ai = await activeProvider(deps);
+  if (!ai) {
     return sendError(
       res,
       503,
       'not_configured',
-      'AI interpretation is not configured on this server (ANTHROPIC_API_KEY is not set).',
+      'AI interpretation is not configured on this server (no ANTHROPIC_API_KEY, and no local Ollama model is running).',
       false,
     );
   }
@@ -168,14 +207,8 @@ async function handleAnalyze(
   };
   res.on('close', onClose);
   try {
-    const interpretation = await interpretStyle(
-      deps.createMessage,
-      deps.config.model,
-      parsed.data,
-      controller.signal,
-      deps.config.requestTimeoutMs,
-    );
-    const body: AnalyzeResponse = { interpretation, model: deps.config.model };
+    const interpretation = await ai.interpret(parsed.data, controller.signal);
+    const body: AnalyzeResponse = { interpretation, model: ai.model };
     return sendJson(res, 200, body);
   } finally {
     res.off('close', onClose);

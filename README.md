@@ -22,6 +22,14 @@ Open the printed URL. If port 5173 is busy, Vite picks the next free one.
 
 ### Optional: AI style interpretation
 
+**Free and private (recommended):** install [Ollama](https://ollama.com) and run `ollama pull qwen3-vl:4b`
+(3.3 GB, Apache-2.0). While Ollama is running and no `ANTHROPIC_API_KEY` is set, the server uses this local
+vision model automatically; the reference image only goes to Ollama on this computer (`OLLAMA_URL` must be a
+loopback address). On a laptop CPU an analysis takes about a minute or two. Settings: `OLLAMA_MODEL`,
+`OLLAMA_URL`, and `AI_PROVIDER=auto|anthropic|ollama|none`.
+
+**Claude (cloud):**
+
 Reference matching works without any key, using pixel measurements only. To add a vision model's
 interpretation, create a `.env` file in the project root (never commit it):
 

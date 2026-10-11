@@ -188,15 +188,15 @@ export async function runAnalysis(opts: { useAi: boolean }) {
   if (!health.reachable) {
     setStage('interpret', { state: 'skipped', note: 'App server unreachable. Using measurements only.' });
   } else if (!health.configured) {
-    setStage('interpret', { state: 'skipped', note: 'AI is not configured on the server (no API key). Using measurements only.' });
+    setStage('interpret', { state: 'skipped', note: 'No AI model is available (no API key, and the local model is not running). Using measurements only.' });
   } else if (!opts.useAi) {
     setStage('interpret', { state: 'skipped', note: 'Not sent to AI (your choice). Using measurements only.' });
   } else {
     setStage('interpret', { state: 'running' });
     try {
-      const image = await encodeForAi(working.bitmap);
+      const image = await encodeForAi(working.bitmap, health.maxImageSide);
       const measured = MeasuredSummarySchema.parse(measuredSummary(stats));
-      const res = await interpretWithAi(image, measured, signal);
+      const res = await interpretWithAi(image, measured, signal, health.timeoutMs);
       interpretation = res.interpretation;
       model = res.model;
       setStage('interpret', { state: 'done' });
@@ -223,6 +223,11 @@ export async function runAnalysis(opts: { useAi: boolean }) {
 export function startAnalysis() {
   const consent = useSettings.getState().aiConsent;
   const health = useReference.getState().aiHealth;
+  // A local model keeps the reference on this computer, so no consent is needed.
+  if (health?.local) {
+    void runAnalysis({ useAi: true });
+    return;
+  }
   if (!consent && health?.configured) {
     useReference.setState({ needsConsent: true });
     return;

@@ -130,6 +130,10 @@ export interface AiHealth {
   reachable: boolean;
   configured: boolean;
   model: string | null;
+  /** The model runs on this computer (local Ollama): the reference never leaves the device. */
+  local: boolean;
+  maxImageSide: number;
+  timeoutMs: number;
 }
 
 let healthCache: { at: number; value: AiHealth } | null = null;
@@ -140,7 +144,9 @@ export async function getAiHealth(force = false): Promise<AiHealth> {
     try {
       const res = await fetch('/api/health', { signal: AbortSignal.timeout(10_000) });
       const parsed = HealthResponseSchema.safeParse(await res.json());
-      return parsed.success ? { reachable: true, configured: parsed.data.ai.configured, model: parsed.data.ai.model } : null;
+      if (!parsed.success) return null;
+      const { configured, model, local, maxImageSide, timeoutMs } = parsed.data.ai;
+      return { reachable: true, configured, model, local, maxImageSide, timeoutMs };
     } catch {
       return null;
     }
@@ -152,12 +158,12 @@ export async function getAiHealth(force = false): Promise<AiHealth> {
     return value;
   }
   // Failures are not cached, so the next analysis checks again.
-  return { reachable: false, configured: false, model: null };
+  return { reachable: false, configured: false, model: null, local: false, maxImageSide: 1024, timeoutMs: 110_000 };
 }
 
-/** Downscaled JPEG of the reference for the vision model (max 1024 px long edge). */
-export async function encodeForAi(bitmap: ImageBitmap): Promise<{ mediaType: 'image/jpeg'; data: string }> {
-  const k = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+/** Downscaled JPEG of the reference for the vision model (long edge at most `maxSide`). */
+export async function encodeForAi(bitmap: ImageBitmap, maxSide = 1024): Promise<{ mediaType: 'image/jpeg'; data: string }> {
+  const k = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const c = createCanvas(Math.max(1, Math.round(bitmap.width * k)), Math.max(1, Math.round(bitmap.height * k)));
   const ctx = c.getContext('2d') as CanvasRenderingContext2D;
   ctx.imageSmoothingQuality = 'high';
@@ -173,6 +179,7 @@ export async function interpretWithAi(
   image: { mediaType: 'image/jpeg'; data: string },
   measured: MeasuredSummary,
   signal: AbortSignal,
+  timeoutMs = 110_000,
 ): Promise<{ interpretation: StyleInterpretation; model: string }> {
   let res: Response;
   try {
@@ -180,7 +187,7 @@ export async function interpretWithAi(
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ image, measured }),
-      signal: AbortSignal.any([signal, AbortSignal.timeout(110_000)]),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]),
     });
   } catch (e) {
     if (signal.aborted) throw new AiError('cancelled', 'Cancelled.', true);
