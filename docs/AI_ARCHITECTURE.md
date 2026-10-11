@@ -11,7 +11,9 @@ reference image ──► [Worker] deterministic statistics ──────�
                          deterministic mapping (src/lib/analysis/mapping.ts) ──► editable preset
                                                                                │  (PartialAdjustments,
                                                                                │   clamped + validated)
-target stats ─► optional adaptation (exposure / cast) ─► apply with intensity ─► compare result ─► capped suggestions
+target pixels ─► [Worker] target-aware matching (src/lib/analysis/match.ts) ─► matched sliders (default)
+                     relative transfer ─► render ↔ re-measure loop ─► apply with intensity
+target stats ─► optional adaptation (exposure / cast) ─► generic look ─► compare result ─► capped suggestions
 ```
 
 ## What the model does and does not do
@@ -54,7 +56,46 @@ Every rule produces an explanation shown under "How the preset was built", tagge
 *interpreted* or both, with weak estimates marked. Confidence drops for screenshots, multiple
 photos, illustrations, low resolution, mixed lighting and when AI is unavailable.
 
-## Target adaptation and comparison (`src/lib/analysis/adapt.ts`)
+## Target-aware matching (`src/lib/analysis/match.ts`, constants `MATCH`)
+
+The generic look describes the reference's departure from a canonical neutral photo, so it ignores the
+photo it lands on (a vivid target stayed vivid; a cool cast turned brown leaves mauve). "Apply to your
+photo" therefore defaults to a **matched** result: ordinary slider values computed for this photo by
+comparing the reference's features with the target's own. Everything is measured and deterministic; the
+AI interpretation is not used here.
+
+**Features** (`features.ts`, schema `src/lib/schema/matchFeatures.ts`): 11 perceptual-luminance quantiles,
+mean OKLab L, chroma mean/median/p90, share of coloured pixels (C ≥ 0.03), cast of colourless pixels
+(C < 0.035), near-neutral (C < 0.06) tints of shadows/midtones/highlights, and 24 OKLCh hue bins (share,
+mean chroma, mean lightness, circular-mean hue). About 1–2 KB; stored in reference presets.
+
+| Setting | Rule |
+| --- | --- |
+| Tone goals | Target distribution re-centred on a goal median (keeps `keepExposure` = 50% of the target's own brightness difference; median moves at most 0.2) with its lower/upper spreads scaled to the reference's (×0.45…1.4); then pulled toward the reference's own quantiles, 75% at p1/p99 (black point, fade, roll-off), 50% at p5/p95, 25% in the mid-tones, at most 0.15 per quantile. "Match the reference's brightness fully" sets the kept share to 0. |
+| Tone sliders | Blacks/whites/shadows/highlights/contrast/brightness fitted to the goals (Levenberg–Marquardt, small pull to 0). They act on luminance only, so they do not shift hues. Blacks may only darken and contrast ≥ −35, brightness ≤ +50: lifting near-black pixels multiplicatively turns their noise into saturated colour. |
+| Tone curve | Master curve through the post-slider quantiles (identity where the sliders already fit) plus black point / white point extrapolated from p1/p99. Local slope 0.35…2.2, lightly smoothed. Refined by the loop. |
+| White balance | Removes 70% of the target's colourless-pixel cast and applies 60% of the reference's, each scaled by its support (full from 15% of pixels). A reference whose pixels are almost all near-neutral (support > 60…98%) is a tinted scene, not a lighting cast: its cast is handled by zone grades instead. Capped at ±35 temperature, ±12 tint. |
+| Bands | Every HSL band holding ≥ 2.5% of the target's coloured pixels is planned. Its counterpart is the reference's hue bins weighted by a Gaussian on hue distance (σ 38°, ≤ 60°; skin-like red/orange σ 22°, ≤ 40°). Correspondence mass ≥ 0.12 → the band follows the reference (hue move ≤ 30°, ≤ 8° for skin-like hues; chroma ×0.12…1.6, skin ×0.5…1.3; lightness relative to the image mean at 50% weight). Mass ≤ 0.03 → **protected**; in between, blended. |
+| Protection | Protected bands keep their original hue (the loop counter-rotates any drift caused by WB, grades or curve, up to ±24°) and get only a softened global chroma change: ratio^0.6 within 0.4…1.5 (skin-like ≥ 0.6). Their pixels are excluded from zone-tint measurement. |
+| Saturation | Global saturation carries the share-weighted geometric mean of the band chroma changes (or the global chroma ratio when bands cover < 40% of coloured pixels); band sliders hold each colour's own difference. |
+| Zone grades | Shadow/midtone/highlight wheels move the target's originally neutral pixels to the reference's near-neutral tints. At most 0.04 OKLab (wheel ≈ 36), and with protected colours present at most 45% of their goal chroma (≥ 0.012), so a tint cannot overpower them. |
+| Closed loop | The target (≤ 24k pixels of a ≤ 360 px copy) is rendered with the candidate sliders by the CPU reference pipeline (`pixel.ts`, same maths as the shaders; spatial effects excluded), re-measured with the same features, and each group is corrected in proportion to its own error (gain 0.7: curve anchors by quantile error, band hue/chroma/lightness by tracked pixels of that band, zone offsets by tint error). Up to 8 passes; stops when the mismatch score stops improving by 1% twice. The best pass is kept, so refinement never ends worse than the closed-form estimate. Progress is reported as a pass count. |
+| Kept from the generic look | Texture (presence) and effects (grain, vignette). |
+
+**Limits and warnings.** Night vs day mismatch, capped brightness moves, protected colours that still drift
+more than 12°, tone residuals that stay large, and bands that hit a slider limit are reported as warnings;
+protected colours and colour-poor references are reported as notes. A black-and-white reference converts to
+monochrome and matches tones only; a black-and-white target can only receive tone and tints.
+
+**Presets.** "Save as preset" still stores the reusable generic look, now with the reference's compact
+features in `reference.features` (optional, Zod-validated; no format version change). Applying such a preset
+shows **Match to this photo** in the applied-preset bar, which runs the same matching against the current photo.
+
+**Evaluation.** `src/lib/analysis/match.test.ts` holds thresholds on generated scenes;
+`MATCH_EVAL=1 MATCH_EVAL_OUT=<dir> npx vitest run src/lib/analysis/match.eval.test.ts` runs the old-vs-new
+comparison on real photos and writes contact sheets (see `docs/steps/REFERENCE_MATCHING.md`).
+
+## Target adaptation and comparison (`src/lib/analysis/adapt.ts`, generic look)
 
 - **Neutralise cast** (default on): counters 60% of the target's own neutral cast, capped at ±30
   temperature / ±20 tint, because strong "casts" are often scene colours.
@@ -64,7 +105,9 @@ photos, illustrations, low resolution, mixed lighting and when AI is unavailable
   (exposure, contrast, saturation, shadow tint) close at most half the gap, are capped, and are
   skipped when the difference is a scene property (more than 2 stops).
 - The saved preset contains only the transferable look at the chosen intensity, not the
-  per-photo adaptation.
+  per-photo adaptation or the matched settings (plus the reference's features for later matching).
+- These adaptation options and suggestions apply to the **Generic look** mode; the matched mode does its
+  own comparison in the closed loop.
 
 ## Privacy and security
 

@@ -7,6 +7,8 @@ import { SRGB8_TO_LINEAR, rgbToHex } from '../color/srgb';
 import { linearSrgbToOklab, oklabToLinearSrgb } from '../color/oklab';
 import { linearToSrgb } from '../color/srgb';
 import { HSL_BANDS, HSL_BAND_HUES, type HslBandName } from '../schema/adjustments';
+import type { MatchFeatures } from '../schema/matchFeatures';
+import { featuresFromImage } from './features';
 
 export interface PixelImage {
   width: number;
@@ -78,6 +80,8 @@ export interface ImageStats {
   };
   /** Suggested crop that trims uniform borders (UI bars, letterboxing), normalized. */
   suggestedCrop: { x: number; y: number; w: number; h: number } | null;
+  /** Compact features for target-aware matching (stored in reference presets). */
+  features: MatchFeatures;
 }
 
 const encode = (y: number) => linearToSrgb(Math.max(0, Math.min(1, y)));
@@ -270,6 +274,7 @@ export function computeStats(img: PixelImage, detail?: PixelImage): ImageStats {
       overexposed: hi / n > 0.2 || percentiles.p50 > 0.88,
     },
     suggestedCrop: borders.crop,
+    features: featuresFromImage(img),
   };
 }
 

@@ -23,7 +23,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
-import { Indeterminate, Toggle } from '@/components/ui/misc';
+import { Indeterminate, Segmented, Toggle } from '@/components/ui/misc';
 import { Slider } from '@/components/ui/Slider';
 import { ZoneScale } from '@/components/ZoneScale';
 import { useEditor } from '@/state/editorStore';
@@ -31,7 +31,8 @@ import { useEngine } from '@/engine/engineStore';
 import { engine } from '@/engine/controller';
 import { usePresets } from '@/state/presetStore';
 import { useSettings } from '@/state/settingsStore';
-import { samplesFor, statsInWorker } from '@/lib/analysis/client';
+import { matchInWorker, matchSampleFor, samplesFor, statsInWorker } from '@/lib/analysis/client';
+import { MATCH, type MatchResult } from '@/lib/analysis/match';
 import { adaptToTarget, suggestRefinements, type Adaptation, type Suggestion } from '@/lib/analysis/adapt';
 import type { ImageStats } from '@/lib/analysis/stats';
 import { blendPreset } from '@/lib/presets/blend';
@@ -492,6 +493,8 @@ const SUGGESTION_PATHS: Record<string, string[]> = {
   'shadow-tint': ['grading.shadows.hue', 'grading.shadows.saturation'],
 };
 
+type ApplyMode = 'matched' | 'generic';
+
 function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportTarget: () => void }) {
   const result = useReference((s) => s.result)!;
   const refStats = useReference((s) => s.stats)!;
@@ -511,14 +514,18 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
   const frame = useEngine((s) => s.frame);
   const [targetStatsFor, setTargetStatsFor] = useState<{ key: string; stats: ImageStats } | null>(null);
   const [opts, setOpts] = useState({ matchBrightness: false, neutralizeCast: true });
+  const [mode, setMode] = useState<ApplyMode>('matched');
+  const [matchFor, setMatchFor] = useState<{ key: string; match: MatchResult } | null>(null);
+  const [matchState, setMatchState] = useState<{ key: string; pass: number; max: number; error?: string } | null>(null);
   const [suggestionState, setSuggestions] = useState<Suggestion[]>([]);
   const [name, setName] = useState(() => `Reference look ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`);
   const [saved, setSaved] = useState<string | null>(null);
+  const [showHow, setShowHow] = useState(false);
   const presetId = useMemo(() => `ref:${newId()}`, []);
   const canvas = useRef<HTMLCanvasElement>(null);
   const isApplied = applied?.id === presetId;
 
-  // Statistics of the target's unedited preview (for adaptation).
+  // Statistics of the target's unedited preview (for the generic look's adaptation).
   const targetKey = `${activePhotoId}:${previewSize?.width}x${previewSize?.height}`;
   useEffect(() => {
     const bmp = engine.getPreviewBitmap();
@@ -530,25 +537,59 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
   }, [activePhotoId, targetKey]);
   const targetStats = targetStatsFor?.key === targetKey ? targetStatsFor.stats : null;
 
-  const suggestions = isApplied ? suggestionState : [];
+  // Target-aware match (closed loop in the worker), recomputed when the photo, the reference or the
+  // brightness option changes.
+  const keepExposure = opts.matchBrightness ? 0 : MATCH.keepExposure;
+  const matchKey = `${targetKey}:${keepExposure}:${refStats.width}x${refStats.height}:${result.description}`;
+  useEffect(() => {
+    const bmp = engine.getPreviewBitmap();
+    if (!bmp || !activePhotoId) return;
+    const controller = new AbortController();
+    matchInWorker(refStats.features, matchSampleFor(bmp), result.adjustments, {
+      keepExposure,
+      signal: controller.signal,
+      onProgress: (pass, max) => setMatchState({ key: matchKey, pass, max }),
+    })
+      .then((match) => {
+        setMatchFor({ key: matchKey, match });
+        setMatchState(null);
+      })
+      .catch((e: unknown) => {
+        if (controller.signal.aborted) return;
+        setMatchState({ key: matchKey, pass: 0, max: MATCH.iterations, error: e instanceof Error ? e.message : 'Matching failed.' });
+      });
+    return () => controller.abort();
+  }, [activePhotoId, matchKey, keepExposure, refStats, result]);
+  const match = matchFor?.key === matchKey ? matchFor.match : null;
+  const matchError = matchState?.key === matchKey ? matchState.error : undefined;
+  const matching = !match && !matchError && activePhotoId ? { pass: matchState?.key === matchKey ? matchState.pass : 0, max: MATCH.iterations } : null;
+
+  const suggestions = isApplied && mode === 'generic' ? suggestionState : [];
   const adaptation = useMemo(() => (targetStats ? adaptToTarget(refStats, targetStats, opts) : null), [refStats, targetStats, opts]);
+  // Matched mode falls back to the generic look only if matching failed.
+  const effectiveMode: ApplyMode = mode === 'matched' && (match || !matchError) ? 'matched' : 'generic';
+  const ready = effectiveMode === 'matched' ? !!match : !!adaptation;
 
   const apply = (amount = applied?.id === presetId ? applied.amount : 100) => {
-    if (!adaptation) return;
-    applyPreset({ id: presetId, name: 'Reference look', adjustments: withExtras(result.adjustments, adaptation.extras) }, amount);
+    if (effectiveMode === 'matched') {
+      if (!match) return;
+      applyPreset({ id: presetId, name: 'Reference look (matched)', adjustments: match.adjustments }, amount);
+    } else {
+      if (!adaptation) return;
+      applyPreset({ id: presetId, name: 'Reference look', adjustments: withExtras(result.adjustments, adaptation.extras) }, amount);
+    }
   };
 
-  // Apply the look to the photo as soon as it has been measured (once per analysis),
-  // and re-apply when adaptation options change.
+  // Apply the look as soon as it is ready (once per analysis), and re-apply when the mode or options change.
   const autoApplied = useRef(false);
   useEffect(() => {
-    if (!adaptation) return;
+    if (!ready) return;
     if (!autoApplied.current) {
       autoApplied.current = true;
       apply(100);
     } else if (isApplied) apply();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adaptation]);
+  }, [ready, effectiveMode, match, adaptation]);
 
   // Live preview of the real render.
   useEffect(() => {
@@ -561,9 +602,9 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
     c.getContext('2d')?.putImageData(img, 0, 0);
   }, [frame, activePhotoId]);
 
-  // Compare the result with the reference (debounced).
+  // Generic look: compare the result with the reference (debounced). The matched look already did this in its loop.
   useEffect(() => {
-    if (!isApplied) return;
+    if (!isApplied || mode !== 'generic') return;
     const t = window.setTimeout(() => {
       const img = engine.readRendered(600);
       if (!img) return;
@@ -572,7 +613,7 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
         .catch(() => undefined);
     }, 700);
     return () => window.clearTimeout(t);
-  }, [frame, isApplied, refStats]);
+  }, [frame, isApplied, refStats, mode]);
 
   const save = async () => {
     const amount = isApplied ? applied!.amount : 100;
@@ -592,13 +633,16 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
         aiInterpretation: result.descriptionSource === 'ai',
         model: aiModel ?? undefined,
         thumbnail: thumb,
+        features: refStats.features,
       },
     });
     setSaved(preset.name);
-    showToast(`Saved “${preset.name}” to your presets. Apply it to any photo from the Presets panel.`, 'success');
+    showToast(`Saved “${preset.name}” to your presets. Apply it to any photo from the Presets panel, then use “Match to this photo”.`, 'success');
   };
 
   const target = photos.find((p) => p.id === activePhotoId);
+  const warnings = effectiveMode === 'matched' && match ? match.warnings : (adaptation?.mismatch ?? []);
+  const notes = effectiveMode === 'matched' && match ? match.notes : (adaptation?.notes ?? []);
 
   return (
     <motion.section
@@ -609,9 +653,23 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
       className="border-t border-line-soft p-4 sm:p-6"
       aria-labelledby="apply-heading"
     >
-      <h3 id="apply-heading" className="text-[11px] font-semibold tracking-[0.14em] text-ivory-dim uppercase">
-        Apply to your photo
-      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id="apply-heading" className="text-[11px] font-semibold tracking-[0.14em] text-ivory-dim uppercase">
+          Apply to your photo
+        </h3>
+        {target && (
+          <Segmented
+            label="Apply mode"
+            size="xs"
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'matched', label: 'Matched to this photo', title: 'Compares this photo with the reference and sets the sliders to close the gap' },
+              { value: 'generic', label: 'Generic look', title: 'The reusable look as measured from the reference, independent of this photo' },
+            ]}
+          />
+        )}
+      </div>
       {!target ? (
         <div className="mt-3 rounded-sm border border-dashed border-line p-4 text-sm text-mute">
           Add the photo you want to apply this look to.
@@ -639,11 +697,24 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
           </div>
           <p className="mt-1.5 truncate text-[11px] text-faint">
             Target: {target.name}
-            {isApplied ? ' · look applied' : adaptation ? '' : ' · measuring photo…'}
+            {isApplied ? ` · look applied${applied?.name.includes('matched') ? ' (matched)' : ''}` : ready ? '' : ' · measuring photo…'}
           </p>
+          {effectiveMode === 'matched' && matching && (
+            <div className="mt-2" data-testid="match-progress">
+              <p className="text-[11px] text-mute">
+                {matching.pass === 0 ? 'Matching this photo to the reference…' : `Matching this photo to the reference · refinement pass ${matching.pass} of up to ${matching.max}`}
+              </p>
+              <Indeterminate className="mt-1.5" />
+            </div>
+          )}
+          {mode === 'matched' && matchError && (
+            <p className="mt-2 flex gap-2 text-xs text-ivory-dim">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0 text-safelight" /> Matching failed ({matchError}); showing the generic look instead.
+            </p>
+          )}
           {!isApplied ? (
-            <Button variant="primary" className="mt-3 w-full" icon={<Wand2 size={15} />} disabled={!adaptation} onClick={() => apply(100)} data-testid="apply-reference">
-              {adaptation ? 'Re-apply look to photo' : 'Measuring photo…'}
+            <Button variant="primary" className="mt-3 w-full" icon={<Wand2 size={15} />} disabled={!ready} onClick={() => apply(100)} data-testid="apply-reference">
+              {ready ? 'Re-apply look to photo' : 'Measuring photo…'}
             </Button>
           ) : (
             <div className="mt-3 rounded-sm border border-line bg-ink-900 px-3 py-2">
@@ -659,43 +730,42 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
             </div>
           )}
 
-          {(
-            <div className="mt-3">
-              <label htmlFor="ref-preset-name" className="mb-1 block text-xs text-mute">
-                Save as preset
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="ref-preset-name"
-                  value={name}
-                  maxLength={80}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-9 min-w-0 flex-1 rounded-sm border border-line bg-ink-950 px-3 text-sm text-ivory outline-none focus:border-amber/60"
-                />
-                <Button variant="secondary" icon={<Save size={14} />} disabled={!name.trim()} onClick={() => void save()} data-testid="save-reference-preset">
-                  Save
-                </Button>
-              </div>
-              {saved && <p className="mt-1.5 text-[11px] text-verdigris">Saved as “{saved}”.</p>}
-              <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
-                Saves the generated look at the current intensity. Photo-specific corrections (cast, brightness) are not
-                included. To save hand-refined settings, use “Save look” in the Presets panel.
-              </p>
-              <Button variant="primary" className="mt-3 w-full" icon={<SlidersHorizontal size={15} />} onClick={onClose}>
-                Refine in the editor
+          <div className="mt-3">
+            <label htmlFor="ref-preset-name" className="mb-1 block text-xs text-mute">
+              Save as preset
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="ref-preset-name"
+                value={name}
+                maxLength={80}
+                onChange={(e) => setName(e.target.value)}
+                className="h-9 min-w-0 flex-1 rounded-sm border border-line bg-ink-950 px-3 text-sm text-ivory outline-none focus:border-amber/60"
+              />
+              <Button variant="secondary" icon={<Save size={14} />} disabled={!name.trim()} onClick={() => void save()} data-testid="save-reference-preset">
+                Save
               </Button>
             </div>
-          )}
+            {saved && <p className="mt-1.5 text-[11px] text-verdigris">Saved as “{saved}”.</p>}
+            <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+              Saves the reusable look at the current intensity, plus the reference's colour statistics so it can be matched
+              to any other photo later (“Match to this photo” in the Presets panel). This photo's matched settings are not
+              saved; to keep hand-refined settings, use “Save look” in the Presets panel.
+            </p>
+            <Button variant="primary" className="mt-3 w-full" icon={<SlidersHorizontal size={15} />} onClick={onClose}>
+              Refine in the editor
+            </Button>
+          </div>
 
-          {adaptation && (adaptation.mismatch.length > 0 || adaptation.notes.length > 0) && (
+          {(warnings.length > 0 || notes.length > 0) && (
             <ul className="mt-3 space-y-1">
-              {adaptation.mismatch.map((m) => (
+              {warnings.map((m) => (
                 <li key={m} className="flex gap-2 text-xs text-ivory-dim">
                   <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber" />
                   {m}
                 </li>
               ))}
-              {adaptation.notes.map((m) => (
+              {notes.map((m) => (
                 <li key={m} className="flex gap-2 text-xs text-mute">
                   <Info size={13} className="mt-0.5 shrink-0 text-faint" />
                   {m}
@@ -704,9 +774,43 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
             </ul>
           )}
 
+          {effectiveMode === 'matched' && match && (
+            <>
+              <button type="button" onClick={() => setShowHow(!showHow)} aria-expanded={showHow} className="mt-3 text-xs text-amber hover:underline">
+                {showHow ? 'Hide' : 'Show'} how it was matched to this photo
+              </button>
+              <AnimatePresence initial={false}>
+                {showHow && (
+                  <motion.ul initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 space-y-2 overflow-hidden">
+                    {match.explanations.map((e, i) => (
+                      <li key={i} className="rounded-xs bg-ink-900 px-3 py-2">
+                        <p className="flex items-center gap-2 text-[11px] font-medium text-ivory-dim">
+                          {e.area}
+                          {e.weak && <span className="text-[10px] text-amber">low confidence</span>}
+                        </p>
+                        <p className="mt-0.5 text-xs leading-relaxed text-mute">{e.text}</p>
+                      </li>
+                    ))}
+                  </motion.ul>
+                )}
+              </AnimatePresence>
+            </>
+          )}
+
           <div className="mt-3 space-y-0.5">
-            <Toggle checked={opts.neutralizeCast} onChange={(v) => setOpts({ ...opts, neutralizeCast: v })} label="Neutralise this photo's colour cast first" description="Keeps the reference's grade consistent when the two photos were lit differently." />
-            <Toggle checked={opts.matchBrightness} onChange={(v) => setOpts({ ...opts, matchBrightness: v })} label="Match the reference's brightness" description="Off by default: brightness usually belongs to the scene, not the style." />
+            {mode === 'generic' && (
+              <Toggle checked={opts.neutralizeCast} onChange={(v) => setOpts({ ...opts, neutralizeCast: v })} label="Neutralise this photo's colour cast first" description="Keeps the reference's grade consistent when the two photos were lit differently." />
+            )}
+            <Toggle
+              checked={opts.matchBrightness}
+              onChange={(v) => setOpts({ ...opts, matchBrightness: v })}
+              label="Match the reference's brightness fully"
+              description={
+                mode === 'matched'
+                  ? `Off by default: the match keeps ${Math.round(MATCH.keepExposure * 100)}% of this photo's own brightness, since part of it belongs to the scene.`
+                  : 'Off by default: brightness usually belongs to the scene, not the style.'
+              }
+            />
           </div>
 
           {isApplied && suggestions.length > 0 && (
@@ -741,7 +845,6 @@ function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportT
               <p className="mt-1.5 text-[10.5px] text-faint">Suggestions close part of the gap and leave the photo's own lighting alone.</p>
             </div>
           )}
-
         </>
       )}
     </motion.section>

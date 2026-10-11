@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Plus, Wand2, X } from 'lucide-react';
+import { Loader2, Plus, Wand2, X } from 'lucide-react';
 import { useState } from 'react';
 import { PresetBrowser, PresetFields } from '@/features/presets/PresetBrowser';
 import { Slider } from '@/components/ui/Slider';
@@ -9,6 +9,8 @@ import { Segmented } from '@/components/ui/misc';
 import { useEditor } from '@/state/editorStore';
 import { usePresets } from '@/state/presetStore';
 import { adjustmentsToPresetValues } from '@/lib/presets/blend';
+import { engine } from '@/engine/controller';
+import { matchInWorker, matchSampleFor } from '@/lib/analysis/client';
 import type { PresetCategoryId } from '@/lib/schema/preset';
 import { PhotosPanel } from './PhotosPanel';
 
@@ -78,6 +80,31 @@ function AppliedPresetBar() {
   const clear = useEditor((s) => s.clearAppliedPreset);
   const begin = useEditor((s) => s.beginGesture);
   const end = useEditor((s) => s.endGesture);
+  const applyPreset = useEditor((s) => s.applyPreset);
+  const showToast = useEditor((s) => s.showToast);
+  const user = usePresets((s) => s.user);
+  const [matching, setMatching] = useState<{ id: string; pass: number } | null>(null);
+  // Reference presets saved with the reference's statistics can be matched to the current photo.
+  const source = applied ? user.find((p) => p.id === applied.id && p.reference?.features) : undefined;
+  const isMatched = !!applied?.name.endsWith(' · matched');
+
+  const matchToPhoto = async () => {
+    const features = source?.reference?.features;
+    const bmp = engine.getPreviewBitmap();
+    if (!source || !features || !bmp) return;
+    setMatching({ id: source.id, pass: 0 });
+    try {
+      const match = await matchInWorker(features, matchSampleFor(bmp), source.adjustments, {
+        onProgress: (pass) => setMatching({ id: source.id, pass }),
+      });
+      applyPreset({ id: source.id, name: `${source.name} · matched`, adjustments: match.adjustments }, applied?.amount ?? 100);
+      showToast(match.warnings[0] ?? `Matched “${source.name}” to this photo (${match.iterations + 1} render passes).`, match.warnings.length ? 'info' : 'success');
+    } catch (e) {
+      showToast(e instanceof Error ? `Matching failed: ${e.message}` : 'Matching failed.', 'error');
+    } finally {
+      setMatching(null);
+    }
+  };
   return (
     <AnimatePresence initial={false}>
       {applied && (
@@ -106,6 +133,25 @@ function AppliedPresetBar() {
               onGestureEnd={end}
               onChange={setAmount}
             />
+            {source && (
+              <button
+                type="button"
+                onClick={() => void matchToPhoto()}
+                disabled={!!matching}
+                title="Compare this photo with the reference the preset came from and set the sliders to match it"
+                className="mb-1 flex items-center gap-1.5 rounded-xs px-1 py-0.5 text-[11px] text-amber hover:bg-amber/10 disabled:text-faint"
+                data-testid="match-preset-to-photo"
+              >
+                {matching ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
+                {matching
+                  ? matching.pass === 0
+                    ? 'Matching…'
+                    : `Matching · pass ${matching.pass}`
+                  : isMatched
+                    ? 'Match again to this photo'
+                    : 'Match to this photo'}
+              </button>
+            )}
             {applied.overrides.length > 0 && (
               <p className="pb-1 text-[10.5px] text-faint">{applied.overrides.length} hand-edited setting{applied.overrides.length === 1 ? '' : 's'} kept when the amount changes.</p>
             )}
