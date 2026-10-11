@@ -124,7 +124,7 @@ export default function SettingsScreen() {
               {!health.configured && (
                 <p className="mt-2">
                   Free and private: install <span className="text-ivory">Ollama</span> and run{' '}
-                  <code className="text-ivory">ollama pull qwen3-vl:4b</code> (3.3 GB, Apache-2.0). The app uses it automatically while Ollama
+                  <code className="text-ivory">ollama pull qwen3-vl:4b-instruct</code> (3.3 GB, Apache-2.0). The app uses it automatically while Ollama
                   is running, and the reference never leaves this computer. Or add <code className="text-ivory">ANTHROPIC_API_KEY=…</code> to a{' '}
                   <code className="text-ivory">.env</code> file and restart the server to use Claude. Without either, presets are built from
                   measurements only.

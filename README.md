@@ -22,7 +22,7 @@ Open the printed URL. If port 5173 is busy, Vite picks the next free one.
 
 ### Optional: AI style interpretation
 
-**Free and private (recommended):** install [Ollama](https://ollama.com) and run `ollama pull qwen3-vl:4b`
+**Free and private (recommended):** install [Ollama](https://ollama.com) and run `ollama pull qwen3-vl:4b-instruct`
 (3.3 GB, Apache-2.0). While Ollama is running and no `ANTHROPIC_API_KEY` is set, the server uses this local
 vision model automatically; the reference image only goes to Ollama on this computer (`OLLAMA_URL` must be a
 loopback address). On a laptop CPU an analysis takes about a minute or two. Settings: `OLLAMA_MODEL`,

@@ -25,7 +25,7 @@ npm run setup:models   # MediaPipe models into public/models (already done on th
 npm run dev            # web app + API. Port 5173 is used by another app on this PC, so Vite picks 5174/5175
 ```
 
-No `ANTHROPIC_API_KEY` is configured. Reference analysis uses the **local Ollama model `qwen3-vl:4b`** (Apache-2.0,
+No `ANTHROPIC_API_KEY` is configured. Reference analysis uses the **local Ollama model `qwen3-vl:4b-instruct`** (Apache-2.0,
 server/ollama.ts, loopback only) when Ollama is running, otherwise measurements only. The owner's laptop is an
 i7-8665U with 16 GB RAM and Intel UHD 620, so local inference is CPU-only (slow).
 To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run dev`. Never use `VITE_` for secrets.
@@ -110,6 +110,11 @@ Step 5 Real-ESRGAN upscale → Step 6 optional BiRefNet). Check which steps are 
 - `vite.config.ts` has `optimizeDeps.include` for the ML packages. Without it Vite discovered them late and
   force-reloaded the page mid-test (broke the critical journey). `exclude` instead made every e2e test
   ~3× slower, so don't switch to it.
+- Local AI (server/ollama.ts) gotchas, all measured on the owner's laptop: use the **-instruct** tag (the default
+  `qwen3-vl:4b` is a thinking model that spends its whole budget on hidden reasoning); do **not** pass a JSON-schema
+  `format` (the grammar made it emit whitespace for 5+ minutes), use the template prompt + Zod instead; stream the
+  response (Node's fetch drops requests with no headers after 300 s). ~1.5–3.5 min per analysis on CPU, so the studio
+  applies the measured look first and refines in the background.
 - Headless Chromium has no WebGPU, so tests cover the WASM path; WebGPU is only exercised on a real browser.
 
 ### Suggested integration architecture

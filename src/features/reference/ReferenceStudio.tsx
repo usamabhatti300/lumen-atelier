@@ -20,7 +20,7 @@ import {
   Wand2,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Indeterminate, Segmented, Toggle } from '@/components/ui/misc';
@@ -42,6 +42,7 @@ import { createCanvas, canvasToBlob } from '@/lib/image/decode';
 import { newId } from '@/lib/storage/db';
 import {
   applyCrop,
+  cancelAiRefinement,
   cancelAnalysis,
   loadReference,
   resetReference,
@@ -337,7 +338,7 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
 // Analysis stages and results
 // ---------------------------------------------------------------------------
 
-function StageRow({ label, stage, detail }: { label: string; stage: Stage; detail: string }) {
+function StageRow({ label, stage, detail, action }: { label: string; stage: Stage; detail: string; action?: ReactNode }) {
   const icon =
     stage.state === 'running' ? (
       <Loader2 size={14} className="animate-spin text-amber" />
@@ -355,7 +356,8 @@ function StageRow({ label, stage, detail }: { label: string; stage: Stage; detai
       <div className="flex items-center gap-2.5">
         {icon}
         <span className={`text-[13px] ${stage.state === 'pending' ? 'text-faint' : 'text-ivory'}`}>{label}</span>
-        <span className="ml-auto text-[11px] text-faint">
+        {action}
+        <span className={`${action ? '' : 'ml-auto '}text-[11px] text-faint`}>
           {stage.state === 'running' ? 'in progress' : stage.state === 'done' ? 'done' : stage.state === 'skipped' ? 'skipped' : stage.state === 'error' ? 'failed' : ''}
         </span>
       </div>
@@ -396,10 +398,17 @@ function AnalysisPane() {
         <StageRow
           label="Style interpretation"
           stage={stages.interpret}
+          action={
+            !running && stages.interpret.state === 'running' ? (
+              <Button size="sm" variant="ghost" className="ml-auto" onClick={cancelAiRefinement}>
+                Cancel
+              </Button>
+            ) : undefined
+          }
           detail={
             health?.configured
               ? health.local
-                ? `A vision model running on this computer (${health.model}) describes the look. The reference never leaves the device; on a laptop CPU this can take a minute or two.`
+                ? `A vision model running on this computer (${health.model}) refines the look in the background. The reference never leaves the device; on a laptop CPU this takes a few minutes.`
                 : consent
                 ? `A vision model (${health.model}) describes the look. A downscaled copy of the reference is sent via this app's server.`
                 : 'Optional. Asks before sending the reference to the AI provider.'

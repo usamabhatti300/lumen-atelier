@@ -1,6 +1,8 @@
 /**
  * State machine for the reference workflow:
  * load -> (crop) -> measure -> interpret (AI, optional) -> build preset.
+ * With a slow local model (Ollama on this computer) the preset is built from
+ * measurements first and the AI refines it in the background (cancellable).
  * Stage states are only marked "done" after the work actually finished.
  */
 import { create } from 'zustand';
@@ -59,6 +61,22 @@ export const useReference = create<RefState>(() => ({
   controller: null,
 }));
 
+/** Background refinement with a local model; aborted whenever the reference or analysis changes. */
+let aiRefinement: AbortController | null = null;
+function stopAiRefinement() {
+  aiRefinement?.abort();
+  aiRefinement = null;
+}
+
+/** Cancels the background AI refinement and keeps the measurements-only look. */
+export function cancelAiRefinement() {
+  if (!aiRefinement) return;
+  stopAiRefinement();
+  useReference.setState((st) => ({
+    stages: { ...st.stages, interpret: { state: 'skipped', note: 'AI refinement cancelled. The look built from measurements is kept.' } },
+  }));
+}
+
 function release(img: RefImage | null) {
   if (!img) return;
   img.bitmap.close();
@@ -79,6 +97,7 @@ async function toRefImage(bitmap: ImageBitmap, name: string): Promise<RefImage> 
 export async function loadReference(blob: Blob, rawName: string) {
   const s = useReference.getState();
   s.controller?.abort();
+  stopAiRefinement();
   const name = safeFileName(rawName, 'reference');
   try {
     const decoded = await decodeImageBlob(blob, name);
@@ -120,6 +139,7 @@ async function quickMeasure() {
 export async function applyCrop(crop: { x: number; y: number; w: number; h: number } | null) {
   const s = useReference.getState();
   if (!s.original) return;
+  stopAiRefinement();
   if (s.working && s.working !== s.original) release(s.working);
   if (!crop || (crop.w > 0.995 && crop.h > 0.995)) {
     useReference.setState({ crop: null, working: s.original, result: null, stats: null, stages: initialStages() });
@@ -158,6 +178,7 @@ export async function runAnalysis(opts: { useAi: boolean }) {
   const s = useReference.getState();
   const working = s.working;
   if (!working || s.running) return;
+  stopAiRefinement();
   const controller = new AbortController();
   const signal = controller.signal;
   const setStage = (key: keyof RefState['stages'], stage: Stage) =>
@@ -191,6 +212,20 @@ export async function runAnalysis(opts: { useAi: boolean }) {
     setStage('interpret', { state: 'skipped', note: 'No AI model is available (no API key, and the local model is not running). Using measurements only.' });
   } else if (!opts.useAi) {
     setStage('interpret', { state: 'skipped', note: 'Not sent to AI (your choice). Using measurements only.' });
+  } else if (health.local) {
+    // Slow on a laptop CPU: build from measurements now, refine in the background.
+    setStage('build', { state: 'running' });
+    try {
+      const result = mapReferenceToPreset(stats, null);
+      setStage('build', { state: 'done', note: 'Built from measurements. The local AI refines it in the background and the look updates when it finishes.' });
+      useReference.setState({ result, aiModel: null, running: false, controller: null });
+    } catch (e) {
+      setStage('build', { state: 'error', note: e instanceof Error ? e.message : 'Could not build a preset.' });
+      useReference.setState({ running: false, controller: null });
+      return;
+    }
+    void refineWithLocalAi(working, stats, health);
+    return;
   } else {
     setStage('interpret', { state: 'running' });
     try {
@@ -220,6 +255,30 @@ export async function runAnalysis(opts: { useAi: boolean }) {
   }
 }
 
+async function refineWithLocalAi(working: RefImage, stats: ImageStats, health: AiHealth) {
+  const controller = new AbortController();
+  aiRefinement = controller;
+  const started = Date.now();
+  const setInterpret = (stage: Stage) => useReference.setState((st) => ({ stages: { ...st.stages, interpret: stage } }));
+  setInterpret({ state: 'running', note: `Refining with ${health.model} on this computer. This can take a few minutes on a laptop; you can keep editing.` });
+  try {
+    const image = await encodeForAi(working.bitmap, health.maxImageSide);
+    const measured = MeasuredSummarySchema.parse(measuredSummary(stats));
+    const res = await interpretWithAi(image, measured, controller.signal, health.timeoutMs);
+    if (controller.signal.aborted || useReference.getState().stats !== stats) return;
+    const result = mapReferenceToPreset(stats, res.interpretation);
+    const secs = Math.round((Date.now() - started) / 1000);
+    setInterpret({ state: 'done', note: `Refined by ${res.model} on this computer in ${secs >= 60 ? `${Math.floor(secs / 60)} min ${secs % 60} s` : `${secs} s`}.` });
+    useReference.setState({ result, aiModel: res.model });
+  } catch (e) {
+    if (controller.signal.aborted) return;
+    const msg = e instanceof AiError ? e.message : 'The local AI request failed.';
+    setInterpret({ state: 'error', note: `${msg} The look built from measurements is kept.` });
+  } finally {
+    if (aiRefinement === controller) aiRefinement = null;
+  }
+}
+
 export function startAnalysis() {
   const consent = useSettings.getState().aiConsent;
   const health = useReference.getState().aiHealth;
@@ -238,6 +297,7 @@ export function startAnalysis() {
 export function resetReference() {
   const s = useReference.getState();
   s.controller?.abort();
+  stopAiRefinement();
   if (s.working !== s.original) release(s.working);
   release(s.original);
   useReference.setState({ original: null, working: null, crop: null, stats: null, result: null, stages: initialStages(), running: false, controller: null, loadError: null });

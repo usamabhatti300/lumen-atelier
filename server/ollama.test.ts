@@ -3,7 +3,7 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createApp } from './app.ts';
 import { loadConfig } from './config.ts';
-import { createOllamaInterpreter, isLoopbackUrl } from './ollama.ts';
+import { createOllamaInterpreter, isLoopbackUrl, readChatContent } from './ollama.ts';
 
 const interpretation = {
   styleSummary: 'Moody forest with muted teal greens and soft fog.',
@@ -47,6 +47,24 @@ function fakeOllama(models: string[], content: string, status = 200) {
 }
 
 describe('local model (Ollama)', () => {
+  it('joins a streamed answer, including lines split across chunks', async () => {
+    const lines = [
+      { message: { content: '{"a":' } },
+      { message: { content: ' 1}' } },
+      { message: { content: '' }, done: true },
+    ].map((l) => JSON.stringify(l) + '\n').join('');
+    const bytes = new TextEncoder().encode(lines);
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        for (let i = 0; i < bytes.length; i += 7) c.enqueue(bytes.slice(i, i + 7));
+        c.close();
+      },
+    });
+    expect(await readChatContent(new Response(stream))).toBe('{"a": 1}');
+    expect(await readChatContent(Response.json({ message: { content: 'x' } }))).toBe('x');
+    await expect(readChatContent(new Response('{"error":"model crashed"}\n'))).rejects.toThrow('model crashed');
+  });
+
   it('only accepts servers on this computer', () => {
     expect(isLoopbackUrl('http://127.0.0.1:11434')).toBe(true);
     expect(isLoopbackUrl('http://localhost:11434')).toBe(true);
@@ -71,11 +89,21 @@ describe('local model (Ollama)', () => {
     const local = createOllamaInterpreter('http://127.0.0.1:11434', 'qwen3-vl:4b', fake.fetchImpl);
     const result = await local.interpret(request, new AbortController().signal, 5_000);
     expect(result.color.greens).toBe('shifted_teal');
-    const chat = fake.chats[0] as { model: string; stream: boolean; format: unknown; messages: { images?: string[] }[] };
+    const chat = fake.chats[0] as { model: string; stream: boolean; format?: unknown; messages: { content: string; images?: string[] }[] };
     expect(chat.model).toBe('qwen3-vl:4b');
-    expect(chat.stream).toBe(false);
-    expect(chat.format).toMatchObject({ type: 'object' });
-    expect(chat.messages[1].images).toEqual([request.image.data]);
+    expect(chat.stream).toBe(true);
+    // No grammar-constrained format (it made Qwen3-VL emit whitespace for minutes); a template instead.
+    expect(chat.format).toBeUndefined();
+    expect(chat.messages).toHaveLength(1);
+    expect(chat.messages[0].images).toEqual([request.image.data]);
+    expect(chat.messages[0].content).toContain('"contrast": "very_low|low|medium|high|very_high"');
+  });
+
+  it('accepts an answer wrapped in a code fence and drops warnings the small model gets wrong', async () => {
+    const answer = '```json\n' + JSON.stringify({ ...interpretation, contentWarnings: ['screenshot_ui', 'not_a_photo', 'monochrome'] }) + '\n```';
+    const local = createOllamaInterpreter('http://127.0.0.1:11434', 'qwen3-vl:4b', fakeOllama(['qwen3-vl:4b'], answer).fetchImpl);
+    const result = await local.interpret(request, new AbortController().signal, 5_000);
+    expect(result.contentWarnings).toEqual(['monochrome']);
   });
 
   it('rejects malformed or invalid model output', async () => {
