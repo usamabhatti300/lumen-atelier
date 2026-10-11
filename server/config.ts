@@ -1,6 +1,8 @@
 /** Server configuration, read once from the environment (never exposed to the browser). */
 export interface ServerConfig {
   port: number;
+  /** Interface to listen on. 127.0.0.1 by default; HOST=0.0.0.0 lets phones on the same network connect. */
+  host: string;
   anthropicApiKey: string | undefined;
   model: string;
   /** 'auto': Claude when ANTHROPIC_API_KEY is set, otherwise a local Ollama model if it is installed. */
@@ -18,6 +20,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const key = env.ANTHROPIC_API_KEY?.trim();
   return {
     port: Number(env.API_PORT ?? env.PORT ?? 8787),
+    host: env.HOST?.trim() || '127.0.0.1',
     anthropicApiKey: key ? key : undefined,
     model: env.ANTHROPIC_MODEL?.trim() || 'claude-opus-5-5',
     aiProvider: parseProvider(env.AI_PROVIDER),

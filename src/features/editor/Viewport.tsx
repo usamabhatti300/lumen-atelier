@@ -14,6 +14,8 @@ import { MaskToolOverlay } from './overlays/MaskToolOverlay';
 import { RemoveToolOverlay } from './overlays/RemoveToolOverlay';
 import { SplitDivider } from './overlays/SplitDivider';
 import { FocusOverlay } from './overlays/FocusOverlay';
+import { TouchModeChip } from './overlays/TouchModeChip';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 
 export interface ViewBox {
   left: number;
@@ -32,6 +34,11 @@ export function Viewport({ onImport }: { onImport: () => void }) {
   const [spaceDown, setSpaceDown] = useState(false);
   const panning = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
+  // Touch gestures: active touch points, the pinch that started from them, and the last tap (double-tap zoom).
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ dist: number; mid: { x: number; y: number }; zoom: number; pan: { x: number; y: number } } | null>(null);
+  const lastTap = useRef<{ t: number; x: number; y: number } | null>(null);
+  const coarse = useMediaQuery('(pointer: coarse)');
   const canvasSize = useEngine((s) => s.canvasSize);
   const loading = useEngine((s) => s.loadingPhoto);
   const error = useEngine((s) => s.photoError);
@@ -122,6 +129,58 @@ export function Viewport({ onImport }: { onImport: () => void }) {
 
   const toolActive = tool !== 'none' && tool !== 'crop' && tool !== 'focus';
   const canPan = !fitted && (tool === 'none' || spaceDown);
+  // Pinch and double-tap only where a finger does not already draw or drag something.
+  const canPinch = !!activePhotoId && !!canvasSize.w && tool === 'none';
+
+  const local = (e: { clientX: number; clientY: number }) => {
+    const rect = container.current!.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+  const pinchFrame = () => {
+    const [a, b] = [...touches.current.values()];
+    return { dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+  };
+  const onTouchDown = (e: React.PointerEvent) => {
+    touches.current.set(e.pointerId, local(e));
+    if (touches.current.size === 2) {
+      // A second finger turns a pan into a pinch.
+      panning.current = null;
+      setIsPanning(false);
+      const f = pinchFrame();
+      pinch.current = { ...f, zoom: currentZoom, pan: fitted ? { x: 0, y: 0 } : pan };
+      lastTap.current = null;
+      return true;
+    }
+    const p = local(e);
+    const prev = lastTap.current;
+    if (prev && e.timeStamp - prev.t < 320 && Math.hypot(p.x - prev.x, p.y - prev.y) < 32) {
+      lastTap.current = null;
+      if (fitted) zoomAt(Math.max(1, currentZoom * 2.5) / currentZoom, p.x, p.y);
+      else setUi({ zoom: 'fit' });
+      return true;
+    }
+    lastTap.current = { t: e.timeStamp, x: p.x, y: p.y };
+    return false;
+  };
+  const onTouchMove = (e: React.PointerEvent) => {
+    if (!touches.current.has(e.pointerId)) return false;
+    touches.current.set(e.pointerId, local(e));
+    const start = pinch.current;
+    if (!start || touches.current.size !== 2) return false;
+    const f = pinchFrame();
+    const next = Math.min(8, Math.max(0.05, (start.zoom * f.dist) / start.dist));
+    const k = next / start.zoom;
+    // Keep the content under the pinch centre fixed, and follow the centre as the fingers move.
+    const ox = start.mid.x - size.w / 2 - start.pan.x;
+    const oy = start.mid.y - size.h / 2 - start.pan.y;
+    setPan({ x: start.pan.x - ox * (k - 1) + f.mid.x - start.mid.x, y: start.pan.y - oy * (k - 1) + f.mid.y - start.mid.y });
+    setUi({ zoom: next });
+    return true;
+  };
+  const onTouchUp = (e: React.PointerEvent) => {
+    touches.current.delete(e.pointerId);
+    if (touches.current.size < 2) pinch.current = null;
+  };
 
   return (
     <div
@@ -134,16 +193,28 @@ export function Viewport({ onImport }: { onImport: () => void }) {
         zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - rect.left, e.clientY - rect.top);
       }}
       onPointerDown={(e) => {
+        if (e.pointerType === 'touch' && canPinch && onTouchDown(e)) return;
         if (!canPan || (e.button !== 0 && e.button !== 1)) return;
         panning.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
         setIsPanning(true);
-        (e.target as Element).setPointerCapture?.(e.pointerId);
+        try {
+          (e.target as Element).setPointerCapture?.(e.pointerId);
+        } catch {
+          // The pointer is already gone (e.g. a very short tap); panning works without capture.
+        }
       }}
       onPointerMove={(e) => {
+        if (e.pointerType === 'touch' && onTouchMove(e)) return;
         if (!panning.current) return;
         setPan({ x: panning.current.px + e.clientX - panning.current.x, y: panning.current.py + e.clientY - panning.current.y });
       }}
-      onPointerUp={() => {
+      onPointerUp={(e) => {
+        onTouchUp(e);
+        panning.current = null;
+        setIsPanning(false);
+      }}
+      onPointerCancel={(e) => {
+        onTouchUp(e);
         panning.current = null;
         setIsPanning(false);
       }}
@@ -182,6 +253,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       {activePhotoId && !loading && !error && toolActive && compare !== 'side' && !spaceDown &&
         (tool === 'remove' ? <RemoveToolOverlay box={box} /> : <MaskToolOverlay box={box} />)}
       {activePhotoId && !loading && !error && tool === 'focus' && compare !== 'side' && !spaceDown && <FocusOverlay box={box} />}
+      {coarse && activePhotoId && !loading && !error && compare !== 'side' && <TouchModeChip />}
 
       {!fitted && activePhotoId && currentZoom > previewToFull * 1.01 && (
         <p className="pointer-events-none absolute bottom-3 left-3 rounded-xs bg-ink-950/80 px-2 py-1 text-[11px] text-mute">

@@ -35,9 +35,18 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
 - All spec stages are implemented; see `PROJECT_STATUS.md` for the checklist and limitations.
 - Tests: 83 Vitest tests pass; 9 Playwright e2e tests (the critical journey passes, ~5 min under
   SwiftShader software GL in headless Chrome). Type-check, lint (0 errors) and production build are clean.
-- Last change the user asked for (done): in the reference studio, the generated look is now
-  **auto-applied** to the target photo when analysis finishes, and **Save as preset / Intensity /
-  Refine** sit directly under the preview (`src/features/reference/ReferenceStudio.tsx`).
+- Last change the user asked for (done 2026-10-11): an **installable PWA with every feature, fully
+  mobile responsive**, so they can use it on their phone. Manifest + icons (`public/`,
+  `scripts/generate-icons.mjs`), service worker (`src/pwa/sw-template.js`, generated into `dist/sw.js` by
+  `scripts/pwa-plugin.ts`, production builds only), runtime in `src/pwa/` (update prompt, Install button +
+  iOS instructions, offline pill, Settings → App & offline with "Save AI models offline", Android share
+  target, file handlers, home-screen shortcuts). Mobile: panels dock under/beside the photo, ⋮ menu for
+  hidden top-bar actions, pinch / double-tap zoom, touch-mode chip replacing Shift/Alt, `coarse:` / `fine:`
+  Tailwind variants, Share / Save to Photos after export. Tests: `npm run test:e2e:pwa`, `e2e/mobile.spec.ts`.
+  **Open:** the phone needs an HTTPS address to install; the user hasn't chosen a host yet (ask before
+  deploying). Not yet tried on a real phone (Chromium Pixel 7 emulation only; iOS Safari untested).
+- Previous change: in the reference studio, the generated look is **auto-applied** to the target photo when
+  analysis finishes (`src/features/reference/ReferenceStudio.tsx`).
 - Git: committed and pushed to `origin` (https://github.com/usamabhatti300/lumen-atelier, `main`); one commit per integration step.
 - **AI integration progress** (`docs/INTEGRATION_GUIDE.md`): **Steps 0–5 done** (2026-10-11): Select object,
   Remove, Lens blur and AI upscale. Steps 2–5 were built in parallel worktrees and merged; details in

@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { Crop, Eraser, Layers, Palette, ScanFace, SlidersHorizontal, Sparkle } from 'lucide-react';
 import { useEditor, type RightTab } from '@/state/editorStore';
+import { selectRightTab } from './rightTabs';
 import { Histogram } from './Histogram';
 import { LightPanel } from './panels/LightPanel';
 import { ColorPanel } from './panels/ColorPanel';
@@ -19,9 +20,6 @@ export const RIGHT_TABS: { id: RightTab; label: string; icon: typeof SlidersHori
   { id: 'remove', label: 'Remove', icon: Eraser },
   { id: 'geometry', label: 'Crop', icon: Crop },
 ];
-
-/** Tabs whose canvas tools stay active when switching to them. */
-const TOOL_TABS: RightTab[] = ['geometry', 'masks', 'portrait'];
 
 export function PanelContent({ tab }: { tab: RightTab }) {
   switch (tab) {
@@ -44,7 +42,6 @@ export function PanelContent({ tab }: { tab: RightTab }) {
 
 export function RightPanel() {
   const tab = useEditor((s) => s.rightTab);
-  const setUi = useEditor((s) => s.setUi);
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Histogram />
@@ -57,7 +54,7 @@ export function RightPanel() {
             id={`tab-${t.id}`}
             aria-selected={tab === t.id}
             aria-controls="right-tabpanel"
-            onClick={() => setUi({ rightTab: t.id, tool: t.id === 'remove' ? 'remove' : TOOL_TABS.includes(t.id) ? useEditor.getState().tool : 'none' })}
+            onClick={() => selectRightTab(t.id)}
             className={`relative flex flex-col items-center gap-0.5 py-2 text-[10px] tracking-wide transition-colors ${
               tab === t.id ? 'text-ivory' : 'text-faint hover:text-ivory-dim'
             }`}

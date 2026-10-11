@@ -16,6 +16,7 @@ import type { BrushComponent, MaskComponent } from '@/lib/schema/adjustments';
 import type { ViewBox } from '../Viewport';
 import { ObjectToolChip } from '@/features/masks/selectObject';
 import { objectClick } from '@/features/masks/selectObjectActions';
+import { touchMods } from './touchMode';
 
 let healCache: { photoId: string; img: PixelSource } | null = null;
 function healPixels(): PixelSource | null {
@@ -72,10 +73,20 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
     const uv = toUv(e);
     const s = toSrc(uv);
     if (tool === 'object') {
-      if (s[0] >= 0 && s[0] <= 1 && s[1] >= 0 && s[1] <= 1) objectClick(s[0], s[1], e);
+      if (s[0] >= 0 && s[0] <= 1 && s[1] >= 0 && s[1] <= 1) objectClick(s[0], s[1], touchMods(e));
       return;
     }
     if (tool === 'heal') {
+      if (touchMods(e).altKey) {
+        // Touch "Delete spot" mode: remove the spot under the finger (rings are hard to hit exactly).
+        const at = toScreen(s);
+        const hit = spots.find((sp) => {
+          const t = toScreen([sp.x, sp.y]);
+          return Math.hypot(t.x - at.x, t.y - at.y) <= Math.max(22, sp.r * longEdge * cssPerFullPx);
+        });
+        if (hit) removeSpot(hit.id);
+        return;
+      }
       const img = healPixels();
       if (!img) return;
       const r = brush.size / 2;
@@ -201,7 +212,7 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
                   strokeWidth={1.4}
                   className="pointer-events-auto cursor-pointer"
                   onPointerDown={(e) => {
-                    if (e.altKey) {
+                    if (touchMods(e).altKey) {
                       e.stopPropagation();
                       removeSpot(sp.id);
                     }

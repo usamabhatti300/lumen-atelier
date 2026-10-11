@@ -241,8 +241,8 @@ const PresetCard = memo(function PresetCard({
           aria-label={favorite ? `Remove ${preset.name} from favourites` : `Add ${preset.name} to favourites`}
           aria-pressed={favorite}
           onClick={() => toggleFavorite(preset.id)}
-          className={`flex h-6 w-6 items-center justify-center rounded-full bg-ink-950/70 transition-opacity ${
-            favorite ? 'text-amber opacity-100' : 'text-ivory/80 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100'
+          className={`flex h-6 w-6 items-center justify-center rounded-full bg-ink-950/70 transition-opacity coarse:h-8 coarse:w-8 ${
+            favorite ? 'text-amber opacity-100' : 'text-ivory/80 fine:opacity-0 fine:group-focus-within:opacity-100 fine:group-hover:opacity-100'
           }`}
         >
           <motion.span key={String(favorite)} initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 18 }}>
@@ -254,7 +254,7 @@ const PresetCard = memo(function PresetCard({
           aria-label={`More actions for ${preset.name}`}
           aria-expanded={menu}
           onClick={() => setMenu(!menu)}
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-ink-950/70 text-ivory/80 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
+          className="flex h-6 w-6 items-center justify-center rounded-full bg-ink-950/70 text-ivory/80 coarse:h-8 coarse:w-8 fine:opacity-0 fine:group-focus-within:opacity-100 fine:group-hover:opacity-100"
         >
           <MoreHorizontal size={13} />
         </button>

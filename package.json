@@ -21,6 +21,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:pwa": "playwright test --config playwright.pwa.config.ts",
     "setup:models": "node scripts/setup-models.mjs",
     "postinstall": "node scripts/copy-wasm-runtimes.mjs"
   },

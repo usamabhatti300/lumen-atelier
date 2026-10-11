@@ -67,7 +67,7 @@ export function AiModels() {
       )}
 
       <div className="mt-4 rounded-sm border border-line-soft p-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p>
             Runtime: ONNX Runtime Web (MIT) and Transformers.js (Apache-2.0), served from this app. Check that it starts on this device's GPU
             (WebGPU) and CPU (WebAssembly).

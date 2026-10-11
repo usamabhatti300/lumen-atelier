@@ -14,7 +14,8 @@ import { matchInWorker, matchSampleFor } from '@/lib/analysis/client';
 import type { PresetCategoryId } from '@/lib/schema/preset';
 import { PhotosPanel } from './PhotosPanel';
 
-export function LeftPanel({ onOpenReference }: { onOpenReference: () => void }) {
+/** `compact`: inside the mobile presets sheet, where the bottom bar already has "Match look". */
+export function LeftPanel({ onOpenReference, compact = false }: { onOpenReference: () => void; compact?: boolean }) {
   const tab = useEditor((s) => s.leftTab);
   const setUi = useEditor((s) => s.setUi);
   const hasPhoto = useEditor((s) => !!s.activePhotoId);
@@ -23,7 +24,7 @@ export function LeftPanel({ onOpenReference }: { onOpenReference: () => void }) 
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-line-soft p-3">
+      <div className={`shrink-0 border-b border-line-soft p-3 ${compact ? 'hidden' : ''}`}>
         <button
           type="button"
           onClick={onOpenReference}
@@ -39,7 +40,7 @@ export function LeftPanel({ onOpenReference }: { onOpenReference: () => void }) 
           </span>
         </button>
       </div>
-      <div className="flex shrink-0 items-center justify-between px-3 pt-2.5">
+      <div className={`flex shrink-0 items-center justify-between px-3 ${compact ? 'pt-0.5' : 'pt-2.5'}`}>
         <Segmented
           label="Left panel"
           size="xs"

@@ -34,6 +34,19 @@ there is presented as finished in the UI.
 | 5 Real-ESRGAN upscale | Done | `docs/steps/STEP_5.md`. Export 2×/4×, 256 px tiles with ≥32 px blended overlap, 64 MP cap |
 | 6 BiRefNet (optional, 214 MB) | Needs owner's OK | Not in the registry |
 
+### Installable app (PWA) and mobile (2026-10-11)
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Manifest, icons | Done | `public/manifest.webmanifest`; any + maskable PNGs and Apple touch icon from `scripts/generate-icons.mjs`; shortcuts (Match look, Presets); Android share target; desktop file handlers |
+| Service worker | Done | `src/pwa/sw-template.js` → `dist/sw.js` (`scripts/pwa-plugin.ts`, build only). App shell precached per build (47 files, 2.5 MB); `/models`, `/mediapipe`, `/ort` cached on first use (also answers MediaPipe's HEAD checks); `/api` never cached; adds COOP/COEP when a host doesn't; update waits for the user's "Reload" |
+| Offline | Done | Whole editor offline after first load; Settings → App & offline → *Save AI models offline* (real byte progress, ~200 MB without WebGPU, 223 MB with); persistent-storage request |
+| Install UI | Done | Install button (Chromium prompt) or iPhone/iPad instructions; offline pill; update banner |
+| Mobile layout | Done | Panels dock under the photo (or beside it in phone landscape); full left panel in the Presets sheet (Photos tab, Save look, Amount); histogram; ⋮ menu below 1024 px; top bar fits 320–1023 px |
+| Touch | Done | Pinch / two-finger pan / double-tap zoom; touch-mode chip for Remove (Add to last), Select object (Add / Subtract), Heal (Delete spot); larger targets via `coarse:`; hover-only controls visible on touch (`fine:`); no tooltips on touch |
+| Export on phones | Done | Touch devices that can share files get *Save / Share* (system share sheet → Save to Photos) and *Download* (≤10 files) |
+| Real phones | Not verified | Only Chromium mobile emulation (Pixel 7, 320–1023 px, landscape). iOS Safari, WebGPU on phones and phone performance are untested. Install needs an HTTPS host (not chosen yet) |
+
 ## Technical decisions
 
 - **TypeScript backend instead of Python/FastAPI** (spec allows it): the server only proxies one
@@ -62,6 +75,24 @@ there is presented as finished in the UI.
   (`connect-src 'self' blob: data:`).
 
 ## Tests actually run (2026-10-10)
+
+- **PWA + mobile (2026-10-11)**: type-check clean; ESLint 0 errors (same 10 warnings); Vitest 15 files, 186
+  passed, 1 skipped. New `npm run test:e2e:pwa` (production build, Pixel 7 profile): **4/4 passed**:
+  Chromium reports no installability errors, manifest/icons valid, page cross-origin isolated; offline
+  (network cut verified for page and service worker) gallery, editor, preset apply, export, presets and settings
+  work; a multipart share-target POST opens the shared photo in a new project; after *Save AI models
+  offline*, the AI runtime check and MediaPipe portrait detection run with no connection.
+  `e2e/mobile.spec.ts` **3/3 passed** (docked panels, Presets sheet with Photos tab and Amount, ⋮ menu copy /
+  paste / side by side, pinch zoom and double-tap fit, Remove touch modes and Done, phone landscape side
+  panel, no overflow measured against the device width). Full suite (desktop + mobile): 18/20 in one
+  32-minute run; both failures were in the reference studio. `reference-replace` passed on re-run alone.
+  The critical journey also failed **on the untouched previous commit**: Ollama with the local model is now
+  running on this PC (so the test server had AI), and the test expected copy that changed in the local-AI
+  commit. Fixed by `AI_PROVIDER: 'none'` in `playwright.config.ts` plus the current message; it then
+  **passed alone** (3.7 min). Manual phone-size screenshot review at 320×640, 360×740, 390×844 and
+  844×390 / 915×412 landscape; it found and fixed: the top bar overflowing at 640–1023 px with touch-sized
+  buttons (the page was zoomed out to 954 px), hidden tooltips widening the page, hover-only preset / project
+  buttons that were invisible on touch, and the Remove brush staying on after switching to Crop.
 
 - **Signature Collection (2026-10-11)**: 30 presets from `docs/PREMIUM_PRESETS.md` added unchanged, plus
   11 from `docs/PRO_PRESET_LIBRARY.md` (overlaps merged; record at the end of that doc), so the library grows from

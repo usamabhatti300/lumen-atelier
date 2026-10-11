@@ -63,6 +63,7 @@ const MIME: Record<string, string> = {
   '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json',
+  '.webmanifest': 'application/manifest+json',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -103,6 +104,16 @@ export function createApp(deps: AppDeps) {
       if (url.pathname === '/api/analyze-style') {
         if (req.method !== 'POST') return sendError(res, 405, 'invalid_request', 'Use POST.', false);
         return await handleAnalyze(req, res, deps, limiter);
+      }
+
+      // Photos shared from the phone's share sheet are normally caught by the service worker;
+      // if it is not running yet, return to the app with a clear message instead of a 404.
+      if (url.pathname === '/share-target' && req.method === 'POST') {
+        req.resume();
+        res.statusCode = 303;
+        res.setHeader('Location', '/?share=failed');
+        res.end();
+        return;
       }
 
       if (url.pathname.startsWith('/api/')) {
@@ -292,6 +303,9 @@ function serveStatic(pathname: string, root: string, res: ServerResponse) {
   res.setHeader('Content-Type', MIME[ext] ?? 'application/octet-stream');
   if (ext === '.html') {
     res.setHeader('Content-Security-Policy', CSP);
+    res.setHeader('Cache-Control', 'no-cache');
+  } else if (/[\\/](sw\.js|manifest\.webmanifest|offline-files\.json)$/.test(filePath)) {
+    // The installed app checks these for updates; they must never be served stale.
     res.setHeader('Cache-Control', 'no-cache');
   } else if (filePath.includes(`${sep}assets${sep}`)) {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');

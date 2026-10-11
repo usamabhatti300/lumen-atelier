@@ -53,6 +53,36 @@ npm run build   # type-check + Vite build into dist/
 npm start       # serves dist/ and the API on http://127.0.0.1:8787
 ```
 
+### Install on a phone (PWA)
+
+The production build is an installable app (manifest, icons, service worker). Installed, it opens
+full screen from the home screen and works **offline**: editing, presets, masks, reference matching
+from measurements, export and (after *Settings → App & offline → Save AI models offline*, about
+200 MB) every on-device AI tool. Only AI style interpretation needs the app server.
+
+Browsers install apps only from a secure address: **https://…**, or `localhost` / `127.0.0.1`.
+
+1. Put the built app on an HTTPS address. Either deploy `npm start` (Node 22.18+) to any host with
+   HTTPS, or for a quick trial tunnel your computer, e.g. `cloudflared tunnel --url http://127.0.0.1:8787`.
+   Plain static hosting of `dist/` is designed to work too but hasn't been tested yet: the service
+   worker adds the cross-origin isolation headers from the second load on, the host must allow
+   files up to 50 MB (the depth model), and without the Node server reference analysis uses
+   measurements only.
+   **Vercel**: import the GitHub repo; `vercel.json` sets the build (`npm run setup:models && npm run build`,
+   output `dist/`), the SPA rewrite and the isolation / security headers. There is no app server on Vercel,
+   so AI style interpretation is off and reference matching uses measurements only; everything else,
+   including the on-device AI tools, runs in the browser.
+2. Open the address on the phone.
+   - **Android (Chrome, Edge, Samsung Internet)**: tap **Install app** on the home screen of Lumen
+     Atelier, or the browser menu → *Install app*. Photos can then be shared to Lumen Atelier
+     from the gallery app.
+   - **iPhone / iPad (Safari)**: Share → *Add to Home Screen* (the app explains this too).
+3. Optional: *Settings → App & offline → Save AI models offline* so every AI tool works without a
+   connection.
+
+`HOST=0.0.0.0 npm start` lets other devices on your network open the app over plain http to try
+it out, but browsers won't install it or keep it offline from a plain-http address.
+
 ## Scripts
 
 | Command | What it does |
@@ -62,6 +92,7 @@ npm start       # serves dist/ and the API on http://127.0.0.1:8787
 | `npm start` | Serve the built app and API |
 | `npm test` | Unit and integration tests (Vitest) |
 | `npm run test:e2e` | End-to-end tests (Playwright; run `npx playwright install chromium` once) |
+| `npm run test:e2e:pwa` | Installable-app tests on the production build: installability, offline use, share target, offline AI |
 | `npm run lint` / `npm run format` | ESLint / Prettier |
 | `npm run setup:models` | Download the on-device AI models the tools use (verified by SHA-256) |
 

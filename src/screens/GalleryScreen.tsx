@@ -2,7 +2,9 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { Aperture, ImagePlus, Pencil, Settings, SwatchBook, Trash2, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { InstallButton } from '@/pwa/PwaUi';
+import { takeSharedFiles } from '@/pwa/pwa';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Progress } from '@/components/ui/misc';
@@ -117,17 +119,46 @@ export function GalleryScreen() {
     };
   });
 
+  // Arrivals from outside the app: the phone's share sheet, a home-screen shortcut, or
+  // image files opened with the installed app on a computer.
+  const [search, setSearch] = useSearchParams();
+  const handledArrival = useRef(false);
+  useEffect(() => {
+    if (handledArrival.current) return;
+    handledArrival.current = true;
+    const share = search.get('share');
+    const action = search.get('action');
+    if (share || action) setSearch({}, { replace: true });
+    if (share === '1') {
+      void takeSharedFiles().then((files) => {
+        if (files.length) void startProject(files, 'edit');
+        else showToast('Nothing was shared, or the photos could not be read.', 'error');
+      });
+    } else if (share === 'failed') {
+      showToast('The shared photos could not be received. Try opening them from the app instead.', 'error');
+    } else if (action === 'reference') {
+      // Home-screen shortcut "Match a reference look" (async: creates the project, then navigates).
+      void Promise.resolve().then(() => startProject([], 'reference'));
+    }
+    const queue = (window as Window & { launchQueue?: { setConsumer(cb: (p: { files: FileSystemFileHandle[] }) => void): void } }).launchQueue;
+    queue?.setConsumer(async ({ files }) => {
+      if (!files?.length) return;
+      void startProject(await Promise.all(files.map((h) => h.getFile())), 'edit');
+    });
+  }, [search, setSearch, startProject, showToast]);
+
   const resume = projects?.find((p) => p.id === lastProjectId);
 
   return (
     <div className="scroll-quiet h-full overflow-y-auto bg-ink-900">
-      <header className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-8">
+      <header className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-4 sm:px-8">
         <Wordmark />
         <nav className="flex items-center gap-1">
-          <Link to="/presets" className="flex h-8 items-center gap-2 rounded-sm px-3 text-[13px] text-ivory-dim hover:bg-ink-700 hover:text-ivory">
+          <InstallButton />
+          <Link to="/presets" aria-label="Presets" className="flex h-8 items-center gap-2 rounded-sm px-3 coarse:h-10 text-[13px] text-ivory-dim hover:bg-ink-700 hover:text-ivory">
             <SwatchBook size={15} /> <span className="hidden sm:inline">Presets</span>
           </Link>
-          <Link to="/settings" className="flex h-8 items-center gap-2 rounded-sm px-3 text-[13px] text-ivory-dim hover:bg-ink-700 hover:text-ivory">
+          <Link to="/settings" aria-label="Settings" className="flex h-8 items-center gap-2 rounded-sm px-3 coarse:h-10 text-[13px] text-ivory-dim hover:bg-ink-700 hover:text-ivory">
             <Settings size={15} /> <span className="hidden sm:inline">Settings</span>
           </Link>
         </nav>
@@ -137,7 +168,7 @@ export function GalleryScreen() {
         <section className="grid gap-10 border-b border-line-soft pt-10 pb-14 lg:grid-cols-[1.15fr_1fr] lg:pt-16">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
             <p className="edge-code mb-5">Local darkroom · photos stay on this device</p>
-            <h1 className="font-display text-[44px] leading-[1.02] tracking-[-0.01em] text-ivory sm:text-[64px]">
+            <h1 className="font-display text-[38px] leading-[1.02] tracking-[-0.01em] text-ivory min-[400px]:text-[44px] sm:text-[64px]">
               Develop your photographs.
               <br />
               <em className="text-champagne">Borrow the look</em> of any reference.
@@ -209,8 +240,14 @@ export function GalleryScreen() {
               <Aperture size={20} className="text-faint transition-colors group-hover:text-amber" />
             </div>
             <div>
-              <p className="font-display text-3xl text-ivory-dim">Drag photos anywhere</p>
-              <p className="mt-1 text-sm text-mute">or click to choose files. Several at once is fine.</p>
+              <p className="font-display text-3xl text-ivory-dim">
+                <span className="coarse:hidden">Drag photos anywhere</span>
+                <span className="hidden coarse:inline">Choose photos</span>
+              </p>
+              <p className="mt-1 text-sm text-mute">
+                <span className="coarse:hidden">or click to choose files. Several at once is fine.</span>
+                <span className="hidden coarse:inline">Tap to pick from your library or camera. Several at once is fine.</span>
+              </p>
             </div>
             <ZoneScale />
           </motion.button>
@@ -264,11 +301,11 @@ export function GalleryScreen() {
                           {new Date(p.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                         </p>
                       </div>
-                      <div className="flex opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
-                        <button type="button" aria-label={`Rename ${p.name}`} onClick={() => setRenaming(p)} className="rounded-xs p-1.5 text-faint hover:bg-ink-700 hover:text-ivory">
+                      <div className="flex opacity-100 transition-opacity fine:opacity-0 fine:group-focus-within:opacity-100 fine:group-hover:opacity-100">
+                        <button type="button" aria-label={`Rename ${p.name}`} onClick={() => setRenaming(p)} className="rounded-xs p-1.5 text-faint hover:bg-ink-700 hover:text-ivory coarse:p-2.5">
                           <Pencil size={13} />
                         </button>
-                        <button type="button" aria-label={`Delete ${p.name}`} onClick={() => setConfirmDelete(p)} className="rounded-xs p-1.5 text-faint hover:bg-ink-700 hover:text-safelight">
+                        <button type="button" aria-label={`Delete ${p.name}`} onClick={() => setConfirmDelete(p)} className="rounded-xs p-1.5 text-faint hover:bg-ink-700 hover:text-safelight coarse:p-2.5">
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -358,14 +395,17 @@ function RenameDialog({ project, onClose, onSave }: { project: ProjectCard | nul
   );
 }
 
-export function Wordmark({ compact = false }: { compact?: boolean }) {
+/** `nameFrom`: only show the name from the `sm` breakpoint up (crowded headers on phones). */
+export function Wordmark({ compact = false, nameFrom }: { compact?: boolean; nameFrom?: 'sm' }) {
   return (
     <Link to="/" className="flex items-center gap-2.5 text-ivory" aria-label="Lumen Atelier home">
       <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden>
         <circle cx="16" cy="16" r="11" fill="none" stroke="var(--color-amber)" strokeWidth="2" />
         <path d="M16 5a11 11 0 0 1 0 22z" fill="var(--color-amber)" />
       </svg>
-      {!compact && <span className="font-display text-[22px] leading-none tracking-[0.005em]">Lumen Atelier</span>}
+      {!compact && (
+        <span className={`font-display text-[22px] leading-none tracking-[0.005em] whitespace-nowrap ${nameFrom === 'sm' ? 'hidden sm:inline' : ''}`}>Lumen Atelier</span>
+      )}
     </Link>
   );
 }

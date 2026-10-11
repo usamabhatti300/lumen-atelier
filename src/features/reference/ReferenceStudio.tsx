@@ -148,7 +148,8 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
               <ImagePlus size={28} className="mb-4 text-faint group-hover:text-amber" />
               <span className="font-display text-3xl text-ivory">Add a reference photo</span>
               <span className="mt-2 max-w-md text-sm leading-relaxed text-mute">
-                Drop, choose or paste (Ctrl+V) a photo whose look you love: a saved post, a screenshot, a film still. You
+                <span className="coarse:hidden">Drop, choose or paste (Ctrl+V)</span>
+                <span className="hidden coarse:inline">Choose</span> a photo whose look you love: a saved post, a screenshot, a film still. You
                 can crop out interface elements next.
               </span>
               <span className="mt-6 text-[11px] text-faint">

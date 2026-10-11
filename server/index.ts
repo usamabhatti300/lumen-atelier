@@ -30,8 +30,8 @@ const server = createServer((req, res) => {
 });
 // Local models on a laptop CPU can take minutes per analysis.
 server.requestTimeout = config.localTimeoutMs + 30_000;
-server.listen(config.port, '127.0.0.1', () => {
-  console.log(`[api] listening on http://127.0.0.1:${config.port}`);
+server.listen(config.port, config.host, () => {
+  console.log(`[api] listening on http://${config.host}:${config.port}`);
   if (config.anthropicApiKey && config.aiProvider !== 'ollama' && config.aiProvider !== 'none') {
     console.log(`[api] AI interpretation: Anthropic (model ${config.model})`);
   } else if (config.aiProvider === 'none') {

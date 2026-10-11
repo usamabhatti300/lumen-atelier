@@ -5,6 +5,11 @@
 @import '@fontsource/ibm-plex-mono/400.css';
 @import '@fontsource/ibm-plex-mono/500.css';
 
+/* Touch screens (phones, tablets): `coarse:` enlarges hit targets. */
+@custom-variant coarse (@media (pointer: coarse));
+/* Mouse / trackpad: `fine:` hides secondary controls until hover (touch screens always show them). */
+@custom-variant fine (@media (hover: hover) and (pointer: fine));
+
 /*
  * Lumen Atelier design tokens.
  * Darkroom palette: warm near-black inks, graphite panels, warm-grey hairlines,
@@ -94,6 +99,19 @@ html,
 body,
 #root {
   height: 100%;
+}
+/* The dynamic viewport follows mobile browser toolbars, so the editor never hides under them. */
+#root {
+  height: 100dvh;
+  /* Phones in landscape: keep content clear of the notch (viewport-fit=cover). */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  box-sizing: border-box;
+}
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -195,6 +213,26 @@ body {
 }
 .slider-input:focus-visible {
   outline: none;
+}
+/* Vertical swipes over a slider still scroll the panel; horizontal ones move the slider. */
+.slider-input {
+  touch-action: pan-y;
+}
+@media (pointer: coarse) {
+  .slider-input,
+  .slider-input::-webkit-slider-runnable-track,
+  .slider-input::-moz-range-track {
+    height: 32px;
+  }
+  .slider-input::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: 6px;
+  }
+  .slider-input::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+  }
 }
 .slider-input:focus-visible::-webkit-slider-thumb {
   box-shadow: 0 0 0 2px var(--color-amber);

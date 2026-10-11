@@ -20,8 +20,8 @@ const VARIANTS: Record<Variant, string> = {
 };
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-7 px-2.5 text-xs gap-1.5',
-  md: 'h-9 px-3.5 text-[13px] gap-2',
+  sm: 'h-7 px-2.5 text-xs gap-1.5 coarse:h-9',
+  md: 'h-9 px-3.5 text-[13px] gap-2 coarse:h-10',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -68,7 +68,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         type={type}
         aria-label={label}
         aria-pressed={active === undefined ? undefined : active}
-        className={`inline-flex h-8 w-8 items-center justify-center rounded-sm transition-[background-color,color,transform] duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 ${
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-sm coarse:h-10 coarse:w-10 transition-[background-color,color,transform] duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 ${
           active ? 'bg-amber/15 text-amber' : 'text-ivory-dim hover:bg-ink-700 hover:text-ivory'
         }`}
         {...rest}
@@ -87,7 +87,7 @@ export function Tooltip({ children, className = '' }: { children: ReactNode; sid
   return (
     <span
       role="tooltip"
-      className={`pointer-events-none absolute z-50 whitespace-nowrap rounded-xs border border-line bg-ink-950 px-2 py-1 text-[11px] text-ivory opacity-0 shadow-float transition-opacity delay-0 duration-100 group-hover/tt:opacity-100 group-hover/tt:delay-500 group-focus-within/tt:opacity-100 ${className}`}
+      className={`pointer-events-none absolute z-50 whitespace-nowrap coarse:hidden rounded-xs border border-line bg-ink-950 px-2 py-1 text-[11px] text-ivory opacity-0 shadow-float transition-opacity delay-0 duration-100 group-hover/tt:opacity-100 group-hover/tt:delay-500 group-has-[:focus-visible]/tt:opacity-100 ${className}`}
     >
       {children}
     </span>

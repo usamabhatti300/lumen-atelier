@@ -3,13 +3,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath } from 'node:url';
+import { pwaPlugin } from './scripts/pwa-plugin.ts';
 
 const apiPort = Number(process.env.API_PORT ?? 8787);
 // Same isolation headers as server/app.ts, so multi-threaded WASM works in development too.
 const isolation = { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'require-corp' };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), pwaPlugin()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

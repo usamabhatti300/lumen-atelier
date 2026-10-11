@@ -118,7 +118,7 @@ export function CropOverlay({ box }: { box: ViewBox }) {
           <div
             key={h}
             onPointerDown={(e) => startDrag(h, e)}
-            className={`absolute h-4 w-4 -translate-1/2 touch-none ${pos[h]}`}
+            className={`absolute h-4 w-4 -translate-1/2 touch-none coarse:h-11 coarse:w-11 ${pos[h]}`}
             aria-hidden
           >
             <span className={`absolute top-1/2 left-1/2 -translate-1/2 bg-ivory ${h.length === 2 ? 'h-2.5 w-2.5' : h === 'n' || h === 's' ? 'h-1 w-4' : 'h-4 w-1'}`} />

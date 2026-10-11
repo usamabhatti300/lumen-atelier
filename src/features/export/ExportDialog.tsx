@@ -1,7 +1,7 @@
 /** Export dialog: format, quality, output size, optional AI upscale, real progress, cancellation. */
 import { create } from 'zustand';
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Download, Share2 } from 'lucide-react';
 import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { Segmented, Progress } from '@/components/ui/misc';
@@ -31,6 +31,19 @@ type UpscaleChoice = (typeof UPSCALES)[number]['value'];
 
 const upscaler = getModel(UPSCALE_MODEL_ID);
 
+/** Up to this many exports are kept for the share sheet on phones; larger batches go straight to downloads. */
+const SHARE_MAX_FILES = 10;
+
+/** Phones and tablets that can hand image files to the system share sheet ("Save to Photos", messaging apps). */
+function canShareImages(type: string): boolean {
+  if (typeof navigator === 'undefined' || !navigator.canShare || !window.matchMedia('(pointer: coarse)').matches) return false;
+  try {
+    return navigator.canShare({ files: [new File([new Uint8Array(1)], 'x', { type })] });
+  } catch {
+    return false;
+  }
+}
+
 const SCALES = [
   { value: '1', label: 'Full size' },
   { value: '0.75', label: '75%' },
@@ -56,6 +69,7 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
   const [modelMissing, setModelMissing] = useState(false);
   const [progress, setProgress] = useState<BatchProgress | null>(null);
   const [result, setResult] = useState<{ done: number; errors: string[]; cancelled: boolean } | null>(null);
+  const [shareFiles, setShareFiles] = useState<File[]>([]);
   const [sizes, setSizes] = useState<{ name: string; w: number; h: number; tiles: number; problem: string | null }[]>([]);
   const ac = useRef<AbortController | null>(null);
   const open = !!ids;
@@ -108,9 +122,14 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
     setResult(null);
     setProgress({ index: 0, total: ids.length, name: '', fraction: 0, stage: 'Starting' });
     const aiUpscale = upscale === 'off' ? undefined : (Number(upscale) as UpscaleFactor);
-    const r = await exportMany(ids, { format, quality, scale: aiUpscale ? 1 : Number(scale), aiUpscale }, ac.current.signal, setProgress, (file) =>
-      downloadBlob(file.blob, file.name),
-    );
+    // On phones, keep the files for the share sheet (Save to Photos) instead of dropping them in Downloads.
+    const share = ids.length <= SHARE_MAX_FILES && canShareImages(format);
+    const kept: File[] = [];
+    const r = await exportMany(ids, { format, quality, scale: aiUpscale ? 1 : Number(scale), aiUpscale }, ac.current.signal, setProgress, (file) => {
+      if (share) kept.push(new File([file.blob], file.name, { type: file.blob.type || format }));
+      else downloadBlob(file.blob, file.name);
+    });
+    setShareFiles(kept);
     setResult(r);
     if (r.errors.length) showToast(r.errors.join(' '), 'error');
   };
@@ -136,6 +155,27 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
           <Button variant="secondary" onClick={() => ac.current?.abort()}>
             Cancel export
           </Button>
+        ) : result && shareFiles.length ? (
+          <>
+            <Button variant="ghost" onClick={close}>
+              Done
+            </Button>
+            <Button variant="secondary" icon={<Download size={14} />} onClick={() => shareFiles.forEach((f) => downloadBlob(f, f.name))}>
+              Download
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Share2 size={14} />}
+              data-testid="export-share"
+              onClick={() =>
+                void navigator.share({ files: shareFiles }).catch((e: unknown) => {
+                  if (!(e instanceof DOMException && e.name === 'AbortError')) showToast('Sharing failed. Use Download instead.', 'error');
+                })
+              }
+            >
+              Save / Share
+            </Button>
+          </>
         ) : result ? (
           <Button variant="primary" onClick={close}>
             Done
@@ -219,7 +259,9 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
                 <CheckCircle2 size={16} className="text-verdigris" />
                 {result.cancelled
                   ? `Cancelled. ${result.done} file${result.done === 1 ? '' : 's'} saved.`
-                  : `Exported ${result.done} file${result.done === 1 ? '' : 's'}. Check your downloads.`}
+                  : shareFiles.length
+                    ? `Exported ${result.done} file${result.done === 1 ? '' : 's'}. Tap Save / Share to save to Photos or send it.`
+                    : `Exported ${result.done} file${result.done === 1 ? '' : 's'}. Check your downloads.`}
               </p>
             ) : (
               <>

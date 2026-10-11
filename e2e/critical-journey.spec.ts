@@ -31,7 +31,7 @@ test('reference to preset to export', async ({ page }) => {
   await expect(description).toBeVisible();
   await expect(description).not.toBeEmpty();
   // No API key in the test server: the AI stage is skipped honestly.
-  await expect(page.getByText('AI is not configured on the server (no API key). Using measurements only.')).toBeVisible();
+  await expect(page.getByText('No AI model is available (no API key, and the local model is not running). Using measurements only.')).toBeVisible();
   await expect(page.getByText('Written from measurements (no AI)')).toBeVisible();
 
   // The look is matched to the target (closed loop in the worker) and applied automatically; refine intensity.

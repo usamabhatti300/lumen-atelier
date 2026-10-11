@@ -81,9 +81,10 @@ export function SelectObjectPanel({ layerId }: { layerId: string }) {
           <p className="text-ivory-dim">
             {startNew || !hasObject ? 'Click an object in the photo to select it.' : 'Refine the selection, or click elsewhere to start over.'}
           </p>
-          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 coarse:hidden">
             <Kbd>Shift</Kbd> click adds · <Kbd>Alt</Kbd> click subtracts
           </p>
+          <p className="mt-1 hidden coarse:block">Use Add or Subtract on the photo to refine it.</p>
           {st.notice && <p className="mt-1 text-faint">{st.notice}</p>}
         </div>
       )}
@@ -111,7 +112,12 @@ export function ObjectToolChip() {
   const text = statusText(st);
   if (st.phase === 'error') return <Chip tone="error">Select object is unavailable. See the Masks panel.</Chip>;
   if (text) return <Chip busy>{st.phase === 'downloading' && st.total ? `${text} (${Math.round((st.loaded / st.total) * 100)}%)` : text}</Chip>;
-  return <Chip>Click an object · Shift adds · Alt subtracts</Chip>;
+  return (
+    <Chip>
+      <span className="coarse:hidden">Click an object · Shift adds · Alt subtracts</span>
+      <span className="hidden coarse:inline">Tap an object to select it</span>
+    </Chip>
+  );
 }
 
 function Chip({ children, busy, tone }: { children: React.ReactNode; busy?: boolean; tone?: 'error' }) {

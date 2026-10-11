@@ -1,5 +1,5 @@
 /** Settings: performance, privacy, AI configuration, on-device AI models, data. */
-import { ArrowLeft, BrainCircuit, Cpu, Database, Gauge, Loader2, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, BrainCircuit, Cpu, Database, Gauge, Loader2, ShieldCheck, Smartphone, Sparkles } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/Button';
@@ -10,6 +10,7 @@ import { useEngine } from '@/engine/engineStore';
 import { getAiHealth, type AiHealth } from '@/lib/analysis/client';
 import { clearAllData, listProjects, storageEstimate } from '@/lib/storage/db';
 import { AiModels } from '@/features/settings/AiModels';
+import { AppSettings } from '@/features/settings/AppSettings';
 import { runBenchmark, type BenchmarkResult } from '@/engine/benchmark';
 import { Wordmark } from './GalleryScreen';
 
@@ -31,13 +32,17 @@ export default function SettingsScreen() {
   return (
     <div className="scroll-quiet h-full overflow-y-auto bg-ink-900">
       <header className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4 sm:px-8">
-        <Link to="/" className="rounded-xs p-1.5 text-mute hover:bg-ink-700 hover:text-ivory" aria-label="Back">
+        <Link to="/" className="rounded-xs p-1.5 text-mute coarse:p-2.5 hover:bg-ink-700 hover:text-ivory" aria-label="Back">
           <ArrowLeft size={17} />
         </Link>
         <Wordmark />
       </header>
       <main className="mx-auto max-w-3xl space-y-10 px-4 pt-6 pb-24 sm:px-8">
         <h1 className="font-display text-5xl text-ivory">Settings</h1>
+
+        <Block icon={<Smartphone size={16} />} title="App & offline">
+          <AppSettings />
+        </Block>
 
         <Block icon={<Gauge size={16} />} title="Performance">
           <p className="mb-2 text-xs text-mute">Preview resolution while editing. Exports always use the full original resolution.</p>
@@ -62,7 +67,7 @@ export default function SettingsScreen() {
             <dd className="text-ivory">{engine.mode === 'webgl' ? (engine.floatPipeline ? '16-bit float intermediates' : '8-bit fallback') : '–'}</dd>
           </dl>
           <div className="mt-4 rounded-sm border border-line-soft p-3">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-mute">Measure full-pipeline render time on this device (2048 × 1365, a demanding edit).</p>
               <Button
                 size="sm"

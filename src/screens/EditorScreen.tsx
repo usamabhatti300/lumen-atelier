@@ -15,12 +15,13 @@ import type { EditState } from '@/lib/schema/adjustments';
 import { TopBar } from '@/features/editor/TopBar';
 import { LeftPanel } from '@/features/editor/LeftPanel';
 import { RightPanel, PanelContent } from '@/features/editor/RightPanel';
+import { selectRightTab } from '@/features/editor/rightTabs';
+import { Histogram } from '@/features/editor/Histogram';
 import { Viewport } from '@/features/editor/Viewport';
 import { Filmstrip } from '@/features/editor/Filmstrip';
 import { PasteDialog } from '@/features/editor/PasteDialog';
 import { useShortcuts } from '@/features/editor/useShortcuts';
 import { ExportDialog } from '@/features/export/ExportDialog';
-import { PresetBrowser } from '@/features/presets/PresetBrowser';
 import { Progress } from '@/components/ui/misc';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 
@@ -44,6 +45,9 @@ export default function EditorScreen() {
   const referenceOpen = search.get('reference') === '1';
   const fileInput = useRef<HTMLInputElement>(null);
   const desktop = useMediaQuery('(min-width: 1024px)');
+  // Phones held sideways: panels go beside the photo instead of under it.
+  const landscape = useMediaQuery('(orientation: landscape) and (max-height: 540px)');
+  const [sheet, setSheet] = useState<Sheet | null>(null);
 
   // Load the project.
   useEffect(() => {
@@ -191,12 +195,23 @@ export default function EditorScreen() {
             </AnimatePresence>
           </>
         ) : (
-          <main className="relative min-w-0 flex-1">
-            <Viewport onImport={openImport} />
-          </main>
+          <>
+            <main className="relative min-w-0 flex-1">
+              <Viewport onImport={openImport} />
+            </main>
+            {landscape && <CompactSheet sheet={sheet} setSheet={setSheet} side />}
+          </>
         )}
       </div>
-      {desktop ? <Filmstrip onImport={openImport} /> : <CompactControls onOpenReference={() => setReference(true)} />}
+      {desktop ? (
+        <Filmstrip onImport={openImport} />
+      ) : (
+        <>
+          {!landscape && <CompactSheet sheet={sheet} setSheet={setSheet} />}
+          {!sheet && <Filmstrip onImport={openImport} />}
+          <CompactNav sheet={sheet} setSheet={setSheet} onOpenReference={() => setReference(true)} />
+        </>
+      )}
 
       {importing && (
         <div className="fixed top-14 left-1/2 z-50 w-72 -translate-x-1/2 rounded-sm border border-line bg-ink-850 p-3 shadow-float" role="status">
@@ -223,68 +238,79 @@ export default function EditorScreen() {
   );
 }
 
-/** Tablet/mobile: bottom navigation with a sheet for panels. */
-function CompactControls({ onOpenReference }: { onOpenReference: () => void }) {
-  const [sheet, setSheet] = useState<'presets' | RightTab | null>(null);
-  const applyPreset = useEditor((s) => s.applyPreset);
-  const hasPhoto = useEditor((s) => !!s.activePhotoId);
-  const items: { id: 'presets' | RightTab; label: string; icon: typeof SwatchBook }[] = [
-    { id: 'presets', label: 'Presets', icon: SwatchBook },
-    { id: 'adjust', label: 'Light', icon: SlidersHorizontal },
-    { id: 'color', label: 'Colour', icon: Palette },
-    { id: 'masks', label: 'More', icon: Layers },
-  ];
+type Sheet = 'presets' | RightTab;
+
+/** Tablet/mobile: bottom navigation. Each item opens a panel docked under (or beside) the photo. */
+function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null; setSheet: (s: Sheet | null) => void; onOpenReference: () => void }) {
+  const isMore = sheet !== null && sheet !== 'presets' && sheet !== 'adjust' && sheet !== 'color';
+  const open = (id: Sheet) => {
+    if (sheet === id || (id === 'masks' && isMore)) return setSheet(null);
+    if (id !== 'presets') selectRightTab(id);
+    setSheet(id);
+  };
   return (
-    <>
-      <Filmstrip onImport={() => document.querySelector<HTMLInputElement>('[data-testid="editor-file-input"]')?.click()} />
-      <nav className="flex h-14 shrink-0 items-stretch border-t border-line-soft bg-ink-900 pb-[env(safe-area-inset-bottom)]" aria-label="Editing tools">
-        {items.slice(0, 2).map((it) => (
-          <CompactTab key={it.id} active={sheet === it.id} onClick={() => setSheet(sheet === it.id ? null : it.id)} icon={it.icon} label={it.label} />
-        ))}
-        <button type="button" onClick={onOpenReference} className="flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-amber">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber/15">
-            <Wand2 size={15} />
-          </span>
-          Match look
-        </button>
-        {items.slice(2).map((it) => (
-          <CompactTab key={it.id} active={sheet === it.id} onClick={() => setSheet(sheet === it.id ? null : it.id)} icon={it.icon} label={it.label} />
-        ))}
-      </nav>
-      <AnimatePresence>
-        {sheet && (
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-x-0 bottom-14 z-40 flex max-h-[52vh] flex-col rounded-t-md border-t border-line bg-ink-850 shadow-float"
-            role="dialog"
-            aria-label={`${sheet} panel`}
-          >
-            <div className="flex h-10 shrink-0 items-center justify-between px-3">
-              {sheet !== 'presets' && sheet !== 'adjust' && sheet !== 'color' ? (
-                <MoreTabs value={sheet} onChange={setSheet} />
-              ) : (
-                <span className="text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase">{sheet === 'presets' ? 'Presets' : sheet === 'adjust' ? 'Light' : 'Colour'}</span>
-              )}
-              <button type="button" aria-label="Close panel" onClick={() => setSheet(null)} className="p-1 text-mute">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="scroll-quiet min-h-0 flex-1 overflow-y-auto">
-              {sheet === 'presets' ? (
-                <div className="h-[44vh]">
-                  <PresetBrowser onApply={(p) => applyPreset(p, 100)} canApply={hasPhoto} />
-                </div>
-              ) : (
+    <nav className="flex shrink-0 items-stretch border-t border-line-soft bg-ink-900 pb-[env(safe-area-inset-bottom)]" aria-label="Editing tools">
+      <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={SwatchBook} label="Presets" />
+      <CompactTab active={sheet === 'adjust'} onClick={() => open('adjust')} icon={SlidersHorizontal} label="Light" />
+      <button type="button" onClick={onOpenReference} className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-amber">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber/15">
+          <Wand2 size={15} />
+        </span>
+        Match look
+      </button>
+      <CompactTab active={sheet === 'color'} onClick={() => open('color')} icon={Palette} label="Colour" />
+      <CompactTab active={isMore} onClick={() => open('masks')} icon={Layers} label="More" />
+    </nav>
+  );
+}
+
+const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Presets', adjust: 'Light', color: 'Colour' };
+
+/** The open panel: docked under the photo (portrait) or beside it (phone landscape), so edits stay visible. */
+function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; setSheet: (s: Sheet | null) => void; side?: boolean }) {
+  const inner = side ? 'w-[min(320px,46vw)]' : '';
+  return (
+    <AnimatePresence initial={false}>
+      {sheet && (
+        <motion.div
+          initial={side ? { width: 0 } : { height: 0 }}
+          animate={side ? { width: 'min(320px, 46vw)' } : { height: '46dvh' }}
+          exit={side ? { width: 0 } : { height: 0 }}
+          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          className={`flex shrink-0 flex-col overflow-hidden bg-ink-850 ${side ? 'border-l border-line-soft' : 'rounded-t-md border-t border-line'}`}
+          role="region"
+          aria-label={`${SHEET_TITLE[sheet] ?? 'More'} panel`}
+          data-testid="compact-sheet"
+        >
+          <div className={`flex h-10 shrink-0 items-center justify-between gap-2 pr-1 pl-3 ${inner}`}>
+            {SHEET_TITLE[sheet] ? (
+              <span className="text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase">{SHEET_TITLE[sheet]}</span>
+            ) : (
+              <MoreTabs
+                value={sheet as RightTab}
+                onChange={(t) => {
+                  selectRightTab(t);
+                  setSheet(t);
+                }}
+              />
+            )}
+            <button type="button" aria-label="Close panel" onClick={() => setSheet(null)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-mute">
+              <X size={17} />
+            </button>
+          </div>
+          <div className={`scroll-quiet min-h-0 flex-1 ${sheet === 'presets' ? '' : 'overflow-y-auto'} ${inner}`}>
+            {sheet === 'presets' ? (
+              <LeftPanel compact onOpenReference={() => undefined} />
+            ) : (
+              <>
+                {sheet === 'adjust' && <Histogram />}
                 <PanelContent tab={sheet} />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+              </>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -297,9 +323,9 @@ function MoreTabs({ value, onChange }: { value: RightTab; onChange: (t: RightTab
     { id: 'geometry', label: 'Crop' },
   ];
   return (
-    <div className="flex gap-1">
+    <div className="scroll-quiet -ml-1 flex min-w-0 gap-1 overflow-x-auto">
       {tabs.map((t) => (
-        <button key={t.id} type="button" onClick={() => onChange(t.id)} aria-pressed={value === t.id} className={`rounded-xs px-2 py-1 text-[11px] ${value === t.id ? 'bg-champagne text-ink-950' : 'text-mute'}`}>
+        <button key={t.id} type="button" onClick={() => onChange(t.id)} aria-pressed={value === t.id} className={`h-8 shrink-0 rounded-xs px-2.5 text-xs ${value === t.id ? 'bg-champagne text-ink-950' : 'text-mute'}`}>
           {t.label}
         </button>
       ))}
@@ -309,7 +335,7 @@ function MoreTabs({ value, onChange }: { value: RightTab; onChange: (t: RightTab
 
 function CompactTab({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: typeof SwatchBook; label: string }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] ${active ? 'text-ivory' : 'text-faint'}`}>
+    <button type="button" onClick={onClick} aria-pressed={active} className={`flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] ${active ? 'text-ivory' : 'text-faint'}`}>
       <Icon size={17} strokeWidth={1.6} />
       {label}
     </button>

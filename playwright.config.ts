@@ -25,7 +25,8 @@ export default defineConfig({
   webServer: [
     {
       command: 'node server/index.ts --api-only',
-      env: { API_PORT: apiPort, ANTHROPIC_API_KEY: '' },
+      // AI_PROVIDER=none: also ignore a local Ollama model if one happens to be running.
+      env: { API_PORT: apiPort, ANTHROPIC_API_KEY: '', AI_PROVIDER: 'none' },
       url: `http://127.0.0.1:${apiPort}/api/health`,
       reuseExistingServer: false,
       timeout: 60_000,

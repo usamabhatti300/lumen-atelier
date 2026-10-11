@@ -113,7 +113,7 @@ export const Slider = memo(function Slider({
           {display}
         </button>
       )}
-      <div className="relative col-span-2 h-[22px]" onDoubleClick={reset}>
+      <div className="relative col-span-2 h-[22px] coarse:h-8" onDoubleClick={reset}>
         <div
           className="pointer-events-none absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-line"
           style={track ? { background: track, height: 3, opacity: 0.85 } : undefined}

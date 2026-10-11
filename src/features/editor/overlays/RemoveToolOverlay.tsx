@@ -14,6 +14,7 @@ import { apply, outputSize, outputToSourceMatrix, sourceToOutputMatrix } from '@
 import { activeRemovals, simplifyStroke } from '@/lib/removal/removal';
 import { REMOVAL_LIMITS, type RemovalStroke } from '@/lib/schema/adjustments';
 import type { ViewBox } from '../Viewport';
+import { touchMods } from './touchMode';
 
 export function RemoveToolOverlay({ box }: { box: ViewBox }) {
   const geometry = useEditor((s) => s.edit.geometry);
@@ -49,7 +50,7 @@ export function RemoveToolOverlay({ box }: { box: ViewBox }) {
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     const stroke: RemovalStroke = { size, points: [toSrc(e)] };
-    drawing.current = { stroke, append: e.shiftKey };
+    drawing.current = { stroke, append: touchMods(e).shiftKey };
     setLive(stroke);
   };
 

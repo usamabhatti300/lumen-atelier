@@ -4,6 +4,7 @@ import { Route, Routes } from 'react-router';
 import { useSettings } from '@/state/settingsStore';
 import { Toasts } from '@/components/ui/misc';
 import { GalleryScreen } from '@/screens/GalleryScreen';
+import { PwaPrompts } from '@/pwa/PwaUi';
 
 // Secondary screens are split out of the initial bundle.
 const EditorScreen = lazy(() => import('@/screens/EditorScreen'));
@@ -37,6 +38,7 @@ export function App() {
         </Routes>
       </Suspense>
       <Toasts />
+      <PwaPrompts />
     </MotionConfig>
   );
 }

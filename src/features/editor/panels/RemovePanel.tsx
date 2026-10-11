@@ -41,7 +41,8 @@ export function RemovePanel() {
       <Section title="Remove objects">
         <p className="mb-3 text-xs leading-relaxed text-mute">
           Paint over a person, wire or sign and it is filled in from its surroundings. Cover the whole object,
-          including its shadow. Hold <Kbd>Shift</Kbd> to add to the last removal.
+          including its shadow. <span className="coarse:hidden">Hold <Kbd>Shift</Kbd> to add to the last removal.</span>
+          <span className="hidden coarse:inline">Choose Add to last on the photo to extend the previous removal.</span>
         </p>
         <Button
           variant={on ? 'primary' : 'secondary'}

@@ -42,8 +42,20 @@ only where it is measurable (import, export tiles, batch); otherwise as an indet
 
 - Desktop (≥1024 px): top bar, left panel 284 px (reference CTA, presets, photos), canvas, right panel
   300 px (histogram, tabs), filmstrip. Both side panels collapse.
-- Tablet/mobile: canvas plus a bottom navigation (Presets, Light, Match look, Colour, More)
-  opening a bottom sheet (≤52 vh) so the photo stays visible.
+- Tablet/mobile (<1024 px): canvas plus a bottom navigation (Presets, Light, Match look, Colour, More).
+  Each opens a panel **docked under the photo** (46 dvh; the photo re-fits above it, so edits stay
+  visible), or **beside it** on phones held sideways (`(orientation: landscape) and (max-height: 540px)`).
+  The Presets panel is the full left panel (Presets / Photos, Save look, preset Amount); Light adds
+  the histogram. Top-bar actions that don't fit move into the ⋮ *More actions* menu (below 1024 px).
+- Touch: pinch to zoom and pan with two fingers, double-tap to toggle fit / zoom, one finger pans
+  when zoomed. Canvas tools that use Shift / Alt on a keyboard get an on-photo mode chip on touch
+  screens (Remove: *Add to last*; Select object: *Add* / *Subtract*; Heal: *Delete spot*) with *Done*.
+- Touch targets: Tailwind variants `coarse:` (`pointer: coarse`) enlarge buttons, segmented
+  controls, slider rows/thumbs (20 px) and crop handles (44 px); `fine:` (`hover: hover` and
+  `pointer: fine`) hides secondary controls until hover on desktop only, so they are always
+  visible on touch screens. Tooltips are not rendered on touch screens.
+- Heights use `100dvh`; `viewport-fit=cover` with safe-area insets for the bottom bar, landscape
+  notches and full-screen dialogs.
 
 ## Accessibility
 

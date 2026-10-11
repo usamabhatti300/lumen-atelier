@@ -70,7 +70,7 @@ export function Dialog({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-0 sm:p-6"
+          className={`fixed inset-0 z-[80] flex items-center justify-center sm:p-6 ${fullscreen ? 'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]' : 'p-3'}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -91,7 +91,7 @@ export function Dialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.99 }}
             transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-            className={`relative flex max-h-full w-full flex-col overflow-hidden border border-line bg-ink-850 shadow-float ${
+            className={`relative flex max-h-full w-full min-w-0 flex-col overflow-hidden border border-line bg-ink-850 shadow-float ${
               fullscreen ? 'h-full sm:h-[min(860px,100%)] sm:max-w-6xl sm:rounded-md' : `${width} rounded-md`
             }`}
           >
