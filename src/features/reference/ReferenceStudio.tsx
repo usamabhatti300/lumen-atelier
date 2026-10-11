@@ -637,7 +637,13 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
     return () => window.clearTimeout(t);
   }, [frame, isApplied, refStats, mode]);
 
-  const save = async () => {
+  const save = () =>
+    saveLook().catch((e: unknown) => {
+      // Never fail silently: storage can be full or blocked (e.g. a private window).
+      showToast(`Could not save the preset: ${e instanceof Error ? e.message : 'unknown error'}.`, 'error');
+    });
+
+  const saveLook = async () => {
     const amount = isApplied ? applied!.amount : 100;
     const thumb = await referenceThumb(working.bitmap);
     const preset = await usePresets.getState().create({
