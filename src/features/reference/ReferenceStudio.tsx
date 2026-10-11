@@ -35,6 +35,7 @@ import { matchInWorker, matchSampleFor, samplesFor, statsInWorker } from '@/lib/
 import { MATCH, type MatchResult } from '@/lib/analysis/match';
 import { adaptToTarget, suggestRefinements, type Adaptation, type Suggestion } from '@/lib/analysis/adapt';
 import type { ImageStats } from '@/lib/analysis/stats';
+import type { MappingResult } from '@/lib/analysis/mapping';
 import { blendPreset } from '@/lib/presets/blend';
 import { defaultAdjustments, getPath, leafPaths, setPath, type PartialAdjustments } from '@/lib/schema/adjustments';
 import { createCanvas, canvasToBlob } from '@/lib/image/decode';
@@ -55,6 +56,8 @@ const ACCEPT = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
 export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: () => void; onImportTarget: () => void }) {
   const original = useReference((s) => s.original);
   const result = useReference((s) => s.result);
+  const stats = useReference((s) => s.stats);
+  const working = useReference((s) => s.working);
   const running = useReference((s) => s.running);
   const loadError = useReference((s) => s.loadError);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -163,7 +166,10 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
             <ReferencePane onReplace={() => fileInput.current?.click()} />
             <div className="scroll-quiet min-h-0 border-line-soft lg:overflow-y-auto lg:border-l">
               <AnalysisPane />
-              <AnimatePresence>{result && <ApplyPane onClose={onClose} onImportTarget={onImportTarget} />}</AnimatePresence>
+              {/* Data is passed as props so the pane keeps its last values while it animates out after a reset. */}
+              <AnimatePresence>
+                {result && stats && working && <ApplyPane result={result} refStats={stats} working={working} onClose={onClose} onImportTarget={onImportTarget} />}
+              </AnimatePresence>
             </div>
           </div>
         )}
@@ -495,10 +501,15 @@ const SUGGESTION_PATHS: Record<string, string[]> = {
 
 type ApplyMode = 'matched' | 'generic';
 
-function ApplyPane({ onClose, onImportTarget }: { onClose: () => void; onImportTarget: () => void }) {
-  const result = useReference((s) => s.result)!;
-  const refStats = useReference((s) => s.stats)!;
-  const working = useReference((s) => s.working)!;
+interface ApplyPaneProps {
+  result: MappingResult;
+  refStats: ImageStats;
+  working: NonNullable<ReturnType<typeof useReference.getState>['working']>;
+  onClose: () => void;
+  onImportTarget: () => void;
+}
+
+function ApplyPane({ result, refStats, working, onClose, onImportTarget }: ApplyPaneProps) {
   const aiModel = useReference((s) => s.aiModel);
   const activePhotoId = useEditor((s) => s.activePhotoId);
   const photos = useEditor((s) => s.photos);
