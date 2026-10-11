@@ -16,7 +16,7 @@ there is presented as finished in the UI.
 | 1 Foundation | Done | Vite 8 + React 19 + TS 6 (strict) + Tailwind 4, design tokens, workspace, dev runner |
 | 2 Working editor | Done | Import (drag/drop, picker, multi), GPU render, basic adjustments, undo/redo, export |
 | 3 Advanced colour | Done | HSL ×8, RGB curves, 3-way + global wheels, mixer, levels, versioned schema |
-| 4 Preset library | Done | 111 original presets (Signature Collection: 41, first/default tab; 10 in each of 7 other families), real previews, search, categories, favourites, intensity |
+| 4 Preset library | Done | 186 original presets in 14 categories (Signature Collection: 51, first/default tab), real previews, search, categories, favourites, intensity. Notes: `docs/PRESET_LIBRARY_NOTES.md` |
 | 5 Reference → preset | Done | Stats worker, optional Claude interpretation, deterministic mapping, adaptation, suggestions, save |
 | 6 Portrait & masks | Done | MediaPipe landmarks + segmentation, retouch tools, healing, brush/gradient/segment masks, layers |
 | 7 Persistence & interop | Done | IndexedDB projects + autosave/recovery, preset JSON, `.cube` import/export, XMP export, batch apply/export |
@@ -95,6 +95,19 @@ there is presented as finished in the UI.
   buttons (the page was zoomed out to 954 px), hidden tooltips widening the page, hover-only preset / project
   buttons that were invisible on touch, and the Remove brush staying on after switching to Crop.
 
+- **Signature Pro recipes (2026-10-11)**: 75 of the 80 recipes in `docs/PHOTO_EDITOR_SIGNATURE_PRO_PRESETS.md`
+  added (5 already existed), with six new categories; library **111 to 186**. Details, mapping and tuning in
+  `docs/PRESET_LIBRARY_NOTES.md`. Type-check clean; ESLint 0 errors (same 10 warnings); production build
+  passes. Vitest **16 files, 193 passed, 1 skipped** (an earlier run during the e2e run had the timing test
+  "closed-loop matching is fast enough for the UI" fail at 5.1 s under CPU load; it passed on the idle re-run).
+  Preset tests now cover all 186: counts per category, metadata, schema-exact, distinctness, intensity 0 =
+  untouched, and no extra clipping for every preset added after the original 70. Playwright
+  `editor.spec.ts` + `mobile.spec.ts`: **9 passed, 2 failed**; the presets test (51 Signature cards, new
+  Black & White tab) and all 4 mobile tests passed. The EXIF export test failed under load and **passed
+  when re-run alone**. The crop/PNG export test failed twice (no download within 60 s) and **fails the same
+  way on the code without this change**, so it is a pre-existing issue to investigate. Manual check on the
+  dev server (Playwright, real GPU): all 14 tabs in order with the right counts and real thumbnails; 26 new
+  presets applied to 4 wallpaper photos and reviewed; no page errors. Not tested on real portraits.
 - **Signature Collection (2026-10-11)**: 30 presets from `docs/PREMIUM_PRESETS.md` added unchanged, plus
   11 from `docs/PRO_PRESET_LIBRARY.md` (overlaps merged; record at the end of that doc), so the library grows from
   **70 to 111** presets. All 41 parse with `PartialAdjustmentsSchema` with no value changed. Type-check clean;

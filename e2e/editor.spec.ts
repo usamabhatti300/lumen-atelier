@@ -100,7 +100,7 @@ test.describe('editor', () => {
     const tabs = page.getByRole('tablist', { name: 'Preset categories' }).getByRole('tab');
     await expect(tabs.first()).toHaveText('Signature Collection');
     await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(41);
+    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(51);
     await page.getByRole('button', { name: 'Apply Velvet Slide' }).click();
     await expect(page.getByText(/^Applied /)).toBeVisible();
     await setRange(page, 'Amount', 40);
@@ -113,6 +113,11 @@ test.describe('editor', () => {
     await page.getByRole('tab', { name: 'Signature Collection' }).click();
     await page.getByRole('searchbox', { name: 'Search presets' }).fill('bleach');
     await expect(page.getByRole('button', { name: 'Apply Bleach Bypass' })).toBeVisible();
+    // Category tabs filter (Black & White holds the four new monochrome recipes).
+    await page.getByRole('searchbox', { name: 'Search presets' }).fill('');
+    await page.getByRole('tab', { name: 'Black & White' }).click();
+    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(4);
+    await expect(page.getByRole('button', { name: 'Apply Platinum Noir' })).toBeVisible();
   });
 
   test('masks: a radial mask affects only part of the image', async ({ page }) => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultAdjustments, defaultEditState, PartialAdjustmentsSchema, leafPaths, type Adjustments, type PartialAdjustments } from '../schema/adjustments';
 import { cpuRender } from '../engine/cpu/cpuRender';
 import { blendPreset, blendWheel } from './blend';
-import { BUILTIN_PRESETS, PRESET_CATEGORIES } from './library';
+import { BUILTIN_PRESETS, CATEGORY_LABELS, PRESET_CATEGORIES } from './library';
 import { deriveDevelopParams } from '../engine/params';
 import { developPixel } from '../engine/pixel';
 import { mergeAdjustments } from '../schema/adjustments';
@@ -57,15 +57,31 @@ describe('preset blending', () => {
 });
 
 describe('built-in preset library', () => {
-  it('has 111 presets: 41 in the Signature Collection, 10 per other category, unique ids and names', () => {
-    expect(BUILTIN_PRESETS).toHaveLength(111);
+  it('has 186 presets in the expected categories, with unique ids and names', () => {
+    const counts: Record<string, number> = {
+      signature: 51, cinematic: 16, 'pale-blue': 15, film: 15, matte: 4, portrait: 16, wedding: 4,
+      luxury: 14, 'golden-hour': 4, travel: 16, earthy: 4, street: 4, bw: 4, social: 19,
+    };
+    expect(BUILTIN_PRESETS).toHaveLength(186);
     expect(PRESET_CATEGORIES[0]).toBe('signature');
-    expect(BUILTIN_PRESETS.filter((p) => p.category === 'signature')).toHaveLength(41);
-    for (const c of PRESET_CATEGORIES.filter((c) => c !== 'signature')) {
-      expect(BUILTIN_PRESETS.filter((p) => p.category === c)).toHaveLength(10);
+    expect([...PRESET_CATEGORIES].sort()).toEqual(Object.keys(counts).sort());
+    for (const c of PRESET_CATEGORIES) expect(BUILTIN_PRESETS.filter((p) => p.category === c), c).toHaveLength(counts[c]);
+    expect(new Set(BUILTIN_PRESETS.map((p) => p.id)).size).toBe(186);
+    expect(new Set(BUILTIN_PRESETS.map((p) => p.name.toLowerCase())).size).toBe(186);
+  });
+
+  it('every preset has a label, a description and 2-5 tags', () => {
+    for (const p of BUILTIN_PRESETS) {
+      expect(CATEGORY_LABELS[p.category], p.name).toBeTruthy();
+      expect(p.description.length, p.name).toBeGreaterThan(20);
+      expect(p.tags.length, p.name).toBeGreaterThanOrEqual(2);
+      expect(p.tags.length, p.name).toBeLessThanOrEqual(5);
     }
-    expect(new Set(BUILTIN_PRESETS.map((p) => p.id)).size).toBe(111);
-    expect(new Set(BUILTIN_PRESETS.map((p) => p.name)).size).toBe(111);
+  });
+
+  it('every preset at intensity 0 leaves the photo untouched', () => {
+    const base = defaultAdjustments();
+    for (const p of BUILTIN_PRESETS) expect(blendPreset(base, p.adjustments, 0), p.name).toEqual(base);
   });
 
   it('every preset is schema-valid without clamping', () => {
@@ -103,7 +119,7 @@ describe('built-in preset library', () => {
     for (const p of BUILTIN_PRESETS) expect(leafPaths(p.adjustments).length).toBeGreaterThan(5);
   });
 
-  it('Signature Collection presets do not clip a bright sky more than the untouched render', () => {
+  it('presets added after the original 70 do not clip a bright sky more than the untouched render', () => {
     // Pale hazy sky (blue at the top to near-white at the horizon), a sun disc with a glow, and sand.
     const W = 120;
     const H = 90;
@@ -127,8 +143,9 @@ describe('built-in preset library', () => {
     };
     const untouched = whiteFraction(defaultAdjustments());
     expect(untouched).toBeGreaterThan(0.01); // the fixture really has clipped highlights to protect
-    for (const p of BUILTIN_PRESETS.filter((p) => p.category === 'signature')) {
+    // The original 70 come first and predate this rule (15 of them clip this fixture).
+    for (const p of BUILTIN_PRESETS.slice(70)) {
       expect(whiteFraction(blendPreset(defaultAdjustments(), p.adjustments, 100)), p.name).toBeLessThanOrEqual(untouched);
     }
-  }, 60_000);
+  }, 120_000);
 });
