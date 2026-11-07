@@ -193,7 +193,7 @@ function ColorFocus({ onExpand }: { onExpand: () => void }) {
 }
 
 const CHIP =
-  'carton-label flex h-9 shrink-0 items-center gap-1.5 rounded-sm border px-3 text-[13px] whitespace-nowrap transition-[background-color,color,transform] active:scale-95';
+  'flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-medium whitespace-nowrap transition-[background-color,color,transform] duration-200 active:scale-95';
 
 /** The sideways tool row, ending with "All" (the full panel). Keeps the selected tool in view. */
 function ToolRow({ label, onExpand, children }: { label: string; onExpand: () => void; children: ReactNode }) {
@@ -204,9 +204,9 @@ function ToolRow({ label, onExpand, children }: { label: string; onExpand: () =>
     if (el && box) box.scrollLeft = el.offsetLeft - box.clientWidth / 2 + el.offsetWidth / 2;
   }, []);
   return (
-    <div ref={row} role="tablist" aria-label={label} className="scroll-quiet -mx-3 flex gap-1.5 overflow-x-auto overscroll-x-contain px-3 pt-0.5 pb-2">
+    <div ref={row} role="tablist" aria-label={label} className="no-scrollbar -mx-3 flex gap-1.5 overflow-x-auto overscroll-x-contain px-3 pt-0.5 pb-2">
       {children}
-      <button type="button" onClick={onExpand} className={`${CHIP} border-line text-fg-3`}>
+      <button type="button" onClick={onExpand} className={`${CHIP} border border-line text-fg-3`}>
         <ChevronsUp size={14} /> All
       </button>
     </div>
@@ -220,7 +220,7 @@ function ModeChip({ selected, onSelect, children }: { selected: boolean; onSelec
       role="tab"
       aria-selected={selected}
       onClick={onSelect}
-      className={`${CHIP} ${selected ? 'border-fg bg-fg text-ground' : 'border-line text-fg-2'}`}
+      className={`${CHIP} ${selected ? 'bg-fg text-ground' : 'bg-control text-fg-2'}`}
     >
       {children}
     </button>
@@ -237,7 +237,7 @@ const ToolChip = memo(function ToolChip({ path, label, selected, onSelect }: { p
   return (
     <ModeChip selected={selected} onSelect={onSelect}>
       {label}
-      {changed && <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-accent' : 'bg-accent-fg'}`} />}
+      {changed && <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-on-accent' : 'bg-accent shadow-[0_0_6px_rgb(212_255_63/0.8)]'}`} />}
       {changed && <span className="sr-only">(edited)</span>}
     </ModeChip>
   );
@@ -258,7 +258,7 @@ function BandSwatch({ band, selected, onSelect }: { band: HslBand; selected: boo
       className="relative flex h-10 w-10 items-center justify-center"
     >
       <span
-        className={`h-7 w-7 rounded-full transition-[box-shadow,transform] ${selected ? 'scale-110 ring-2 ring-fg ring-offset-2 ring-offset-ground-2' : ''}`}
+        className={`h-7 w-7 rounded-full transition-[box-shadow,transform] ${selected ? 'scale-110 ring-2 ring-fg ring-offset-2 ring-offset-raised' : ''}`}
         style={{ background: bandColor(HSL_BAND_HUES[band]) }}
       />
       {changed && <span aria-hidden className="absolute right-0.5 bottom-0.5 h-1.5 w-1.5 rounded-full bg-accent" />}

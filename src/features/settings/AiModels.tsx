@@ -27,29 +27,29 @@ export function AiModels() {
   const readyMissing = states && MODELS.some((m) => m.status === 'ready' && (states[m.id] === 'missing' || states[m.id] === 'partial'));
 
   return (
-    <div className="text-xs leading-relaxed text-fg-3">
-      <p className="mb-3">
+    <div className="text-[13px] leading-relaxed text-fg-3">
+      <p className="mb-4">
         These models run on this device; photos are never uploaded. Model files are served by this app, not fetched from third parties while you
         edit, and each file is checked against its SHA-256 checksum before use.
       </p>
-      <ul className="divide-y divide-line-soft rounded-sm border border-line-soft" aria-label="AI models">
+      <ul className="divide-y divide-line-soft overflow-hidden rounded-md bg-raised-2" aria-label="AI models">
         {MODELS.map((m) => {
           const state = states?.[m.id];
           return (
-            <li key={m.id} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 px-3 py-2.5" data-testid={`ai-model-${m.id}`}>
-              <span className="text-fg">{m.name}</span>
-              <span className="tabular text-right text-fg-2">{mb(modelBytes(m))}</span>
+            <li key={m.id} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 px-4 py-3.5" data-testid={`ai-model-${m.id}`}>
+              <span className="text-sm font-medium text-fg">{m.name}</span>
+              <span className="text-right font-mono text-xs text-fg-2">{mb(modelBytes(m))}</span>
               <span>
                 {m.feature}
                 {m.status === 'planned' && <span className="text-fg-3"> · not used by any tool yet</span>}
               </span>
               <span
-                className={`text-right ${state === 'installed' ? 'text-success' : m.status === 'ready' && state ? 'text-accent-fg' : 'text-fg-3'}`}
+                className={`text-right text-xs font-medium ${state === 'installed' ? 'text-success' : m.status === 'ready' && state ? 'text-accent-fg' : 'text-fg-3'}`}
                 data-testid="ai-model-state"
               >
                 {state ? STATE_LABEL[state] : 'Checking…'}
               </span>
-              <span className="col-span-2">
+              <span className="col-span-2 text-xs text-fg-4">
                 Licence:{' '}
                 <a href={m.licenceUrl} target="_blank" rel="noreferrer noopener" className="text-fg-2 underline decoration-line-soft underline-offset-2 hover:text-fg">
                   {m.licence}
@@ -66,7 +66,7 @@ export function AiModels() {
         </p>
       )}
 
-      <div className="mt-4 rounded-sm border border-line-soft p-3">
+      <div className="mt-4 rounded-md bg-raised-2 p-4">
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p>
             Runtime: ONNX Runtime Web (MIT) and Transformers.js (Apache-2.0), served from this app. Check that it starts on this device's GPU

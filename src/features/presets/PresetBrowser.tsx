@@ -8,7 +8,7 @@ import { presetThumb, thumbSourceListeners, previewSourceId } from '@/engine/pre
 import { PRESET_CATEGORY_IDS, type Preset, type PresetCategoryId } from '@/lib/schema/preset';
 import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
-import { cartonForLook, type Carton } from '@/lib/presets/carton';
+import { catalogueNumber } from '@/lib/presets/codes';
 
 type Filter = 'all' | 'favorites' | PresetCategoryId;
 
@@ -62,11 +62,11 @@ export function PresetBrowser({
   // Catalogue numbers are stable: counted over the whole library, not the filtered view.
   const numbers = useMemo(() => {
     const seen = new Map<string, number>();
-    const out = new Map<string, { n: string; carton: Carton }>();
+    const out = new Map<string, string>();
     for (const p of all()) {
       const n = seen.get(p.category) ?? 0;
       seen.set(p.category, n + 1);
-      out.set(p.id, { n: String(n + 1).padStart(2, '0'), carton: cartonForLook(p.category, n) });
+      out.set(p.id, catalogueNumber(p.category, n));
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,7 +86,7 @@ export function PresetBrowser({
       <div className={`shrink-0 space-y-2 ${variant === 'panel' ? 'px-3 pt-3 pb-2' : strip ? 'px-3 pt-1 pb-2' : 'pb-4'}`}>
         {strip && !searching ? null : (
         <label className="relative block">
-          <Search size={13} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-fg-4" />
+          <Search size={15} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-fg-4" />
           <span className="sr-only">Search presets</span>
           <input
             type="search"
@@ -98,7 +98,7 @@ export function PresetBrowser({
             }}
             placeholder={`Search ${all().length} looks`}
             autoFocus={strip}
-            className="h-8 w-full rounded-sm border border-line bg-well pr-9 pl-8 text-xs text-fg placeholder:text-fg-4 focus:border-accent-fg/60 focus:outline-none coarse:h-10 coarse:text-sm"
+            className={`w-full rounded-full border border-line-soft bg-well pr-10 pl-10 text-fg placeholder:text-fg-4 transition-colors focus:border-accent/60 focus:outline-none ${variant === 'page' ? 'h-12 text-[15px]' : 'h-9 text-[13px] coarse:h-10 coarse:text-sm'}`}
           />
           {strip && (
             <button
@@ -108,20 +108,20 @@ export function PresetBrowser({
                 setSearching(false);
                 setQuery('');
               }}
-              className="absolute top-1/2 right-1 flex h-8 w-8 -translate-y-1/2 items-center justify-center text-fg-3"
+              className="absolute top-1/2 right-1 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-fg-3 hover:bg-control"
             >
               <X size={15} />
             </button>
           )}
         </label>
         )}
-        <div className={`flex gap-1 ${variant === 'page' ? 'scroll-quiet -mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0' : 'scroll-quiet -mx-3 overflow-x-auto px-3 pb-1 [mask-image:linear-gradient(90deg,#000_88%,transparent)]'}`} role="tablist" aria-label="Preset categories">
+        <div className={`flex gap-1.5 ${variant === 'page' ? 'no-scrollbar -mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0' : 'no-scrollbar -mx-3 overflow-x-auto px-3 pb-1 [mask-image:linear-gradient(90deg,#000_86%,transparent)]'}`} role="tablist" aria-label="Preset categories">
           {strip && !searching && (
             <button
               type="button"
               aria-label="Search presets"
               onClick={() => setSearching(true)}
-              className="flex h-7 w-8 shrink-0 items-center justify-center rounded-sm border border-line text-fg-2 coarse:h-9 coarse:w-10"
+              className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 coarse:h-9 coarse:w-10"
             >
               <Search size={14} />
             </button>
@@ -133,26 +133,26 @@ export function PresetBrowser({
               role="tab"
               aria-selected={filter === f}
               onClick={() => setFilter(f)}
-              className={`carton-label h-7 shrink-0 rounded-sm border px-2.5 text-[11.5px] whitespace-nowrap transition-colors coarse:h-9 coarse:px-3 coarse:text-[12.5px] ${
-                filter === f ? 'border-fg bg-fg text-ground' : 'border-line text-fg-2 hover:border-fg hover:text-fg'
+              className={`h-8 shrink-0 rounded-full px-3.5 text-[13px] font-medium whitespace-nowrap transition-[background-color,color,transform] duration-200 active:scale-95 coarse:h-9 coarse:px-4 ${
+                filter === f ? 'bg-fg text-ground' : 'bg-control text-fg-2 hover:bg-control-2 hover:text-fg'
               }`}
             >
-              {f === 'all' ? 'All' : f === 'favorites' ? <span className="flex items-center gap-1"><Star size={11} fill="currentColor" aria-hidden /> Favourites</span> : ALL_CATEGORY_LABELS[f]}
+              {f === 'all' ? 'All' : f === 'favorites' ? <span className="flex items-center gap-1.5"><Star size={12} fill="currentColor" aria-hidden /> Favourites</span> : ALL_CATEGORY_LABELS[f]}
             </button>
           ))}
         </div>
       </div>
       <div className={`scroll-quiet min-h-0 flex-1 ${strip ? 'overflow-hidden' : 'overflow-y-auto'} ${variant === 'panel' ? 'px-3 pb-4' : ''}`}>
         {presets.length === 0 ? (
-          <p className="py-8 text-center text-xs text-fg-3">
+          <p className="py-10 text-center text-sm text-fg-3">
             {filter === 'favorites' ? 'No favourites yet. Star a preset to keep it here.' : 'No presets match your search.'}
           </p>
         ) : (
           <ul
             className={
               strip
-                ? 'scroll-quiet flex h-[200px] gap-2.5 overflow-x-auto overscroll-x-contain px-3 pt-3 pb-2'
-                : `grid gap-x-2.5 gap-y-3 ${variant === 'panel' ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'}`
+                ? 'no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain px-3 pt-2 pb-3'
+                : `grid ${variant === 'panel' ? 'grid-cols-2 gap-2' : 'grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'}`
             }
             aria-label="Presets"
           >
@@ -196,7 +196,7 @@ export function PresetBrowser({
           </>
         }
       >
-        <p className="px-4 py-4 text-sm text-fg-3">
+        <p className="px-5 pb-5 text-sm leading-relaxed text-fg-3">
           “{deleting?.name}” will be removed. Photos already edited with it keep their settings.
         </p>
       </Dialog>
@@ -217,7 +217,7 @@ const PresetCard = memo(function PresetCard({
   catalogue,
 }: {
   actionVerb: string;
-  catalogue?: { n: string; carton: Carton };
+  catalogue?: string;
   strip?: boolean;
   preset: Preset;
   active: boolean;
@@ -251,10 +251,9 @@ const PresetCard = memo(function PresetCard({
   }, [preset.id, preset.adjustments, thumbKey]);
   const url = thumb?.key === thumbKey ? thumb.url : null;
 
-  const carton = catalogue?.carton ?? cartonForLook(preset.category, 0);
   return (
-    <li className={`group relative ${strip ? 'w-[96px] shrink-0' : 'flex'}`}>
-      {/* A film carton: category colour, catalogue code, the preview as the box's window. */}
+    <li className={`group relative ${strip ? 'w-[92px] shrink-0' : 'flex flex-col'}`}>
+      {/* A look: its preview fills the tile; the chosen look glows lime. */}
       <button
         type="button"
         onClick={() => onApply?.(preset)}
@@ -262,59 +261,60 @@ const PresetCard = memo(function PresetCard({
         aria-pressed={active}
         aria-label={`${onApply ? actionVerb : 'Preset'} ${preset.name}`}
         title={preset.description ? `${preset.name}: ${preset.description}` : preset.name}
-        style={{ backgroundColor: carton.bg, color: carton.fg }}
-        className={`relative flex w-full flex-col overflow-hidden rounded-sm text-left transition-[transform,box-shadow,outline-color] duration-200 ease-out enabled:active:scale-[0.97] ${
-          carton.bg === '#f4f1ea' || carton.bg === '#efe2d2' ? 'ring-1 ring-line ring-inset' : ''
-        } ${active ? '-translate-y-2 shadow-lift outline-2 outline-offset-2 outline-fg' : 'outline-2 outline-offset-2 outline-transparent enabled:hover:-translate-y-0.5 enabled:hover:shadow-lift'}`}
+        className={`relative block w-full overflow-hidden bg-raised-2 text-left transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] enabled:active:scale-[0.95] ${
+          strip ? 'aspect-[3/4] rounded-md' : large ? 'aspect-[4/5] rounded-lg' : 'aspect-[4/5] rounded-md'
+        } ${active ? 'shadow-glow' : 'shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] enabled:hover:-translate-y-0.5'}`}
       >
-        <span className={`flex items-center justify-between gap-1 font-display font-bold tracking-[0.12em] uppercase tabular-nums ${strip ? 'px-1.5 pt-1.5 pb-1 text-[10px]' : 'px-2 pt-2 pb-1.5 text-[11px]'}`}>
-          <span className="flex items-baseline gap-1">
-            <span>{carton.code}</span>
-            {catalogue && <span className={`font-extrabold tracking-[0.02em] ${strip ? 'text-[28px] leading-[0.8]' : 'text-[34px] leading-[0.8]'}`}>{catalogue.n}</span>}
+        <AnimatePresence>
+          {url && (
+            <motion.img
+              key={url}
+              src={url}
+              alt=""
+              initial={{ opacity: 0, scale: 1.06 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
+            />
+          )}
+        </AnimatePresence>
+        {!url && <span className="skeleton absolute inset-0" />}
+        <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+        {catalogue && (
+          <span className={`absolute top-0 left-0 font-mono font-medium tracking-[0.06em] text-white/75 uppercase [text-shadow:0_1px_3px_rgb(0_0_0/0.7)] ${strip ? 'p-1.5 text-[9px]' : 'p-2 text-[10px]'}`}>
+            {catalogue}
           </span>
-          {active ? (
-            <motion.span initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: carton.fg, color: carton.bg }}>
-              <Check size={10} strokeWidth={3.5} />
-            </motion.span>
-          ) : preset.origin === 'reference' ? (
-            <Wand2 size={11} aria-label="Made from a reference photo" className="shrink-0" />
-          ) : null}
+        )}
+        {active ? (
+          <motion.span
+            initial={{ scale: 0, rotate: -90 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 520, damping: 22 }}
+            className={`absolute flex items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_0_14px_rgb(212_255_63/0.7)] ${strip ? 'top-1.5 right-1.5 h-5 w-5' : 'top-2 right-2 h-6 w-6'}`}
+          >
+            <Check size={strip ? 12 : 14} strokeWidth={3} />
+          </motion.span>
+        ) : preset.origin === 'reference' ? (
+          <Wand2 size={12} aria-label="Made from a reference photo" className={`absolute text-white/80 ${strip ? 'top-1.5 right-1.5' : 'top-2.5 right-2.5'}`} />
+        ) : null}
+        <span className={`absolute inset-x-0 bottom-0 block ${strip ? 'px-2 pb-1.5' : 'px-2.5 pb-2'}`}>
+          <span className={`line-clamp-2 block leading-[1.15] font-semibold tracking-[-0.01em] text-white ${strip ? 'text-[11.5px]' : large ? 'text-[15px]' : 'text-[13px]'}`}>{preset.name}</span>
         </span>
-        <span className={`relative block overflow-hidden bg-[color-mix(in_srgb,currentColor_10%,transparent)] ${strip ? 'mx-1.5 aspect-square' : `mx-2 ${large ? 'aspect-[4/3]' : 'aspect-[3/2]'}`}`}>
-          <AnimatePresence>
-            {url && (
-              <motion.img
-                key={url}
-                src={url}
-                alt=""
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            )}
-          </AnimatePresence>
-          {!url && <span className="absolute inset-0 animate-pulse bg-[color-mix(in_srgb,currentColor_14%,transparent)]" />}
-        </span>
-        <span className={`block ${strip ? 'px-1.5 pt-1 pb-1.5' : 'px-2 pt-1.5 pb-2'}`}>
-          <span className={`block font-display leading-[1.02] font-bold uppercase ${strip ? 'line-clamp-2 min-h-[2.04em] text-[12px] tracking-[0.02em]' : 'line-clamp-2 min-h-[2.04em] text-[15px] tracking-[0.01em]'}`}>{preset.name}</span>
-          {large && preset.description && <span className="mt-1 line-clamp-2 block text-xs leading-snug opacity-80">{preset.description}</span>}
-        </span>
-        <span aria-hidden className={`bands mt-auto block shrink-0 transition-[height,opacity] duration-300 ${active ? 'h-[7px] opacity-100' : 'h-[3px] opacity-60'}`} />
       </button>
-      <div className={`absolute top-6 right-3 flex gap-1 ${strip ? 'hidden' : ''}`}>
+      {large && preset.description && <p className="mt-2 line-clamp-2 px-0.5 text-[13px] leading-snug text-fg-3">{preset.description}</p>}
+      <div className={`absolute right-1.5 flex gap-1 ${strip ? 'hidden' : ''} ${active ? 'top-10' : 'top-1.5'}`}>
         <motion.button
           type="button"
-          whileTap={{ scale: 0.8 }}
+          whileTap={{ scale: 0.75 }}
           aria-label={favorite ? `Remove ${preset.name} from favourites` : `Add ${preset.name} to favourites`}
           aria-pressed={favorite}
           onClick={() => toggleFavorite(preset.id)}
-          className={`flex h-6 w-6 items-center justify-center rounded-full bg-black/55 transition-opacity coarse:h-8 coarse:w-8 ${
+          className={`flex h-7 w-7 items-center justify-center rounded-full bg-black/55 backdrop-blur-md transition-opacity coarse:h-8 coarse:w-8 ${
             favorite ? 'text-accent opacity-100' : 'text-white fine:opacity-0 fine:group-focus-within:opacity-100 fine:group-hover:opacity-100'
           }`}
         >
-          <motion.span key={String(favorite)} initial={{ scale: 0.5 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 18 }}>
-            <Star size={12} fill={favorite ? 'currentColor' : 'none'} />
+          <motion.span key={String(favorite)} initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 14 }}>
+            <Star size={13} fill={favorite ? 'currentColor' : 'none'} />
           </motion.span>
         </motion.button>
         <button
@@ -323,9 +323,9 @@ const PresetCard = memo(function PresetCard({
           aria-label={`More actions for ${preset.name}`}
           aria-expanded={menu}
           onClick={() => setMenu(!menu)}
-          className="flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white coarse:h-8 coarse:w-8 fine:opacity-0 fine:group-focus-within:opacity-100 fine:group-hover:opacity-100"
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-md coarse:h-8 coarse:w-8 fine:opacity-0 fine:group-focus-within:opacity-100 fine:group-hover:opacity-100"
         >
-          <MoreHorizontal size={13} />
+          <MoreHorizontal size={14} />
         </button>
       </div>
       <AnimatePresence>
@@ -384,7 +384,7 @@ function CardMenu({ anchor, onClose, children }: { anchor: React.RefObject<HTMLB
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.14 }}
-      className="fixed z-[95] w-42 rounded-sm border border-line bg-ground p-1 shadow-float"
+      className="fixed z-[95] w-44 rounded-md border border-line bg-raised-2 p-1.5 shadow-float"
       style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999 }}
     >
       {children}
@@ -395,7 +395,7 @@ function CardMenu({ anchor, onClose, children }: { anchor: React.RefObject<HTMLB
 
 function MenuButton({ icon, label, onClick, danger }: { icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean }) {
   return (
-    <button type="button" role="menuitem" onClick={onClick} className={`flex h-7 w-full items-center gap-2 rounded-xs px-2 text-xs hover:bg-control coarse:h-10 coarse:text-[13px] ${danger ? 'text-danger' : 'text-fg-2 hover:text-fg'}`}>
+    <button type="button" role="menuitem" onClick={onClick} className={`flex h-8 w-full items-center gap-2.5 rounded-sm px-2.5 text-[13px] hover:bg-control coarse:h-10 ${danger ? 'text-danger' : 'text-fg-2 hover:text-fg'}`}>
       {icon}
       {label}
     </button>
@@ -451,9 +451,9 @@ export function PresetFields({
   setCategory: (v: PresetCategoryId) => void;
 }) {
   return (
-    <div className="space-y-3 p-4">
+    <div className="space-y-4 px-5 pb-5">
       <div>
-        <label htmlFor="preset-name" className="mb-1 block text-xs text-fg-3">
+        <label htmlFor="preset-name" className="mb-1.5 block text-xs font-medium text-fg-3">
           Name
         </label>
         <input
@@ -462,11 +462,11 @@ export function PresetFields({
           value={name}
           maxLength={80}
           onChange={(e) => setName(e.target.value)}
-          className="h-9 w-full rounded-sm border border-line bg-well px-3 text-sm text-fg outline-none focus:border-accent-fg/60"
+          className="h-11 w-full rounded-sm border border-line bg-well px-3.5 text-sm text-fg outline-none transition-colors focus:border-accent/60"
         />
       </div>
       <div>
-        <label htmlFor="preset-desc" className="mb-1 block text-xs text-fg-3">
+        <label htmlFor="preset-desc" className="mb-1.5 block text-xs font-medium text-fg-3">
           Description
         </label>
         <textarea
@@ -475,18 +475,18 @@ export function PresetFields({
           maxLength={400}
           rows={3}
           onChange={(e) => setDescription(e.target.value)}
-          className="w-full rounded-sm border border-line bg-well px-3 py-2 text-sm text-fg outline-none focus:border-accent-fg/60"
+          className="w-full rounded-sm border border-line bg-well px-3.5 py-2.5 text-sm text-fg outline-none transition-colors focus:border-accent/60"
         />
       </div>
       <div>
-        <label htmlFor="preset-cat" className="mb-1 block text-xs text-fg-3">
+        <label htmlFor="preset-cat" className="mb-1.5 block text-xs font-medium text-fg-3">
           Category
         </label>
         <select
           id="preset-cat"
           value={category}
           onChange={(e) => setCategory(e.target.value as PresetCategoryId)}
-          className="h-9 w-full rounded-sm border border-line bg-well px-2 text-sm text-fg outline-none focus:border-accent-fg/60"
+          className="h-11 w-full rounded-sm border border-line bg-well px-3 text-sm text-fg outline-none transition-colors focus:border-accent/60"
         >
           {PRESET_CATEGORY_IDS.map((c) => (
             <option key={c} value={c}>

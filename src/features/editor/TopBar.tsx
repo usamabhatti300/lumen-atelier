@@ -23,7 +23,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router';
 import { IconButton, Button } from '@/components/ui/Button';
-import { Wordmark } from '@/screens/GalleryScreen';
+import { Wordmark } from '@/components/Wordmark';
 import { useEditor, type CompareMode } from '@/state/editorStore';
 import { saveNow } from '@/engine/autosave';
 import { useExportDialog } from '@/features/export/ExportDialog';
@@ -60,7 +60,7 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
 
   return (
     <>
-    <header className="theme-carton relative z-10 flex h-14 shrink-0 items-center gap-1 px-2 sm:px-3 lg:h-12">
+    <header className="relative z-10 flex h-14 shrink-0 items-center gap-1 border-b border-line-soft bg-ground px-2 pt-[env(safe-area-inset-top)] sm:px-3 lg:h-[52px]">
       <span className="hidden lg:contents">
         <Wordmark compact />
       </span>
@@ -68,10 +68,9 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
       <Link
         to="/"
         aria-label="Back to all edits"
-        className="carton-label flex h-10 items-center gap-0.5 rounded-sm bg-fg pr-3 pl-1.5 text-[13px] text-ground transition-transform active:scale-95 lg:hidden"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-control text-fg transition-transform active:scale-90 lg:hidden"
       >
-        <ChevronLeft size={20} strokeWidth={2.4} />
-        Back
+        <ChevronLeft size={20} strokeWidth={2.2} />
       </Link>
       <input
         aria-label="Project name"
@@ -83,25 +82,25 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
           setName(null);
         }}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        className="ml-2 hidden h-7 w-44 truncate rounded-xs border border-transparent bg-transparent px-1.5 text-[13px] text-fg-2 outline-none hover:border-line focus:border-accent-fg/60 lg:block"
+        className="ml-3 hidden h-8 w-44 truncate rounded-full border border-transparent bg-transparent px-3 text-[13px] font-medium text-fg-2 outline-none transition-colors hover:border-line hover:bg-raised focus:border-accent/60 focus:bg-raised lg:block"
       />
       <SaveIndicator state={saveState} />
 
-      <div className="mx-auto flex items-center gap-0.5">
+      <div className="mx-auto flex items-center gap-0.5 lg:rounded-full lg:bg-raised lg:p-1 lg:ring-1 lg:ring-line-soft">
         <IconButton label="Toggle left panel" active={leftOpen} onClick={() => setUi({ leftOpen: !leftOpen })} className="hidden lg:inline-flex">
           <PanelLeft size={16} />
         </IconButton>
         <IconButton label="Import photos" shortcut={`${mod}+O`} onClick={onImport}>
           <ImagePlus size={16} />
         </IconButton>
-        <span className="mx-1 h-5 w-px bg-line-soft" />
+        <span className="mx-1 h-5 w-px bg-line" />
         <IconButton label={undoLabel ? `Undo ${undoLabel}` : 'Undo'} shortcut={`${mod}+Z`} disabled={!canUndo} onClick={undo}>
           <Undo2 size={16} />
         </IconButton>
         <IconButton label={redoLabel ? `Redo ${redoLabel}` : 'Redo'} shortcut={`${mod}+⇧+Z`} disabled={!canRedo} onClick={redo}>
           <Redo2 size={16} />
         </IconButton>
-        <span className="mx-1 hidden h-5 w-px bg-line-soft sm:block" />
+        <span className="mx-1 hidden h-5 w-px bg-line sm:block" />
         <IconButton label="Before / after split" shortcut="Y" active={compare === 'split'} disabled={disabled} onClick={() => setCompare('split')}>
           <SplitSquareHorizontal size={16} />
         </IconButton>
@@ -111,15 +110,15 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
         <IconButton label={visible ? 'Hide adjustments' : 'Show adjustments'} shortcut="\\" active={!visible} disabled={disabled} onClick={toggleVisible} className="hidden md:inline-flex">
           {visible ? <Eye size={16} /> : <EyeOff size={16} />}
         </IconButton>
-        <span className="mx-1 hidden h-5 w-px bg-line-soft md:block" />
+        <span className="mx-1 hidden h-5 w-px bg-line md:block" />
         <IconButton label="Fit to screen" shortcut="0" active={zoom === 'fit'} disabled={disabled} onClick={() => setUi({ zoom: 'fit' })} className="hidden md:inline-flex">
           <Maximize size={15} />
         </IconButton>
         <IconButton label="Actual size (100%)" shortcut="1" active={zoom === 1} disabled={disabled} onClick={() => setUi({ zoom: 1 })} className="hidden md:inline-flex">
           <ZoomIn size={16} />
         </IconButton>
-        <span className="tabular hidden w-11 text-center text-[11px] text-fg-4 md:block">{zoom === 'fit' ? 'Fit' : `${Math.round(zoom * 100)}%`}</span>
-        <span className="mx-1 hidden h-5 w-px bg-line-soft lg:block" />
+        <span className="hidden w-11 text-center font-mono text-[11px] text-fg-3 md:block">{zoom === 'fit' ? 'Fit' : `${Math.round(zoom * 100)}%`}</span>
+        <span className="mx-1 hidden h-5 w-px bg-line lg:block" />
         <IconButton label="Copy settings" shortcut={`${mod}+⇧+C`} disabled={disabled} onClick={copy} className="hidden lg:inline-flex">
           <ClipboardCopy size={15} />
         </IconButton>
@@ -138,11 +137,10 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
       <IconButton label="Save now" shortcut={`${mod}+S`} onClick={() => void saveNow()} className="hidden sm:inline-flex">
         <Save size={16} />
       </IconButton>
-      <Button variant="primary" size="sm" icon={<Download size={14} />} disabled={disabled} onClick={() => activePhotoId && openExport([activePhotoId])} data-testid="export-open">
-        <span className="hidden sm:inline">Export</span>
+      <Button variant="primary" size="sm" icon={<Download size={15} />} disabled={disabled} onClick={() => activePhotoId && openExport([activePhotoId])} data-testid="export-open" className="ml-1 h-9 px-3 sm:px-4 coarse:h-10">
+        <span className="hidden min-[380px]:inline">Export</span>
       </Button>
     </header>
-    <div aria-hidden className="bands-rule shrink-0" />
     </>
   );
 }
@@ -199,7 +197,7 @@ function CompactMenu({ onPaste }: { onPaste: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.16 }}
-            className="absolute top-full right-0 z-[70] mt-1.5 w-60 rounded-sm border border-line bg-ground-2 py-1 shadow-float"
+            className="absolute top-full right-0 z-[70] mt-2 w-64 rounded-lg border border-line bg-raised-2 p-1.5 shadow-float"
           >
             <MenuItem
               icon={<Pencil size={15} />}
@@ -229,7 +227,7 @@ function CompactMenu({ onPaste }: { onPaste: () => void }) {
                 </MenuItem>
               </>
             )}
-            <div className="my-1 h-px bg-line-soft" />
+            <div className="mx-2 my-1.5 h-px bg-line" />
             <MenuItem icon={<ClipboardCopy size={15} />} disabled={disabled} onClick={run(copy)}>
               Copy settings
             </MenuItem>
@@ -254,11 +252,11 @@ function MenuItem({ icon, children, onClick, disabled, checked }: { icon: ReactN
       aria-checked={checked}
       disabled={disabled}
       onClick={onClick}
-      className="flex h-11 w-full items-center gap-3 px-3.5 text-left text-[13px] text-fg-2 hover:bg-control hover:text-fg disabled:text-fg-4"
+      className="flex h-11 w-full items-center gap-3 rounded-md px-3 text-left text-sm text-fg-2 transition-colors hover:bg-control hover:text-fg disabled:text-fg-4"
     >
       <span className={checked ? 'text-accent-fg' : 'text-fg-3'}>{icon}</span>
       <span className="flex-1">{children}</span>
-      {checked && <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />}
+      {checked && <span className="h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_rgb(212_255_63/0.8)]" aria-hidden />}
     </button>
   );
 }
@@ -266,7 +264,7 @@ function MenuItem({ icon, children, onClick, disabled, checked }: { icon: ReactN
 function SaveIndicator({ state }: { state: string }) {
   const label = state === 'saved' ? 'Saved' : state === 'saving' ? 'Saving…' : state === 'error' ? 'Not saved' : 'Unsaved';
   return (
-    <span className="ml-1 hidden items-center gap-1.5 text-[11px] text-fg-4 sm:flex" role="status" aria-live="polite" data-testid="save-state">
+    <span className="ml-1 hidden items-center gap-1.5 text-xs text-fg-3 sm:flex" role="status" aria-live="polite" data-testid="save-state">
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
           key={state}

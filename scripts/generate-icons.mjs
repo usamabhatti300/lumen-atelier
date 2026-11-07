@@ -1,4 +1,4 @@
-// Renders the PWA / home-screen icons in public/icons from the Lumen Atelier mark (same artwork as public/favicon.svg).
+// Renders the PWA / home-screen icons in public/icons from the Lumen Atelier mark (same artwork as public/favicon.svg and src/components/Wordmark.tsx).
 // Run after changing the mark: `node scripts/generate-icons.mjs` (uses the Playwright Chromium already installed for e2e).
 import { chromium } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
@@ -7,22 +7,22 @@ import { fileURLToPath } from 'node:url';
 const outDir = fileURLToPath(new URL('../public/icons/', import.meta.url));
 mkdirSync(outDir, { recursive: true });
 
-const INK = '#121212';
-const CARTON = '#e4a11b';
-const BANDS = ['#c8322b', '#e4a11b', '#2f6db5'];
+const GROUND = '#0e0e10';
+const LIME = '#d4ff3f';
+const SPECTRUM = ['#ff5c7a', '#ffb547', '#d4ff3f', '#3fe0ff', '#8f7dff'];
 
-/** The mark (three film-carton bands in an ink-outlined square) centred on a carton-yellow canvas; `scale` is the square's side as a fraction of the canvas. */
+/** The mark (a ring of split light around a lime point) centred on the graphite ground; `scale` is the ring's outer diameter as a fraction of the canvas. */
 function svg({ size, scale, rounded }) {
-  const side = size * scale;
-  const x = (size - side) / 2;
-  const stroke = Math.max(2, size * 0.04);
+  const c = size / 2;
+  const stroke = size * scale * 0.18;
+  const r = (size * scale - stroke) / 2;
   const corner = rounded ? size * 0.22 : 0;
-  const band = (side - stroke) / 3;
-  const bands = BANDS.map((c, i) => `<rect x="${x + stroke / 2 + i * band}" y="${x + stroke / 2}" width="${band + 0.5}" height="${side - stroke}" fill="${c}"/>`).join('');
+  const stops = SPECTRUM.map((col, i) => `<stop offset="${i / (SPECTRUM.length - 1)}" stop-color="${col}"/>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-  <rect width="${size}" height="${size}" rx="${corner}" fill="${CARTON}"/>
-  ${bands}
-  <rect x="${x + stroke / 2}" y="${x + stroke / 2}" width="${side - stroke}" height="${side - stroke}" rx="${size * 0.03}" fill="none" stroke="${INK}" stroke-width="${stroke}"/>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">${stops}</linearGradient></defs>
+  <rect width="${size}" height="${size}" rx="${corner}" fill="${GROUND}"/>
+  <circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="url(#g)" stroke-width="${stroke}"/>
+  <circle cx="${c}" cy="${c}" r="${size * scale * 0.155}" fill="${LIME}"/>
 </svg>`;
 }
 

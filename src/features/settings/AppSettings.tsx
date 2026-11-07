@@ -42,10 +42,10 @@ export function AppSettings() {
   const complete = !!status && status.saved === status.files.length && status.files.length > 0;
 
   return (
-    <div className="space-y-4 text-xs leading-relaxed text-fg-3">
-      <div className="flex flex-col items-start gap-3 rounded-sm border border-line-soft p-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="flex items-start gap-2">
-          <Smartphone size={14} className="mt-0.5 shrink-0 text-fg-2" />
+    <div className="space-y-3 text-[13px] leading-relaxed text-fg-3">
+      <div className="flex flex-col items-start gap-3 rounded-md bg-raised-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-start gap-3">
+          <Smartphone size={16} className="mt-0.5 shrink-0 text-fg-2" />
           <span>
             {standalone
               ? 'Running as an installed app.'
@@ -57,12 +57,12 @@ export function AppSettings() {
             {!standalone && <span className="block text-fg-4">Photos stay in this browser's storage either way.</span>}
           </span>
         </p>
-        {!standalone && (installEvent ? <InstallButton className="flex border border-accent-fg/40" /> : isIosSafari() && <Button size="sm" variant="secondary" onClick={() => setIosHelp(true)}>How to install</Button>)}
+        {!standalone && (installEvent ? <InstallButton className="flex" /> : isIosSafari() && <Button size="sm" variant="secondary" onClick={() => setIosHelp(true)}>How to install</Button>)}
       </div>
 
-      <div className="rounded-sm border border-line-soft p-3">
-        <p className="flex items-start gap-2">
-          {offlineReady ? <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-success" /> : <CloudDownload size={14} className="mt-0.5 shrink-0 text-fg-2" />}
+      <div className="rounded-md bg-raised-2 p-4">
+        <p className="flex items-start gap-3">
+          {offlineReady ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-success" /> : <CloudDownload size={16} className="mt-0.5 shrink-0 text-fg-2" />}
           <span>
             {offlineReady
               ? 'The editor is saved on this device and opens without a connection. Editing, presets, masks, reference matching from measurements and export all work offline.'
@@ -77,14 +77,14 @@ export function AppSettings() {
               On-device AI (Select object, Remove, Lens blur, AI upscale, portrait detection) downloads its models the first time each tool is used.
               Save them all now to use every tool offline.
             </p>
-            <p className="tabular mt-1.5 text-fg-2" data-testid="offline-models">
+            <p className="mt-2 font-mono text-xs text-fg-2" data-testid="offline-models">
               {status.saved} of {status.files.length} files saved offline ({mb(status.savedBytes)} of {mb(status.totalBytes)})
             </p>
             {progress ? (
               <div className="mt-2 flex items-center gap-3">
                 <div className="flex-1">
                   <Progress value={progress.total ? progress.loaded / progress.total : 0} label="Offline download" />
-                  <p className="tabular mt-1">
+                  <p className="mt-1.5 font-mono text-xs">
                     {mb(progress.loaded)} of {mb(progress.total)}
                   </p>
                 </div>
@@ -93,7 +93,7 @@ export function AppSettings() {
                 </Button>
               </div>
             ) : (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {!complete && (
                   <Button size="sm" variant="secondary" icon={<CloudDownload size={13} />} onClick={() => void save()} data-testid="save-offline">
                     Save AI models offline ({mb(status.totalBytes - status.savedBytes)})
@@ -122,11 +122,11 @@ export function AppSettings() {
           </div>
         )}
         {progress === null && persisted === false && (
-          <p className="mt-2 text-fg-4">
+          <p className="mt-3 text-xs text-fg-4">
             The browser may clear this site's storage (projects, photos, presets) when the device runs low on space.{' '}
             <button
               type="button"
-              className="text-accent-fg underline-offset-2 hover:underline"
+              className="font-medium text-accent-fg underline underline-offset-2 hover:no-underline"
               onClick={async () => setPersisted((await navigator.storage?.persist?.()) ?? false)}
             >
               Ask to keep it

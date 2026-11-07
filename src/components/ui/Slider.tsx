@@ -127,7 +127,7 @@ export const Slider = memo(function Slider({
         htmlFor={id}
         onDoubleClick={reset}
         title={hint ?? 'Double-click to reset'}
-        className={`cursor-default select-none truncate ${lg ? `text-sm font-medium ${changed ? 'text-fg' : 'text-fg-2'}` : `text-xs ${changed ? 'text-fg' : 'text-fg-3'}`}`}
+        className={`cursor-default select-none truncate transition-colors ${lg ? `text-[15px] font-medium ${changed ? 'text-fg' : 'text-fg-2'}` : `text-[13px] ${changed ? 'text-fg' : 'text-fg-3'}`}`}
       >
         {label}
       </label>
@@ -135,7 +135,7 @@ export const Slider = memo(function Slider({
         <input
           autoFocus
           aria-label={`${label} value`}
-          className={`tabular rounded-xs border border-accent-fg/60 bg-well px-1 text-right text-fg outline-none ${lg ? 'h-8 w-20 text-base' : 'h-5 w-14 text-xs'}`}
+          className={`rounded-xs border border-accent/60 bg-well px-1.5 text-right font-mono text-fg outline-none ${lg ? 'h-8 w-20 text-base' : 'h-6 w-16 text-xs'}`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commitDraft}
@@ -153,7 +153,7 @@ export const Slider = memo(function Slider({
             setDraft(value.toFixed(d));
             setEditing(true);
           }}
-          className={`tabular rounded-xs px-1 text-right transition-colors hover:bg-control ${lg ? 'h-8 min-w-14 text-base font-medium' : 'h-5 min-w-10 text-xs'} ${
+          className={`rounded-xs px-1.5 text-right font-mono transition-colors hover:bg-control ${lg ? 'h-8 min-w-14 text-base font-medium' : 'h-6 min-w-11 text-xs'} ${
             changed ? 'text-accent-fg' : 'text-fg-4'
           }`}
         >
@@ -166,7 +166,7 @@ export const Slider = memo(function Slider({
           aria-label={`Reset ${label}`}
           disabled={!changed || disabled}
           onClick={reset}
-          className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-3 transition-opacity hover:text-fg disabled:opacity-25"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-control text-fg-2 transition-[opacity,transform] hover:text-fg active:-rotate-90 disabled:opacity-25"
         >
           <RotateCcw size={15} />
         </button>
@@ -184,22 +184,22 @@ export const Slider = memo(function Slider({
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-1/2 h-4 -translate-y-1/2 opacity-70"
-            style={{ background: 'repeating-linear-gradient(90deg, var(--color-line-strong) 0 1px, transparent 1px 9px)' }}
+            style={{ background: 'repeating-linear-gradient(90deg, var(--color-line-strong) 0 1px, transparent 1px 9px)', maskImage: 'linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)' }}
           />
         )}
         <div
-          className="pointer-events-none absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-line"
+          className="pointer-events-none absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-control-2"
           style={track ? { background: track, height: 3, opacity: 0.85 } : undefined}
         />
         {!track && (
           <div
-            className="pointer-events-none absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-accent transition-[left,width] duration-75"
+            className="pointer-events-none absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-accent shadow-[0_0_10px_rgb(212_255_63/0.55)] transition-[left,width] duration-75"
             style={fillStyle}
           />
         )}
         {range.min < range.default && range.default < range.max && (
           <div
-            className="pointer-events-none absolute top-1/2 h-2 w-px -translate-y-1/2 bg-line-strong"
+            className="pointer-events-none absolute top-1/2 h-2.5 w-px -translate-y-1/2 bg-fg-4"
             style={{ left: `${origin}%` }}
           />
         )}

@@ -1,7 +1,7 @@
 /** Settings: performance, privacy, AI configuration, on-device AI models, data. */
-import { BrainCircuit, Cpu, Database, Gauge, Loader2, ShieldCheck, Smartphone, Sparkles } from 'lucide-react';
+import { BrainCircuit, Cpu, Database, Gauge, Loader2, ShieldCheck, Smartphone, Sparkles, Waves } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { CartonBar } from '@/components/CartonBar';
+import { AppBar } from '@/components/AppBar';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Segmented, Toggle } from '@/components/ui/misc';
@@ -30,39 +30,65 @@ export default function SettingsScreen() {
 
   return (
     <div className="scroll-quiet h-full overflow-y-auto bg-ground">
-      <CartonBar />
-      <main className="mx-auto max-w-3xl space-y-10 px-4 pt-6 pb-24 sm:px-8">
-        <h1 className="carton-title text-[3rem] text-fg sm:text-[4.5rem]">Settings</h1>
+      <AppBar />
+      <main className="screen-enter mx-auto max-w-3xl px-4 pt-8 pb-24 sm:px-8 sm:pt-12">
+        <p className="label-caps text-fg-4">Everything stays on this device</p>
+        <h1 className="display mt-3 text-[3.2rem] text-fg sm:text-[4.5rem]">Settings</h1>
+        <nav aria-label="Settings sections" className="no-scrollbar -mx-4 mt-6 mb-8 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
+          {SECTIONS.map((x) => (
+            <a
+              key={x.id}
+              href={`#${x.id}`}
+              className="flex h-9 shrink-0 items-center rounded-full bg-control px-3.5 text-[13px] font-medium text-fg-2 transition-colors hover:bg-control-2 hover:text-fg coarse:h-10"
+            >
+              {x.title}
+            </a>
+          ))}
+        </nav>
+        <div className="space-y-4">
 
         <Block icon={<Smartphone size={16} />} title="App & offline">
           <AppSettings />
         </Block>
 
         <Block icon={<Gauge size={16} />} title="Performance">
-          <p className="mb-2 text-xs text-fg-3">Preview resolution while editing. Exports always use the full original resolution.</p>
+          <Row title="Preview quality" description="Resolution while editing. Exports always use the full original resolution.">
+          <div className="no-scrollbar -mx-1 overflow-x-auto px-1">
           <Segmented<PreviewQuality>
             label="Preview quality"
             value={s.previewQuality}
             onChange={(v) => s.update({ previewQuality: v })}
-            options={(['performance', 'balanced', 'high'] as const).map((q) => ({ value: q, label: `${q[0].toUpperCase()}${q.slice(1)} · ${PREVIEW_SIZES[q]}px` }))}
+            options={(['performance', 'balanced', 'high'] as const).map((q) => ({
+              value: q,
+              label: (
+                <span className="flex flex-col items-center leading-tight sm:flex-row sm:gap-1.5">
+                  <span>{`${q[0].toUpperCase()}${q.slice(1)}`}</span>
+                  <span className="font-mono text-[11px] opacity-70">{PREVIEW_SIZES[q]}px</span>
+                </span>
+              ),
+            }))}
           />
+          </div>
+          </Row>
+          <Divider />
           <Toggle
             checked={s.forceCpu}
             onChange={(v) => s.update({ forceCpu: v })}
             label="Use CPU renderer"
             description="For troubleshooting GPU problems. Much slower; portrait retouching and mask blur are unavailable."
           />
-          <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+          <Divider />
+          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 py-1 text-[13px]">
             <dt className="text-fg-3">Renderer</dt>
-            <dd className="text-fg">{engine.mode === 'webgl' ? 'WebGL2 (GPU)' : engine.mode === 'cpu' ? 'CPU (worker)' : 'Starts when you open a project'}</dd>
+            <dd className="text-right text-fg">{engine.mode === 'webgl' ? 'WebGL2 (GPU)' : engine.mode === 'cpu' ? 'CPU (worker)' : 'Starts when you open a project'}</dd>
             <dt className="text-fg-3">Max texture size</dt>
-            <dd className="tabular text-fg">{engine.maxTextureSize || '–'} px</dd>
+            <dd className="text-right font-mono text-fg">{engine.maxTextureSize || '–'} px</dd>
             <dt className="text-fg-3">Float pipeline</dt>
-            <dd className="text-fg">{engine.mode === 'webgl' ? (engine.floatPipeline ? '16-bit float intermediates' : '8-bit fallback') : '–'}</dd>
+            <dd className="text-right text-fg">{engine.mode === 'webgl' ? (engine.floatPipeline ? '16-bit float intermediates' : '8-bit fallback') : '–'}</dd>
           </dl>
-          <div className="mt-4 rounded-sm border border-line-soft p-3">
+          <div className="mt-4 rounded-md bg-raised-2 p-4">
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-fg-3">Measure full-pipeline render time on this device (2048 × 1365, a demanding edit).</p>
+              <p className="text-[13px] leading-relaxed text-fg-3">Measure full-pipeline render time on this device (2048 × 1365, a demanding edit).</p>
               <Button
                 size="sm"
                 variant="secondary"
@@ -81,7 +107,7 @@ export default function SettingsScreen() {
               </Button>
             </div>
             {bench && bench !== 'running' && (
-              <p className="tabular mt-2 text-xs text-fg" role="status">
+              <p className="mt-3 font-mono text-xs leading-relaxed text-fg" role="status">
                 {typeof bench === 'string'
                   ? bench
                   : `Median ${bench.medianMs.toFixed(1)} ms (90th percentile ${bench.p90Ms.toFixed(1)} ms) for the demanding edit; ${bench.simpleMedianMs.toFixed(1)} ms for a simple edit. Measured over ${bench.iterations - 1} renders at ${bench.width}×${bench.height}.`}
@@ -91,11 +117,15 @@ export default function SettingsScreen() {
         </Block>
 
         <Block icon={<ShieldCheck size={16} />} title="Privacy">
-          <ul className="mb-3 list-disc space-y-1 pl-4 text-xs leading-relaxed text-fg-3">
-            <li>Photos, edits, projects and presets are stored only in this browser (IndexedDB). There are no accounts and no analytics.</li>
-            <li>Editing, portrait detection and masking run on this device.</li>
-            <li>Only the reference-matching feature can send an image off the device, and only with your permission. With a local model (Ollama) nothing is sent.</li>
+          <ul className="mb-3 space-y-2.5 text-[13px] leading-relaxed text-fg-3">
+            {PRIVACY.map((t) => (
+              <li key={t} className="flex gap-3">
+                <ShieldCheck size={15} className="mt-0.5 shrink-0 text-success" aria-hidden />
+                <span>{t}</span>
+              </li>
+            ))}
           </ul>
+          <Divider />
           <Toggle
             checked={s.aiConsent}
             onChange={(v) => s.update({ aiConsent: v })}
@@ -106,15 +136,16 @@ export default function SettingsScreen() {
 
         <Block icon={<Sparkles size={16} />} title="AI configuration">
           {!health ? (
-            <p className="text-xs text-fg-3">Checking server…</p>
+            <p className="text-[13px] text-fg-3">Checking server…</p>
           ) : !health.reachable ? (
-            <p className="text-xs leading-relaxed text-danger">
+            <p className="text-[13px] leading-relaxed text-danger">
               The app server is not reachable. Start the app with <code className="text-fg">npm run dev</code> (or{' '}
               <code className="text-fg">npm start</code> after building). Reference analysis still works with measurements only.
             </p>
           ) : (
-            <div className="text-xs leading-relaxed text-fg-3">
+            <div className="text-[13px] leading-relaxed text-fg-3">
               <p>
+                <span className={`mr-2 inline-block h-2 w-2 rounded-full align-middle ${health.configured ? 'bg-success' : 'bg-accent'}`} aria-hidden />
                 Status:{' '}
                 <span className={health.configured ? 'text-success' : 'text-accent-fg'}>
                   {health.configured ? `configured (${health.model}${health.local ? ', running on this computer' : ''})` : 'not configured'}
@@ -137,7 +168,8 @@ export default function SettingsScreen() {
           <AiModels />
         </Block>
 
-        <Block icon={<Sparkles size={16} />} title="Motion">
+        <Block icon={<Waves size={16} />} title="Motion">
+          <Row title="Animations" description="Follow system respects your device's reduce-motion setting.">
           <Segmented
             label="Motion"
             value={s.motion}
@@ -148,17 +180,19 @@ export default function SettingsScreen() {
               { value: 'full', label: 'Full' },
             ]}
           />
+          </Row>
         </Block>
 
         <Block icon={<Database size={16} />} title="Data">
-          <p className="text-xs text-fg-3">
-            {projects} project{projects === 1 ? '' : 's'} stored.
+          <p className="text-[13px] leading-relaxed text-fg-3">
+            <span className="font-mono text-fg">{projects}</span> project{projects === 1 ? '' : 's'} stored.
             {usage && ` Using ${(usage.usage / 1e6).toFixed(0)} MB of about ${(usage.quota / 1e9).toFixed(1)} GB available to this site.`}
           </p>
-          <Button variant="danger" size="sm" className="mt-3" onClick={() => setConfirmClear(true)}>
+          <Button variant="danger" size="sm" className="mt-4" onClick={() => setConfirmClear(true)}>
             Delete all local data
           </Button>
         </Block>
+        </div>
       </main>
       <Dialog
         open={confirmClear}
@@ -182,20 +216,53 @@ export default function SettingsScreen() {
           </>
         }
       >
-        <p className="px-4 py-4 text-sm text-fg-3">All projects, photos, edits, your presets and settings will be removed from this browser. This cannot be undone.</p>
+        <p className="px-5 pb-5 text-sm leading-relaxed text-fg-3">All projects, photos, edits, your presets and settings will be removed from this browser. This cannot be undone.</p>
       </Dialog>
     </div>
   );
 }
 
+const PRIVACY = [
+  'Photos, edits, projects and presets are stored only in this browser (IndexedDB). There are no accounts and no analytics.',
+  'Editing, portrait detection and masking run on this device.',
+  'Only the reference-matching feature can send an image off the device, and only with your permission. With a local model (Ollama) nothing is sent.',
+];
+
+const SECTIONS = [
+  { id: 'app-offline', title: 'App & offline' },
+  { id: 'performance', title: 'Performance' },
+  { id: 'privacy', title: 'Privacy' },
+  { id: 'ai-configuration', title: 'AI configuration' },
+  { id: 'ai-models', title: 'AI models' },
+  { id: 'motion', title: 'Motion' },
+  { id: 'data', title: 'Data' },
+];
+
 function Block({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+  const id = SECTIONS.find((x) => x.title === title)?.id;
   return (
-    <section className="border-t-2 border-fg pt-4">
-      <h2 className="carton-label mb-4 flex items-center gap-2 text-[15px] text-fg">
-        <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-accent text-on-accent">{icon}</span>
+    <section id={id} aria-labelledby={id && `${id}-title`} className="scroll-mt-20 rounded-lg border border-line-soft bg-raised p-4 sm:p-6">
+      <h2 id={id && `${id}-title`} className="mb-4 flex items-center gap-3 text-[17px] font-semibold tracking-[-0.02em] text-fg">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-control text-accent-fg">{icon}</span>
         {title}
       </h2>
       {children}
     </section>
   );
+}
+
+function Row({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+  return (
+    <div className="space-y-3 py-1">
+      <div>
+        <p className="text-sm text-fg">{title}</p>
+        {description && <p className="mt-0.5 text-xs leading-relaxed text-fg-3">{description}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Divider() {
+  return <div className="my-3 h-px bg-line-soft" />;
 }

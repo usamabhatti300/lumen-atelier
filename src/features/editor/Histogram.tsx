@@ -28,23 +28,23 @@ export const Histogram = memo(function Histogram({ slim = false }: { slim?: bool
   }, [hist]);
 
   return (
-    <div className={`theme-frame border-b border-line-soft px-3 ${slim ? 'pt-1 pb-2' : 'pt-2.5 pb-2'}`}>
+    <div className={`px-3 ${slim ? 'pt-1 pb-2' : 'pt-3 pb-2.5'}`}>
       <button
         type="button"
         onClick={() => setMode(mode === 'rgb' ? 'luma' : 'rgb')}
         className="block w-full"
         aria-label={`Histogram (${mode === 'rgb' ? 'RGB channels' : 'luminance'}). Click to switch.`}
       >
-        <svg viewBox="0 0 256 72" preserveAspectRatio="none" className={`w-full rounded-xs bg-well ${slim ? 'h-8' : 'h-[72px]'}`}>
+        <svg viewBox="0 0 256 72" preserveAspectRatio="none" className={`w-full rounded-md bg-well ring-1 ring-line-soft ${slim ? 'h-8' : 'h-[76px]'}`}>
           {paths &&
             (mode === 'rgb' ? (
               <g style={{ mixBlendMode: 'screen' }}>
-                <path d={paths.r} fill="rgba(217,96,82,0.55)" />
-                <path d={paths.g} fill="rgba(110,170,100,0.55)" />
-                <path d={paths.b} fill="rgba(95,125,205,0.6)" />
+                <path d={paths.r} fill="rgba(255,92,122,0.55)" />
+                <path d={paths.g} fill="rgba(120,230,140,0.5)" />
+                <path d={paths.b} fill="rgba(63,160,255,0.6)" />
               </g>
             ) : (
-              <path d={paths.l} fill="rgba(236,230,218,0.55)" />
+              <path d={paths.l} fill="rgba(240,240,236,0.5)" />
             ))}
         </svg>
       </button>
@@ -58,12 +58,12 @@ type EngineState = ReturnType<typeof useEngine.getState>;
 function HistogramFooter({ hist, out }: { hist: EngineState['histogram']; out: EngineState['outputSize'] }) {
   return (
     <>
-      <div className="mt-[3px] flex h-[3px] gap-px" aria-hidden>
+      <div className="mt-1 flex h-[3px] gap-px overflow-hidden rounded-full" aria-hidden>
         {Array.from({ length: 11 }, (_, i) => (
           <div key={i} className="flex-1" style={{ background: zoneGrey(i) }} />
         ))}
       </div>
-      <div className="tabular mt-1.5 flex justify-between font-mono text-[10px] text-fg-4">
+      <div className="mt-2 flex justify-between font-mono text-[10.5px] text-fg-4">
         <span title="Share of pixels clipped to black">
           <ChevronLeft size={10} className="-mr-0.5 inline align-[-1px]" aria-hidden /> {hist ? (hist.clippedShadows * 100).toFixed(1) : '–'}%
         </span>

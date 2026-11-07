@@ -45,7 +45,7 @@ export function RightPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Histogram />
-      <div role="tablist" aria-label="Adjustment panels" className="grid shrink-0 grid-cols-7 border-b border-line-soft px-1">
+      <div role="tablist" aria-label="Adjustment panels" className="mx-1.5 mb-1 grid shrink-0 grid-cols-7 rounded-lg bg-raised p-1 ring-1 ring-line-soft">
         {RIGHT_TABS.map((t) => (
           <button
             key={t.id}
@@ -55,20 +55,20 @@ export function RightPanel() {
             aria-selected={tab === t.id}
             aria-controls="right-tabpanel"
             onClick={() => selectRightTab(t.id)}
-            className={`relative flex flex-col items-center gap-0.5 py-2 text-[10px] tracking-wide transition-colors ${
-              tab === t.id ? 'text-fg' : 'text-fg-4 hover:text-fg-2'
+            className={`relative flex min-w-0 flex-col items-center gap-1 rounded-md py-2 text-[10.5px] font-medium tracking-[-0.02em] transition-colors ${
+              tab === t.id ? 'text-fg' : 'text-fg-3 hover:text-fg'
             }`}
           >
-            <t.icon size={15} strokeWidth={1.6} />
-            {t.label}
             {tab === t.id && (
-              <motion.span layoutId="right-tab-underline" className="absolute inset-x-2 -bottom-px h-px bg-accent" transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }} />
+              <motion.span layoutId="right-tab-pill" className="absolute inset-0 rounded-md bg-control-2" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />
             )}
+            <t.icon size={16} strokeWidth={tab === t.id ? 2 : 1.6} className={`relative ${tab === t.id ? 'text-accent' : ''}`} />
+            <span className="relative">{t.label}</span>
           </button>
         ))}
       </div>
       <div id="right-tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="scroll-quiet min-h-0 flex-1 overflow-y-auto">
-        <motion.div key={tab} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
+        <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
           <PanelContent tab={tab} />
         </motion.div>
       </div>

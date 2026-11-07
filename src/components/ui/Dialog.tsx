@@ -70,14 +70,14 @@ export function Dialog({
     <AnimatePresence>
       {open && (
         <motion.div
-          className={`fixed inset-0 z-[80] flex items-center justify-center sm:p-6 ${fullscreen ? 'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]' : 'p-3'}`}
+          className={`fixed inset-0 z-[80] flex justify-center sm:items-center sm:p-6 ${fullscreen ? 'items-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]' : 'items-end px-2 pb-[max(env(safe-area-inset-bottom),8px)] sm:pb-6'}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
         >
           <div
-            className="absolute inset-0 bg-black/55"
+            className="absolute inset-0 bg-black/75"
             onClick={dismissible ? onClose : undefined}
             aria-hidden
           />
@@ -87,17 +87,17 @@ export function Dialog({
             aria-modal="true"
             aria-labelledby={labelledBy}
             aria-label={!labelledBy && typeof title === 'string' ? title : undefined}
-            initial={{ opacity: 0, y: 14, scale: 0.985 }}
+            initial={{ opacity: 0, y: 28, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.99 }}
-            transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-            className={`relative flex max-h-full w-full min-w-0 flex-col overflow-hidden border-2 border-fg bg-ground shadow-float ${
-              fullscreen ? 'h-full sm:h-[min(860px,100%)] sm:max-w-6xl sm:rounded-md' : `${width} rounded-md`
+            exit={{ opacity: 0, y: 16, scale: 0.99 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 36, mass: 0.9 }}
+            className={`relative flex max-h-full w-full min-w-0 flex-col overflow-hidden border border-line bg-raised shadow-float ${
+              fullscreen ? 'h-full sm:h-[min(860px,100%)] sm:max-w-6xl sm:rounded-xl' : `${width} max-h-[92dvh] rounded-xl`
             }`}
           >
             {title !== undefined && (
-              <header className="flex h-14 shrink-0 items-center justify-between border-b-2 border-fg px-4">
-                <h2 id={labelledBy} className="carton-title text-[1.6rem] text-fg">
+              <header className="flex h-16 shrink-0 items-center justify-between px-5">
+                <h2 id={labelledBy} className="display text-[1.45rem] text-fg">
                   {title}
                 </h2>
                 {dismissible && (
@@ -105,7 +105,7 @@ export function Dialog({
                     type="button"
                     onClick={onClose}
                     aria-label="Close"
-                    className="rounded-sm p-2 text-fg-2 hover:bg-control hover:text-fg"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-control text-fg-2 transition-transform hover:bg-control-2 hover:text-fg active:scale-90"
                   >
                     <X size={16} />
                   </button>
@@ -113,7 +113,7 @@ export function Dialog({
               </header>
             )}
             <div className="scroll-quiet min-h-0 flex-1 overflow-auto">{children}</div>
-            {footer && <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line-soft px-4 py-3">{footer}</footer>}
+            {footer && <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-line-soft px-5 py-4">{footer}</footer>}
           </motion.div>
         </motion.div>
       )}

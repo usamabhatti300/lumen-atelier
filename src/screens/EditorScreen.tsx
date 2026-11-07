@@ -20,7 +20,7 @@ import { selectRightTab } from '@/features/editor/rightTabs';
 import { Histogram } from '@/features/editor/Histogram';
 import { Viewport } from '@/features/editor/Viewport';
 import { Filmstrip } from '@/features/editor/Filmstrip';
-import { EdgePrint } from '@/features/editor/EdgePrint';
+import { LookReadout } from '@/features/editor/LookReadout';
 import { PasteDialog } from '@/features/editor/PasteDialog';
 import { useShortcuts } from '@/features/editor/useShortcuts';
 import { ExportDialog } from '@/features/export/ExportDialog';
@@ -130,7 +130,7 @@ export default function EditorScreen() {
 
   return (
     <div
-      className="flex h-full flex-col bg-ground"
+      className="screen-enter flex h-full flex-col bg-ground"
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes('Files')) {
           e.preventDefault();
@@ -167,7 +167,7 @@ export default function EditorScreen() {
                   animate={{ width: 284, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-                  className="shrink-0 overflow-hidden border-r border-line-soft bg-ground-2"
+                  className="shrink-0 overflow-hidden border-r border-line-soft bg-ground"
                   aria-label="Presets and photos"
                 >
                   <div className="h-full w-[284px]">
@@ -180,19 +180,19 @@ export default function EditorScreen() {
               <div className="relative min-h-0 flex-1">
                 <Viewport onImport={openImport} />
               </div>
-              <EdgePrint />
+              <LookReadout />
             </main>
             <AnimatePresence initial={false}>
               {rightOpen && (
                 <motion.aside
                   initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 300, opacity: 1 }}
+                  animate={{ width: 320, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-                  className="shrink-0 overflow-hidden border-l border-line-soft bg-ground-2"
+                  className="shrink-0 overflow-hidden border-l border-line-soft bg-ground"
                   aria-label="Adjustments"
                 >
-                  <div className="h-full w-[300px]">
+                  <div className="h-full w-[320px]">
                     <RightPanel />
                   </div>
                 </motion.aside>
@@ -205,7 +205,7 @@ export default function EditorScreen() {
               <div className="relative min-h-0 flex-1">
                 <Viewport onImport={openImport} />
               </div>
-              <EdgePrint />
+              <LookReadout />
             </main>
             {landscape && <CompactSheet sheet={sheet} setSheet={setSheet} side />}
           </>
@@ -222,7 +222,7 @@ export default function EditorScreen() {
       )}
 
       {importing && (
-        <div className="fixed top-14 left-1/2 z-50 w-72 -translate-x-1/2 rounded-sm border border-line bg-ground-2 p-3 shadow-float" role="status">
+        <div className="surface-float fixed top-16 left-1/2 z-50 w-72 -translate-x-1/2 rounded-lg p-3.5 shadow-float" role="status">
           <p className="tabular mb-2 text-xs text-fg-3">
             Importing {importing.done} of {importing.total}…
           </p>
@@ -230,8 +230,10 @@ export default function EditorScreen() {
         </div>
       )}
       {dragOver && !referenceOpen && (
-        <div className="pointer-events-none fixed inset-3 z-40 flex items-center justify-center rounded-md border-2 border-dashed border-fg bg-accent/85">
-          <p className="carton-title text-4xl text-fg">Drop to add photos</p>
+        <div className="pointer-events-none fixed inset-3 z-40 flex items-center justify-center rounded-xl border-2 border-dashed border-accent/70 bg-black/75 backdrop-blur-md">
+          <p className="display text-4xl text-fg">
+            Drop to <span className="serif text-accent">add</span> photos
+          </p>
         </div>
       )}
 
@@ -248,7 +250,7 @@ export default function EditorScreen() {
 
 type Sheet = 'presets' | RightTab;
 
-/** Tablet/mobile: bottom navigation. Each item opens a panel docked under (or beside) the photo. */
+/** Tablet/mobile: a floating dock. Each item opens a panel docked under (or beside) the photo. */
 function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null; setSheet: (s: Sheet | null) => void; onOpenReference: () => void }) {
   const isMore = sheet !== null && sheet !== 'presets' && sheet !== 'adjust' && sheet !== 'color';
   const open = (id: Sheet) => {
@@ -257,17 +259,17 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
     setSheet(id);
   };
   return (
-    // A printed paper bar under the frame: tools as labelled tabs, the main action as a yellow tile.
-    <div className="shrink-0 border-t-2 border-fg bg-ground pb-[max(env(safe-area-inset-bottom),6px)]">
-      <nav className="flex h-16 items-stretch px-1" aria-label="Editing tools">
+    <div className="shrink-0 bg-ground px-3 pt-2 pb-[max(env(safe-area-inset-bottom),10px)] land:pt-1 land:pb-[max(env(safe-area-inset-bottom),6px)]">
+      <nav className="surface-float mx-auto flex h-[68px] max-w-lg items-stretch rounded-[26px] px-1 shadow-float land:h-12 land:rounded-full" aria-label="Editing tools">
         <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={SwatchBook} label="Looks" />
         <CompactTab active={sheet === 'adjust'} onClick={() => open('adjust')} icon={SlidersHorizontal} label="Light" />
-        {/* A featured action, not a tab: a yellow carton tile, so it never reads as the selected tab. */}
+        {/* The featured action, not a tab: a lime lens, so it never reads as the selected tab. */}
         <button type="button" onClick={onOpenReference} className="group flex flex-1 flex-col items-center justify-center gap-1">
-          <span className="flex h-9 w-11 items-center justify-center rounded-sm bg-accent text-on-accent shadow-lift transition-transform duration-150 group-active:scale-95">
+          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-accent land:h-9 land:w-9 text-on-accent shadow-[0_0_24px_-4px_rgb(212_255_63/0.7)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-active:scale-90">
+            <span aria-hidden className="spectrum absolute -inset-[3px] -z-10 rounded-full opacity-60 blur-[6px]" />
             <Wand2 size={18} strokeWidth={2.2} />
           </span>
-          <span className="carton-label text-[11px] text-fg">Match look</span>
+          <span className="text-[11px] font-medium text-fg land:sr-only">Match look</span>
         </button>
         <CompactTab active={sheet === 'color'} onClick={() => open('color')} icon={Palette} label="Colour" />
         <CompactTab active={isMore} onClick={() => open('masks')} icon={Layers} label="More" />
@@ -305,7 +307,7 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
           animate={side ? { width: 'min(320px, 46vw)' } : { height: tall ? '64dvh' : focusable(sheet) ? 'auto' : '40dvh' }}
           exit={side ? { width: 0 } : { height: 0 }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-          className={`flex shrink-0 flex-col overflow-hidden ${side ? 'border-l-2 border-fg bg-ground' : 'border-t-2 border-fg bg-ground'}`}
+          className={`flex shrink-0 flex-col overflow-hidden bg-raised ${side ? 'rounded-l-xl border-l border-line-soft' : 'rounded-t-xl border-t border-line-soft shadow-[0_-20px_40px_-20px_rgb(0_0_0/0.8)]'}`}
           role="region"
           aria-label={`${SHEET_TITLE[sheet] ?? 'More'} panel`}
           data-testid="compact-sheet"
@@ -316,7 +318,7 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
               type="button"
               aria-label={tall ? 'Shrink panel' : 'Expand panel'}
               aria-expanded={tall}
-              className="flex h-5 w-full shrink-0 touch-none items-center justify-center"
+              className="flex h-6 w-full shrink-0 touch-none items-center justify-center"
               onPointerDown={(e) => {
                 drag.current = { y: e.clientY, moved: false };
                 (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
@@ -345,13 +347,13 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
                 }
               }}
             >
-              <span className="h-1 w-10 rounded-full bg-fg/30" />
+              <span className="h-1 w-10 rounded-full bg-fg/25" />
             </button>
           )}
           {sheet !== 'presets' && (
-            <div className={`flex h-10 shrink-0 items-center justify-between gap-2 pr-1 pl-3 ${inner}`}>
+            <div className={`flex h-11 shrink-0 items-center justify-between gap-2 pr-2 pl-4 ${inner}`}>
               {SHEET_TITLE[sheet] ? (
-                <span className="carton-label text-sm text-fg">{SHEET_TITLE[sheet]}</span>
+                <span className="display text-[19px] text-fg">{SHEET_TITLE[sheet]}</span>
               ) : (
                 <MoreTabs
                   value={sheet as RightTab}
@@ -361,8 +363,8 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
                   }}
                 />
               )}
-              <button type="button" aria-label="Close panel" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-fg-3">
-                <X size={17} />
+              <button type="button" aria-label="Close panel" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 transition-transform active:scale-90">
+                <X size={16} />
               </button>
             </div>
           )}
@@ -372,7 +374,7 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
             ) : (
               <>
                 {/* Full histogram costs ~110 px; the short sheet gets a slim one. */}
-                {sheet === 'adjust' && <Histogram slim={!expanded} />}
+                {sheet === 'adjust' && <Histogram slim={!expanded || side} />}
                 {!expanded && (sheet === 'adjust' || sheet === 'color') ? (
                   <FocusTools tab={sheet} onExpand={() => setTall(true)} />
                 ) : (
@@ -396,9 +398,9 @@ function MoreTabs({ value, onChange }: { value: RightTab; onChange: (t: RightTab
     { id: 'geometry', label: 'Crop' },
   ];
   return (
-    <div className="scroll-quiet -ml-1 flex min-w-0 gap-1 overflow-x-auto">
+    <div className="no-scrollbar -ml-1 flex min-w-0 gap-1 overflow-x-auto">
       {tabs.map((t) => (
-        <button key={t.id} type="button" onClick={() => onChange(t.id)} aria-pressed={value === t.id} className={`carton-label h-8 shrink-0 rounded-sm px-2.5 text-xs ${value === t.id ? 'bg-fg text-ground' : 'text-fg-3'}`}>
+        <button key={t.id} type="button" onClick={() => onChange(t.id)} aria-pressed={value === t.id} className={`h-9 shrink-0 rounded-full px-3.5 text-[13px] font-medium transition-colors ${value === t.id ? 'bg-fg text-ground' : 'text-fg-3 hover:text-fg'}`}>
           {t.label}
         </button>
       ))}
@@ -412,17 +414,17 @@ function CompactTab({ active, onClick, icon: Icon, label }: { active: boolean; o
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors ${active ? 'text-fg' : 'text-fg-3'}`}
+      className={`relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors duration-200 active:scale-95 ${active ? 'text-fg' : 'text-fg-3'}`}
     >
       {active && (
         <motion.span
           layoutId="compact-tab-indicator"
-          className="absolute inset-x-3 top-0 h-[3px] bg-accent"
-          transition={{ type: 'spring', stiffness: 520, damping: 38 }}
+          className="absolute inset-x-1 inset-y-1.5 rounded-[20px] bg-white/[0.07]"
+          transition={{ type: 'spring', stiffness: 480, damping: 36 }}
         />
       )}
-      <Icon size={20} strokeWidth={active ? 2.2 : 1.7} />
-      <span className="carton-label text-[11px]">{label}</span>
+      <Icon size={20} strokeWidth={active ? 2.1 : 1.7} className={`relative transition-colors ${active ? 'text-accent' : ''}`} />
+      <span className="relative text-[11px] font-medium land:sr-only">{label}</span>
     </button>
   );
 }

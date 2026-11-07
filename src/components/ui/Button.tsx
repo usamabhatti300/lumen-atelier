@@ -1,7 +1,8 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger' | 'accent-outline';
-type Size = 'sm' | 'md';
+type Size = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -10,20 +11,21 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<Variant, string> = {
-  // Ink-black pill (inverts inside the black frame; black on the yellow carton bar).
-  primary: 'bg-fg text-ground hover:bg-fg-2 active:bg-fg disabled:bg-control-2 disabled:text-fg-4',
-  // Carton yellow: the one main action on a screen (Match a look, Export).
-  accent: 'bg-accent text-on-accent hover:bg-accent-hi active:bg-accent-lo disabled:bg-control-2 disabled:text-fg-4',
-  secondary:
-    'bg-transparent text-fg border-[1.5px] border-fg/85 hover:bg-fg/[0.06] active:bg-fg/10 disabled:border-line disabled:text-fg-4',
-  ghost: 'text-fg-2 hover:text-fg hover:bg-control active:bg-raised-2 disabled:text-fg-4',
-  danger: 'bg-transparent text-danger border border-danger/40 hover:bg-danger/10',
-  'accent-outline': 'text-accent-fg border border-accent-fg/40 hover:bg-accent/10 hover:border-accent-fg/70',
+  // Bright pill: strong secondary actions (Open a photo, Save, Export in dialogs).
+  primary: 'bg-fg text-ground hover:bg-white active:bg-fg-2 disabled:bg-control disabled:text-fg-4',
+  // Lumen lime: the one main action on a screen (Match a look, Export).
+  accent:
+    'bg-accent text-on-accent hover:bg-accent-hi active:bg-accent-lo hover:shadow-[0_0_28px_-6px_rgb(212_255_63/0.6)] disabled:bg-control disabled:text-fg-4 disabled:shadow-none',
+  secondary: 'bg-raised-2 text-fg border border-line hover:bg-control hover:border-line-strong active:bg-control-2 disabled:text-fg-4 disabled:bg-raised',
+  ghost: 'text-fg-2 hover:text-fg hover:bg-control active:bg-control-2 disabled:text-fg-4',
+  danger: 'bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20',
+  'accent-outline': 'text-accent-fg border border-accent/35 hover:bg-accent/10 hover:border-accent/70',
 };
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[13px] gap-1.5 coarse:h-10',
-  md: 'h-10 px-4 text-sm gap-2 coarse:h-11',
+  sm: 'h-8 px-3.5 text-[13px] gap-1.5 coarse:h-10',
+  md: 'h-10 px-4.5 text-sm gap-2 coarse:h-11',
+  lg: 'h-12 px-6 text-[15px] gap-2.5',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -34,7 +36,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       type={type}
-      className={`inline-flex select-none items-center justify-center rounded-sm font-semibold tracking-[0.01em] whitespace-nowrap transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+      className={cn(
+        'inline-flex select-none items-center justify-center rounded-full font-medium tracking-[-0.01em] whitespace-nowrap transition-[background-color,border-color,color,transform,box-shadow] duration-200 ease-out active:scale-[0.97] disabled:cursor-not-allowed disabled:active:scale-100',
+        VARIANTS[variant],
+        SIZES[size],
+        className,
+      )}
       {...rest}
     >
       {icon}
@@ -52,10 +59,10 @@ export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>
 }
 
 const SIDES = {
-  bottom: 'top-full mt-1.5 left-1/2 -translate-x-1/2',
-  top: 'bottom-full mb-1.5 left-1/2 -translate-x-1/2',
-  left: 'right-full mr-1.5 top-1/2 -translate-y-1/2',
-  right: 'left-full ml-1.5 top-1/2 -translate-y-1/2',
+  bottom: 'top-full mt-2 left-1/2 -translate-x-1/2',
+  top: 'bottom-full mb-2 left-1/2 -translate-x-1/2',
+  left: 'right-full mr-2 top-1/2 -translate-y-1/2',
+  right: 'left-full ml-2 top-1/2 -translate-y-1/2',
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
@@ -70,8 +77,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         type={type}
         aria-label={label}
         aria-pressed={active === undefined ? undefined : active}
-        className={`inline-flex h-8 w-8 items-center justify-center rounded-sm coarse:h-10 coarse:w-10 transition-[background-color,color,transform] duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 ${
-          active ? 'bg-fg text-ground' : 'text-fg-2 hover:bg-fg/[0.08] hover:text-fg'
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-full coarse:h-10 coarse:w-10 transition-[background-color,color,transform] duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 ${
+          active ? 'bg-control-2 text-accent' : 'text-fg-2 hover:bg-control hover:text-fg'
         }`}
         {...rest}
       >
@@ -89,7 +96,7 @@ export function Tooltip({ children, className = '' }: { children: ReactNode; sid
   return (
     <span
       role="tooltip"
-      className={`pointer-events-none absolute z-50 whitespace-nowrap coarse:hidden theme-frame rounded-xs px-2 py-1 text-xs font-medium opacity-0 shadow-float transition-opacity delay-0 duration-100 group-hover/tt:opacity-100 group-hover/tt:delay-500 group-has-[:focus-visible]/tt:opacity-100 ${className}`}
+      className={`pointer-events-none absolute z-50 scale-95 whitespace-nowrap rounded-sm border border-line bg-raised-2 px-2.5 py-1.5 text-xs font-medium text-fg opacity-0 shadow-float transition-[opacity,transform] delay-0 duration-150 coarse:hidden group-hover/tt:scale-100 group-hover/tt:opacity-100 group-hover/tt:delay-500 group-has-[:focus-visible]/tt:scale-100 group-has-[:focus-visible]/tt:opacity-100 ${className}`}
     >
       {children}
     </span>

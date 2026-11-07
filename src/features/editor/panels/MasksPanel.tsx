@@ -96,6 +96,8 @@ export function MasksPanel() {
     setUi({ tool: kind, showMaskOverlay: kind === 'brush' });
   };
 
+  // With no masks yet, the tools are the content: show them instead of an empty list.
+  const showMenu = menu || layers.length === 0;
   return (
     <>
       <Section
@@ -103,42 +105,44 @@ export function MasksPanel() {
         aside={
           <button
             type="button"
-            onClick={() => setMenu(!menu)}
-            aria-expanded={menu}
-            className="flex items-center gap-1 rounded-xs px-1.5 py-1 text-[11px] text-accent-fg hover:bg-accent/10"
+            onClick={() => setMenu(layers.length === 0 ? true : !menu)}
+            aria-expanded={showMenu}
+            className="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium text-accent-fg transition-colors hover:bg-accent/10"
           >
-            <Plus size={13} /> New mask
+            <Plus size={14} /> New mask
           </button>
         }
       >
         <AnimatePresence>
-          {menu && (
+          {showMenu && (
             <motion.div
-              initial={{ opacity: 0, y: -4 }}
+              initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.16 }}
-              className="mb-3 grid grid-cols-2 gap-1 rounded-sm border border-line bg-ground p-1.5"
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="mb-3 grid grid-cols-3 gap-1.5"
             >
               <button
                 type="button"
                 onClick={addObjectLayer}
-                className="col-span-2 flex h-9 items-center gap-2 rounded-xs border border-accent-fg/30 px-2 text-left text-xs text-fg hover:border-accent-fg/60 hover:bg-accent/5"
+                className="group col-span-3 flex h-14 items-center gap-3 rounded-md bg-accent/[0.07] px-3.5 text-left ring-1 ring-accent/30 transition-[background-color,box-shadow,transform] hover:bg-accent/[0.12] hover:ring-accent/60 active:scale-[0.98]"
               >
-                <MousePointerClick size={14} className="text-accent-fg" />
-                <span className="flex-1">Select object</span>
-                <span className="text-[10px] text-fg-4">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-on-accent">
+                  <MousePointerClick size={15} />
+                </span>
+                <span className="flex-1 text-sm font-medium text-fg">Select object</span>
+                <span className="text-[11px] text-fg-3">
                   <span className="coarse:hidden">click anything</span>
                   <span className="hidden coarse:inline">tap anything</span>
                 </span>
               </button>
-              <MenuItem icon={<Brush size={14} />} label="Brush" onClick={() => addDrawLayer('brush')} />
-              <MenuItem icon={<SquareDashedMousePointer size={14} />} label="Linear" onClick={() => addDrawLayer('linear')} />
-              <MenuItem icon={<Circle size={14} />} label="Radial" onClick={() => addDrawLayer('radial')} />
+              <MenuItem icon={<Brush size={16} />} label="Brush" onClick={() => addDrawLayer('brush')} />
+              <MenuItem icon={<SquareDashedMousePointer size={16} />} label="Linear" onClick={() => addDrawLayer('linear')} />
+              <MenuItem icon={<Circle size={16} />} label="Radial" onClick={() => addDrawLayer('radial')} />
               {(['subject', 'background', 'hair', 'skin', 'clothes'] as SegmentTarget[]).map((t) => (
-                <MenuItem key={t} icon={<UserRound size={14} />} label={SEGMENT_LABEL[t]} onClick={() => void addSegmentLayer(t)} />
+                <MenuItem key={t} icon={<UserRound size={16} />} label={SEGMENT_LABEL[t]} onClick={() => void addSegmentLayer(t)} />
               ))}
-              <p className="col-span-2 px-1 pt-1 text-[10.5px] leading-snug text-fg-4">
+              <p className="col-span-3 px-1 pt-1.5 text-[11px] leading-snug text-fg-4">
                 Subject, background, hair, skin and clothes use an on-device person segmentation model. It is built
                 for people; other subjects are not detected.
               </p>
@@ -147,17 +151,16 @@ export function MasksPanel() {
         </AnimatePresence>
 
         {layers.length === 0 ? (
-          <p className="py-2 text-xs leading-relaxed text-fg-3">
-            Masks apply adjustments to part of the photo. Select any object by clicking it, paint with a brush, add a
-            gradient, or use a detected subject or background.
+          <p className="py-1 text-[13px] leading-relaxed text-fg-3">
+            Masks apply adjustments to part of the photo. Pick a way to make one above.
           </p>
         ) : (
           <ul className="space-y-1" aria-label="Mask layers">
             {[...layers].reverse().map((l) => (
               <li key={l.id}>
                 <div
-                  className={`flex items-center gap-1 rounded-xs border px-1.5 py-1 ${
-                    l.id === activeLayerId ? 'border-accent-fg/50 bg-accent/5' : 'border-line-soft hover:border-line'
+                  className={`flex items-center gap-1 rounded-md border px-2 py-1.5 transition-colors ${
+                    l.id === activeLayerId ? 'border-accent/50 bg-accent/[0.06]' : 'border-line-soft bg-raised-2 hover:border-line'
                   }`}
                 >
                   <button
@@ -215,8 +218,8 @@ export function MasksPanel() {
 
 function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex h-8 coarse:h-11 items-center gap-2 rounded-xs px-2 text-xs text-fg-2 hover:bg-control hover:text-fg">
-      <span className="text-fg-4">{icon}</span>
+    <button type="button" onClick={onClick} className="flex h-[60px] flex-col items-center justify-center gap-1.5 rounded-md bg-raised-2 px-1 text-xs text-fg-2 ring-1 ring-line-soft transition-[background-color,color,transform] hover:bg-control hover:text-fg active:scale-95">
+      <span className="text-fg-3">{icon}</span>
       {label}
     </button>
   );

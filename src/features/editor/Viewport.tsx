@@ -177,6 +177,16 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     setUi({ zoom: next });
     return true;
   };
+  const lookId = useEditor((s) => s.edit.appliedPreset?.id ?? null);
+  const [sweep, setSweep] = useState(0);
+  const lastLook = useRef<{ photo: string | null; look: string | null } | null>(null);
+  useEffect(() => {
+    const prev = lastLook.current;
+    lastLook.current = { photo: activePhotoId, look: lookId };
+    // Only a new look on the same photo sweeps; opening a photo with a look already applied doesn't.
+    if (prev && prev.photo === activePhotoId && lookId && prev.look !== lookId) setSweep((n) => n + 1);
+  }, [lookId, activePhotoId]);
+
   const onTouchUp = (e: React.PointerEvent) => {
     touches.current.delete(e.pointerId);
     if (touches.current.size < 2) pinch.current = null;
@@ -185,7 +195,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
   return (
     <div
       ref={container}
-      className="relative h-full w-full touch-none overflow-hidden bg-well max-lg:bg-transparent"
+      className="relative h-full w-full touch-none overflow-hidden bg-transparent"
       style={{ cursor: canPan ? (isPanning ? 'grabbing' : 'grab') : undefined }}
       onWheel={(e) => {
         if (!activePhotoId || !canvasSize.w) return;
@@ -222,28 +232,34 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     >
       <motion.div
         key={activePhotoId ?? 'none'}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: activePhotoId && !loading && !error ? 1 : 0 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: activePhotoId && !loading && !error ? 1 : 0, scale: activePhotoId && !loading && !error ? 1 : 0.97 }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         className="absolute"
         style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
       >
-        <div ref={attachCanvas} className="h-full w-full shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] [&>canvas]:h-full [&>canvas]:w-full" />
+        <div ref={attachCanvas} className="h-full w-full shadow-[0_40px_90px_-30px_rgba(0,0,0,0.95)] [&>canvas]:h-full [&>canvas]:w-full" />
+        {/* Signature: a band of light passes over the photo when a new look loads. */}
+        {sweep > 0 && (
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+            <span key={sweep} className="lumen-sweep" />
+          </div>
+        )}
         {activePhotoId && !loading && compare === 'split' && tool !== 'crop' && <SplitDivider box={box} />}
         {compare === 'split' && tool !== 'crop' && (
-          <div className="pointer-events-none absolute top-2 flex w-full justify-between px-2 font-mono text-[10px] tracking-widest text-fg/80 uppercase">
-            <span className="rounded-xs bg-well/60 px-1.5 py-0.5">Before</span>
-            <span className="rounded-xs bg-well/60 px-1.5 py-0.5">After</span>
+          <div className="pointer-events-none absolute top-2.5 flex w-full justify-between px-2.5">
+            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">Before</span>
+            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">After</span>
           </div>
         )}
         {compare === 'side' && (
-          <div className="pointer-events-none absolute top-2 flex w-full px-2 font-mono text-[10px] tracking-widest text-fg/80 uppercase">
-            <span className="w-1/2 rounded-xs px-1.5 py-0.5">Before</span>
-            <span className="w-1/2 rounded-xs px-1.5 py-0.5 text-right">After</span>
+          <div className="pointer-events-none absolute top-2.5 flex w-full px-2.5">
+            <span className="w-1/2"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">Before</span></span>
+            <span className="w-1/2 text-right"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">After</span></span>
           </div>
         )}
         {compare === 'before' && (
-          <span className="pointer-events-none absolute top-2 left-2 rounded-xs bg-well/60 px-1.5 py-0.5 font-mono text-[10px] tracking-widest text-fg/80 uppercase">
+          <span className="pointer-events-none absolute top-2.5 left-2.5 surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">
             Before
           </span>
         )}
@@ -256,7 +272,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       {coarse && activePhotoId && !loading && !error && compare !== 'side' && <TouchModeChip />}
 
       {!fitted && activePhotoId && currentZoom > previewToFull * 1.01 && (
-        <p className="pointer-events-none absolute bottom-3 left-3 rounded-xs bg-well/80 px-2 py-1 text-[11px] text-fg-3">
+        <p className="surface-float pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[11px] text-fg-2">
           Preview resolution. Export renders full detail.
         </p>
       )}
@@ -270,7 +286,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       </AnimatePresence>
       {error && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
-          <div role="alert" className="max-w-sm rounded-md border border-danger/40 bg-ground-2 p-5 text-center">
+          <div role="alert" className="max-w-sm rounded-lg border border-danger/30 bg-raised p-6 text-center">
             <AlertTriangle className="mx-auto mb-2 text-danger" size={20} />
             <p className="text-sm text-fg">{error}</p>
             <p className="mt-2 text-xs text-fg-3">Remove this photo from the filmstrip, or import it again.</p>
@@ -279,9 +295,11 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       )}
       {!activePhotoId && !loading && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
-          <button type="button" onClick={onImport} className="group flex max-w-sm flex-col items-center rounded-md border border-dashed border-line px-10 py-12 text-center hover:border-line-strong">
-            <ImagePlus className="mb-3 text-fg-4 group-hover:text-accent-fg" size={26} />
-            <span className="font-display text-2xl text-fg-2">Add a photo to edit</span>
+          <button type="button" onClick={onImport} className="group flex max-w-sm flex-col items-center rounded-xl border border-dashed border-line px-10 py-12 text-center transition-colors hover:border-accent/50 hover:bg-accent/[0.03]">
+            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-control text-fg-2 transition-[transform,color] duration-300 group-hover:scale-110 group-hover:text-accent">
+              <ImagePlus size={24} />
+            </span>
+            <span className="display text-2xl text-fg">Add a photo to edit</span>
             <span className="mt-1 text-sm text-fg-3">
               <span className="coarse:hidden">Drop files here or click to choose.</span>
               <span className="hidden coarse:inline">Tap to choose from your library or camera.</span> JPEG, PNG and WebP.

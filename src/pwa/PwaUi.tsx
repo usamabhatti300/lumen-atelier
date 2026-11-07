@@ -24,24 +24,25 @@ export function PwaPrompts() {
       <AnimatePresence>
         {updateReady && (
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="fixed right-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[85] flex max-w-[calc(100vw-1.5rem)] items-center gap-3 rounded-sm border border-accent-fg/40 bg-ground-2 py-2 pr-2 pl-3.5 text-[13px] text-fg shadow-float sm:bottom-6"
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+            className="surface-float fixed right-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[85] flex max-w-[calc(100vw-1.5rem)] items-center gap-3 rounded-full py-1.5 pr-1.5 pl-4 text-[13px] text-fg shadow-float sm:bottom-6"
             role="status"
             data-testid="update-ready"
           >
             <RefreshCw size={14} className="shrink-0 text-accent-fg" />
             <span>A new version of Lumen Atelier is ready.</span>
-            <Button size="sm" variant="primary" onClick={applyUpdate}>
+            <Button size="sm" variant="accent" onClick={applyUpdate}>
               Reload
             </Button>
           </motion.div>
         )}
       </AnimatePresence>
       {!online && (
-        <span className="pointer-events-none fixed top-[calc(0.5rem+env(safe-area-inset-top))] left-1/2 z-[85] flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-line bg-ground-2/95 px-2.5 py-1 text-[11px] text-fg-3 shadow-float" data-testid="offline-pill">
-          <CloudOff size={12} /> Offline
+        <span className="surface-float pointer-events-none fixed top-[calc(0.5rem+env(safe-area-inset-top))] left-1/2 z-[85] flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium text-fg-2 shadow-float" data-testid="offline-pill">
+          <CloudOff size={13} className="text-accent-fg" /> Offline
         </span>
       )}
     </>
@@ -61,7 +62,7 @@ export function InstallButton({ className = 'flex' }: { className?: string }) {
       <button
         type="button"
         onClick={() => (installEvent ? void promptInstall() : setIosHelp(true))}
-        className={`h-8 shrink-0 items-center gap-2 rounded-sm px-3 text-[13px] whitespace-nowrap text-accent-fg hover:bg-accent/10 coarse:h-10 ${className}`}
+        className={`h-9 shrink-0 items-center gap-2 rounded-full border border-accent/35 px-3.5 text-[13px] font-medium whitespace-nowrap text-accent-fg transition-colors hover:border-accent/70 hover:bg-accent/10 coarse:h-11 ${className}`}
         data-testid="install-app"
       >
         <Download size={15} /> <span>Install app</span>
@@ -88,8 +89,10 @@ export function InstallBanner() {
   const ios = isIosSafari();
   if (hidden || standalone || (!installEvent && !ios)) return null;
   return (
-    <div className="mx-4 mt-3 mb-1 flex items-center gap-3 rounded-sm border-2 border-fg bg-raised py-2 pr-1.5 pl-3.5 sm:hidden" data-testid="install-banner">
-      <Download size={18} className="shrink-0 text-accent-fg" />
+    <div className="mx-4 mt-3 mb-1 flex items-center gap-3 rounded-lg border border-line bg-raised py-2 pr-1.5 pl-3 sm:hidden" data-testid="install-banner">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent-fg">
+        <Download size={17} />
+      </span>
       <p className="min-w-0 flex-1 text-[13px] leading-snug text-fg">
         Install Lumen Atelier
         <span className="block text-xs text-fg-3">Full screen, works offline. Photos stay on this phone.</span>
@@ -97,7 +100,7 @@ export function InstallBanner() {
       <button
         type="button"
         onClick={() => (installEvent ? void promptInstall() : setIosHelp(true))}
-        className="carton-label h-10 shrink-0 rounded-sm bg-fg px-4 text-[13px] text-ground active:scale-95"
+        className="h-11 shrink-0 rounded-full bg-fg px-4 text-[13px] font-medium text-ground transition-transform active:scale-95"
       >
         Install
       </button>
@@ -112,7 +115,7 @@ export function InstallBanner() {
             // Private mode: hidden for this visit only.
           }
         }}
-        className="flex h-9 w-9 shrink-0 items-center justify-center text-fg-4"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-4 hover:bg-control"
       >
         <X size={15} />
       </button>
@@ -133,22 +136,22 @@ export function IosInstallDialog({ open, onClose }: { open: boolean; onClose: ()
         </Button>
       }
     >
-      <ol className="space-y-3 p-4 text-sm leading-relaxed text-fg-2">
+      <ol className="space-y-4 px-5 pb-5 text-sm leading-relaxed text-fg-2">
         <li className="flex gap-3">
-          <span className="tabular w-4 shrink-0 text-accent-fg">1</span>
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent font-mono text-xs font-semibold text-on-accent">1</span>
           <span>
             In Safari, tap <Share size={14} className="mx-0.5 inline align-[-2px] text-fg" /> <span className="text-fg">Share</span> in the toolbar.
           </span>
         </li>
         <li className="flex gap-3">
-          <span className="tabular w-4 shrink-0 text-accent-fg">2</span>
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent font-mono text-xs font-semibold text-on-accent">2</span>
           <span>
             Choose <SquarePlus size={14} className="mx-0.5 inline align-[-2px] text-fg" /> <span className="text-fg">Add to Home Screen</span>, then
             Add.
           </span>
         </li>
         <li className="flex gap-3">
-          <span className="tabular w-4 shrink-0 text-accent-fg">3</span>
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent font-mono text-xs font-semibold text-on-accent">3</span>
           <span>Open Lumen Atelier from your Home Screen. It runs full screen and works offline; your photos stay on the device.</span>
         </li>
       </ol>
