@@ -1,13 +1,15 @@
 /**
  * Reference Studio: reference photo -> measured + interpreted analysis ->
  * editable preset -> preview on the target -> refine -> save and reuse.
+ *
+ * Layout: one focused column on phones (reference hero, analysis, the look, apply) with the
+ * screen's one main action in a bar at the bottom (Analyse look, then Refine in the editor);
+ * two columns on desktop (reference and its measurements | analysis, apply, save).
  */
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertTriangle,
-  ArrowRight,
   Check,
-  CircleDashed,
   ClipboardPaste,
   Crop,
   ImagePlus,
@@ -54,6 +56,8 @@ import {
 } from './useReferenceAnalysis';
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
+
+const STEPS = ['Reference', 'Analyse', 'Apply & refine'];
 
 export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: () => void; onImportTarget: () => void }) {
   const original = useReference((s) => s.original);
@@ -102,7 +106,7 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
   return (
     <Dialog open onClose={onClose} fullscreen labelledBy="ref-title" dismissible={!running}>
       <div
-        className="flex h-full min-h-0 flex-col"
+        className="relative flex h-full min-h-0 flex-col bg-ground"
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes('Files')) {
             e.preventDefault();
@@ -117,34 +121,46 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
           if (f) void loadReference(f, f.name);
         }}
       >
-        <header className="theme-carton flex h-14 shrink-0 items-center gap-3 px-4 sm:px-6">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-fg text-ground">
-            <Wand2 size={18} />
-          </span>
-          <h2 id="ref-title" className="carton-title text-[1.6rem] text-fg sm:text-[1.9rem]">
-            Match a look
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-line-soft px-4 sm:px-6">
+          <h2 id="ref-title" className="display text-[1.65rem] text-fg sm:text-[1.9rem]">
+            Match a <span className="serif spectrum-text pr-1 text-[1.18em]">look</span>
           </h2>
-          <ol className="ml-auto hidden items-center gap-1 text-[11px] md:flex" aria-label="Progress">
-            {['Reference', 'Analyse', 'Apply & refine'].map((label, i) => (
-              <li key={label} className="flex items-center gap-1">
-                <span
-                  className={`carton-label flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs ${
-                    step === i + 1 ? 'bg-fg text-ground' : step > i + 1 ? 'text-fg' : 'text-fg-3'
-                  }`}
-                  aria-current={step === i + 1 ? 'step' : undefined}
-                >
-                  <span className="tabular font-mono">{i + 1}</span>
-                  {label}
-                </span>
-                {i < 2 && <ArrowRight size={12} className="text-fg-3" />}
-              </li>
-            ))}
+          <ol className="ml-auto hidden items-center gap-1.5 md:flex" aria-label="Progress">
+            {STEPS.map((label, i) => {
+              const state = step === i + 1 ? 'now' : step > i + 1 ? 'done' : 'next';
+              return (
+                <li key={label}>
+                  <span
+                    className={`flex h-8 items-center gap-2 rounded-full pr-3.5 pl-1.5 text-[13px] font-medium transition-colors duration-300 ${
+                      state === 'now' ? 'bg-accent text-on-accent' : state === 'done' ? 'bg-control text-fg' : 'text-fg-4'
+                    }`}
+                    aria-current={state === 'now' ? 'step' : undefined}
+                  >
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full font-mono text-[11px] ${
+                        state === 'now' ? 'bg-on-accent text-accent' : state === 'done' ? 'bg-success/20 text-success' : 'border border-line-strong'
+                      }`}
+                    >
+                      {state === 'done' ? <Check size={11} strokeWidth={3} /> : i + 1}
+                    </span>
+                    {label}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
-          <button type="button" onClick={onClose} aria-label="Close" className="ml-auto rounded-sm p-2 text-fg hover:bg-control md:ml-2">
-            <X size={17} />
+          <span className="ml-auto font-mono text-xs text-fg-3 md:hidden" aria-hidden>
+            {step}/3 · {STEPS[step - 1]}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 transition-transform hover:bg-control-2 hover:text-fg active:scale-90 md:ml-2"
+          >
+            <X size={18} />
           </button>
         </header>
-        <div aria-hidden className="bands-rule shrink-0" />
 
         <input
           ref={fileInput}
@@ -160,64 +176,151 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
         />
 
         {!original ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-4 sm:p-6">
-            {/* Explains the feature and gives explicit actions; the dashed area is still a drop zone. */}
-            <div
-              className={`flex w-full max-w-xl flex-col items-center rounded-md border border-dashed px-5 py-10 text-center transition-colors sm:px-8 sm:py-14 ${
-                dragOver ? 'border-accent-fg bg-accent/5' : 'border-line'
-              }`}
-            >
-              <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-sm bg-accent text-on-accent">
-                <Wand2 size={24} />
-              </span>
-              <span className="carton-title text-[2.25rem] text-fg">Add a reference photo</span>
-              <span className="mt-2 max-w-md text-sm leading-relaxed text-fg-3">
-                Pick a photo whose look you love. The studio turns its colours and tones into an editable preset for your photo.
-              </span>
-              <ul className="mt-4 flex flex-wrap justify-center gap-1.5" aria-label="Good references">
-                {['Saved posts', 'Screenshots', 'Film stills', 'Your best shots'].map((t) => (
-                  <li key={t} className="rounded-sm border border-line px-2.5 py-1 text-xs text-fg-2">
-                    {t}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-6 flex flex-wrap justify-center gap-2">
-                <Button variant="primary" icon={<ImagePlus size={16} />} onClick={() => fileInput.current?.click()}>
-                  Choose photo
-                </Button>
-                {canReadClipboard && (
-                  <Button variant="secondary" icon={<ClipboardPaste size={16} />} onClick={() => void pasteFromClipboard()}>
-                    Paste
-                  </Button>
-                )}
-              </div>
-              <span className="mt-3 text-[11px] text-fg-4 coarse:hidden">or drop it here, or press Ctrl+V. You can crop out app bars next.</span>
-              <span className="mt-6 max-w-md text-[11px] leading-relaxed text-fg-4">
-                The preset approximates the look from the finished image. The original editing settings cannot be
-                recovered from a JPEG.
-              </span>
-            </div>
-            {(loadError || pasteMessage) && (
-              <p role="alert" className="absolute bottom-8 mx-4 max-w-md rounded-sm border border-danger/40 bg-ground-2 px-4 py-2 text-sm text-fg">
-                {loadError ?? pasteMessage}
-              </p>
-            )}
-          </div>
+          <EmptyState
+            dragOver={dragOver}
+            onChoose={() => fileInput.current?.click()}
+            onPaste={canReadClipboard ? () => void pasteFromClipboard() : undefined}
+            message={loadError ?? pasteMessage}
+          />
         ) : (
-          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.1fr)_minmax(380px,1fr)] lg:overflow-hidden">
-            <ReferencePane onReplace={() => fileInput.current?.click()} />
-            <div className="scroll-quiet min-h-0 border-line-soft lg:overflow-y-auto lg:border-l">
-              <AnalysisPane />
-              {/* Data is passed as props so the pane keeps its last values while it animates out after a reset. */}
-              <AnimatePresence>
-                {result && stats && working && <ApplyPane result={result} refStats={stats} working={working} onClose={onClose} onImportTarget={onImportTarget} />}
-              </AnimatePresence>
+          <>
+            <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(400px,1fr)] lg:overflow-hidden">
+              <ReferencePane onReplace={() => fileInput.current?.click()} />
+              {/* Once the look exists it leads: the look, then your photo with it, then how it was made. */}
+              <div className="scroll-quiet min-h-0 border-line-soft lg:overflow-y-auto lg:border-l">
+                <AnimatePresence>{result && <LookCard key="look" result={result} />}</AnimatePresence>
+                {/* Data is passed as props so the pane keeps its last values while it animates out after a reset. */}
+                <AnimatePresence>
+                  {result && stats && working && <ApplyPane result={result} refStats={stats} working={working} onImportTarget={onImportTarget} />}
+                </AnimatePresence>
+                <AnalysisPane />
+                <Measurements className="px-4 pb-6 sm:px-6 lg:hidden" />
+              </div>
             </div>
-          </div>
+            <StudioBar onRefine={onClose} />
+          </>
         )}
       </div>
       <ConsentDialog />
     </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Empty state: what this does, and the way in
+// ---------------------------------------------------------------------------
+
+function EmptyState({ dragOver, onChoose, onPaste, message }: { dragOver: boolean; onChoose: () => void; onPaste?: () => void; message: string | null }) {
+  return (
+    <div className="scroll-quiet flex min-h-0 flex-1 overflow-y-auto">
+      <div className="m-auto w-full max-w-xl px-4 py-6 sm:py-10">
+        <div
+          className={`relative flex flex-col items-center overflow-hidden rounded-xl border px-5 pt-12 pb-8 text-center transition-[border-color,box-shadow] duration-300 sm:px-10 sm:pt-16 ${
+            dragOver ? 'border-accent shadow-glow' : 'border-line-soft'
+          } bg-well`}
+        >
+          {/* A slow aurora of split light behind the promise (static with reduced motion). */}
+          {/* Soft radial blobs (no filter), turned slowly on the compositor. */}
+          <div aria-hidden className="pointer-events-none absolute -top-1/3 left-1/2 aspect-square w-[150%] -translate-x-1/2 opacity-30">
+            <div
+              className="h-full w-full animate-[spin_60s_linear_infinite]"
+              style={{
+                background:
+                  'radial-gradient(circle at 30% 32%, var(--color-spec-1), transparent 34%), radial-gradient(circle at 70% 30%, var(--color-spec-4), transparent 34%), radial-gradient(circle at 62% 70%, var(--color-spec-3), transparent 30%), radial-gradient(circle at 28% 66%, var(--color-spec-5), transparent 34%)',
+              }}
+            />
+          </div>
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-well/60 to-well" />
+
+          <motion.span
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.05 }}
+            className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-full p-[3px]"
+            style={{ background: 'conic-gradient(from 210deg, var(--color-spec-1), var(--color-spec-2), var(--color-spec-3), var(--color-spec-4), var(--color-spec-5), var(--color-spec-1))' }}
+          >
+            <span className="flex h-full w-full items-center justify-center rounded-full bg-well text-accent">
+              <Wand2 size={28} strokeWidth={1.8} />
+            </span>
+          </motion.span>
+          <h3 className="display relative text-[2.1rem] text-fg sm:text-[2.6rem]">Add a reference photo</h3>
+          <p className="relative mt-3 max-w-sm text-[15px] leading-relaxed text-fg-3">
+            Pick a photo whose look you love. The studio turns its colours and tones into an editable preset for your photo.
+          </p>
+          <ul className="relative mt-5 flex flex-wrap justify-center gap-1.5" aria-label="Good references">
+            {['Saved posts', 'Screenshots', 'Film stills', 'Your best shots'].map((t) => (
+              <li key={t} className="rounded-full bg-control px-3 py-1 text-xs text-fg-2">
+                {t}
+              </li>
+            ))}
+          </ul>
+          <div className="relative mt-8 flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button variant="accent" size="lg" icon={<ImagePlus size={18} />} onClick={onChoose}>
+              Choose photo
+            </Button>
+            {onPaste && (
+              <Button variant="secondary" size="lg" icon={<ClipboardPaste size={18} />} onClick={onPaste}>
+                Paste
+              </Button>
+            )}
+          </div>
+          <span className="relative mt-4 text-xs text-fg-4 coarse:hidden">or drop it here, or press Ctrl+V. You can crop out app bars next.</span>
+        </div>
+        <p className="mx-auto mt-5 max-w-md text-center text-xs leading-relaxed text-fg-4">
+          The preset approximates the look from the finished image. The original editing settings cannot be recovered from a JPEG.
+        </p>
+        {message && (
+          <p role="alert" className="mx-auto mt-4 flex max-w-md gap-2 rounded-md border border-danger/30 bg-danger/10 px-4 py-2.5 text-sm text-fg">
+            <AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />
+            {message}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The bar at the bottom: the screen's one main action
+// ---------------------------------------------------------------------------
+
+function StudioBar({ onRefine }: { onRefine: () => void }) {
+  const result = useReference((s) => s.result);
+  const running = useReference((s) => s.running);
+  const stages = useReference((s) => s.stages);
+  const anyError = Object.values(stages).some((s) => s.state === 'error');
+  const runningStage = stages.measure.state === 'running' ? 'Measuring the light' : stages.build.state === 'running' ? 'Building the preset' : 'Reading the style';
+  return (
+    <div className="shrink-0 border-t border-line-soft bg-ground px-4 pt-3 pb-[max(env(safe-area-inset-bottom),12px)] sm:px-6">
+      <div className="flex min-h-11 items-center gap-3">
+        {running ? (
+          <>
+            <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
+              <span className="absolute inset-0 animate-ping rounded-full bg-accent/70" />
+              <span className="relative h-2.5 w-2.5 rounded-full bg-accent" />
+            </span>
+            <p className="min-w-0 flex-1 truncate text-sm text-fg-2">{runningStage}…</p>
+            <Button variant="secondary" onClick={cancelAnalysis}>
+              Cancel
+            </Button>
+          </>
+        ) : result ? (
+          <>
+            <p className="hidden min-w-0 flex-1 truncate text-sm text-fg-3 sm:block">Fine-tune any slider in the editor. The look stays editable.</p>
+            <Button variant="accent" size="lg" className="flex-1 sm:flex-none" icon={<SlidersHorizontal size={17} />} onClick={onRefine}>
+              Refine in the editor
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="hidden min-w-0 flex-1 truncate text-sm text-fg-3 sm:block">Measured on this device. Nothing is uploaded unless you allow AI.</p>
+            <Button variant="accent" size="lg" className="flex-1 sm:flex-none" icon={<Sparkles size={17} />} onClick={startAnalysis} data-testid="analyze">
+              {anyError ? 'Analyse again' : 'Analyse look'}
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -247,7 +350,11 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
   return (
     // One column on phones: the pane keeps its full height (min-h-0 only in the two-column layout).
     <div className="flex flex-col p-4 sm:p-6 lg:min-h-0">
-      <div className="theme-frame relative flex h-[min(44dvh,420px)] shrink-0 items-center justify-center overflow-hidden rounded-sm bg-well lg:h-auto lg:min-h-[260px] lg:flex-1 lg:shrink">
+      <div
+        className={`theme-frame relative flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-well ring-1 ring-line-soft transition-[height] duration-500 ease-out lg:h-auto lg:min-h-[260px] lg:flex-1 lg:shrink ${
+          result && !running && !cropping ? 'h-[min(30dvh,280px)]' : 'h-[min(50dvh,460px)]'
+        }`}
+      >
         <div
           ref={box}
           className={`relative max-h-full ${cropping ? 'touch-none' : ''}`}
@@ -270,34 +377,50 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
             key={shown.url}
             src={shown.url}
             alt={`Reference: ${original.name}`}
-            initial={{ opacity: 0, scale: 0.985 }}
+            initial={{ opacity: 0, scale: 1.03 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className={`h-full w-full object-contain select-none ${cropping ? 'cursor-crosshair' : ''}`}
             draggable={false}
           />
-          {running && (
-            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-              <div className="absolute inset-0 bg-well/25" />
-              <div className="animate-scan absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-transparent via-accent/15 to-transparent">
-                <div className="absolute inset-x-0 bottom-1/2 h-px bg-accent/70" />
-              </div>
-              <div className="absolute inset-0 [background-image:linear-gradient(rgba(236,230,218,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(236,230,218,0.05)_1px,transparent_1px)] [background-size:32px_32px]" />
-            </div>
-          )}
+          <AnimatePresence>
+            {running && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                className="pointer-events-none absolute inset-0 overflow-hidden"
+                aria-hidden
+              >
+                <div className="absolute inset-0 bg-black/30" />
+                <div className="absolute inset-0 [background-image:linear-gradient(rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(90deg,rgb(255_255_255/0.05)_1px,transparent_1px)] [background-size:28px_28px]" />
+                <div className="animate-scan absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-transparent via-[rgb(212_255_63/0.12)] to-transparent">
+                  <div className="spectrum absolute inset-x-0 bottom-1/2 h-[2px] shadow-[0_0_18px_rgb(212_255_63/0.8)]" />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* The look is ready: one sweep of light across the reference. */}
+          {result && !running && <div key={result.description} className="lumen-sweep" aria-hidden />}
           {cropping && draft && draft.w > 0.01 && draft.h > 0.01 && (
             <div
-              className="pointer-events-none absolute shadow-[0_0_0_9999px_rgba(13,12,11,0.6)] outline outline-1 outline-fg"
+              className="pointer-events-none absolute rounded-xs shadow-[0_0_0_9999px_rgb(0_0_0/0.62)] outline-2 outline-accent"
               style={{ left: `${draft.x * 100}%`, top: `${draft.y * 100}%`, width: `${draft.w * 100}%`, height: `${draft.h * 100}%` }}
             />
           )}
         </div>
+        {running && (
+          <span className="surface-float absolute top-3 left-3 flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium text-fg" aria-hidden>
+            <Loader2 size={13} className="animate-spin text-accent" /> Analysing
+          </span>
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {cropping ? (
           <>
-            <span className="text-xs text-fg-3">Drag over the reference to select the part to use.</span>
+            <span className="text-[13px] text-fg-3">Drag over the reference to select the part to use.</span>
             <div className="ml-auto flex gap-2">
               <Button size="sm" variant="ghost" onClick={() => { setCropping(false); setDraft(null); }}>
                 Cancel
@@ -318,21 +441,21 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
           </>
         ) : (
           <>
-            <span className="max-w-[45%] truncate text-xs text-fg-3" title={original.name}>
+            <span className="max-w-[45%] truncate font-mono text-xs text-fg-3" title={original.name}>
               {original.name} · {working.width}×{working.height}
               {crop ? ' (cropped)' : ''}
             </span>
             <div className="ml-auto flex flex-wrap gap-1.5">
               {suggested && (
-                <Button size="sm" variant="accent-outline" icon={<Crop size={13} />} disabled={running} onClick={() => void applyCrop(suggested)}>
+                <Button size="sm" variant="accent-outline" icon={<Crop size={14} />} disabled={running} onClick={() => void applyCrop(suggested)}>
                   Trim borders
                 </Button>
               )}
-              <Button size="sm" variant="secondary" icon={<Crop size={13} />} disabled={running} onClick={() => setCropping(true)}>
+              <Button size="sm" variant="secondary" icon={<Crop size={14} />} disabled={running} onClick={() => setCropping(true)}>
                 Crop
               </Button>
               {crop && (
-                <Button size="sm" variant="ghost" icon={<RotateCcw size={13} />} disabled={running} onClick={() => void applyCrop(null)}>
+                <Button size="sm" variant="ghost" icon={<RotateCcw size={14} />} disabled={running} onClick={() => void applyCrop(null)}>
                   Uncrop
                 </Button>
               )}
@@ -349,30 +472,55 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
         </p>
       )}
 
-      <AnimatePresence>
-        {result && stats && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="mt-5 grid gap-5 sm:grid-cols-2">
+      <Measurements className="mt-6 hidden lg:block" />
+    </div>
+  );
+}
+
+function Measurements({ className = '' }: { className?: string }) {
+  const stats = useReference((s) => s.stats);
+  const result = useReference((s) => s.result);
+  return (
+    <AnimatePresence>
+      {result && stats && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          className={className}
+        >
+          <div className="grid gap-6 sm:grid-cols-2">
             <div>
-              <p className="edge-code mb-2">Palette</p>
-              <div className="flex h-9 overflow-hidden rounded-xs ring-1 ring-line-soft" role="list" aria-label="Dominant colours">
-                {stats.palette.map((c) => (
-                  <div key={c.hex} role="listitem" title={`${c.hex} · ${Math.round(c.weight * 100)}%`} aria-label={`${c.hex}, ${Math.round(c.weight * 100)} percent`} style={{ background: c.hex, flexGrow: Math.max(0.04, c.weight) }} />
+              <p className="label-caps mb-2.5 text-fg-3">Palette</p>
+              <div className="flex h-12 overflow-hidden rounded-md ring-1 ring-line-soft" role="list" aria-label="Dominant colours">
+                {stats.palette.map((c, i) => (
+                  <motion.div
+                    key={c.hex}
+                    role="listitem"
+                    title={`${c.hex} · ${Math.round(c.weight * 100)}%`}
+                    aria-label={`${c.hex}, ${Math.round(c.weight * 100)} percent`}
+                    initial={{ scaleY: 0 }}
+                    animate={{ scaleY: 1 }}
+                    transition={{ duration: 0.45, delay: 0.2 + i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ background: c.hex, flexGrow: Math.max(0.04, c.weight), transformOrigin: 'bottom' }}
+                  />
                 ))}
               </div>
-              <div className="tabular mt-1.5 flex flex-wrap gap-x-3 font-mono text-[10px] text-fg-4">
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] text-fg-4">
                 {stats.palette.slice(0, 5).map((c) => (
                   <span key={c.hex}>{c.hex}</span>
                 ))}
               </div>
             </div>
             <div>
-              <p className="edge-code mb-2">Tonal zones</p>
+              <p className="label-caps mb-2.5 text-fg-3">Tonal zones</p>
               <ZoneScale distribution={stats.zones} />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -380,32 +528,106 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
 // Analysis stages and results
 // ---------------------------------------------------------------------------
 
-function StageRow({ label, stage, detail, action }: { label: string; stage: Stage; detail: string; action?: ReactNode }) {
+function StageRow({ label, stage, detail, action, last }: { label: string; stage: Stage; detail: string; action?: ReactNode; last?: boolean }) {
   const icon =
     stage.state === 'running' ? (
-      <Loader2 size={14} className="animate-spin text-accent-fg" />
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 ring-1 ring-accent/60">
+        <Loader2 size={14} className="animate-spin text-accent" />
+      </span>
     ) : stage.state === 'done' ? (
-      <Check size={14} className="text-success" />
+      <motion.span initial={{ scale: 0.4 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 520, damping: 18 }} className="flex h-7 w-7 items-center justify-center rounded-full bg-success/15 text-success">
+        <Check size={14} strokeWidth={2.6} />
+      </motion.span>
     ) : stage.state === 'skipped' ? (
-      <Minus size={14} className="text-fg-4" />
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-control text-fg-4">
+        <Minus size={14} />
+      </span>
     ) : stage.state === 'error' ? (
-      <AlertTriangle size={14} className="text-danger" />
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-danger/15 text-danger">
+        <AlertTriangle size={13} />
+      </span>
     ) : (
-      <CircleDashed size={14} className="text-fg-4" />
+      <span className="block h-7 w-7 rounded-full border border-dashed border-line-strong" />
     );
   return (
-    <li className="py-2">
-      <div className="flex items-center gap-2.5">
-        {icon}
-        <span className={`text-[13px] ${stage.state === 'pending' ? 'text-fg-4' : 'text-fg'}`}>{label}</span>
-        {action}
-        <span className={`${action ? '' : 'ml-auto '}text-[11px] text-fg-4`}>
-          {stage.state === 'running' ? 'in progress' : stage.state === 'done' ? 'done' : stage.state === 'skipped' ? 'skipped' : stage.state === 'error' ? 'failed' : ''}
-        </span>
+    <li className="relative flex gap-3.5 pb-5 last:pb-0">
+      {!last && <span aria-hidden className="absolute top-8 bottom-1 left-[13.5px] w-px bg-line" />}
+      <span className="relative flex shrink-0">{icon}</span>
+      <div className="min-w-0 flex-1 pt-1">
+        <div className="flex items-center gap-2.5">
+          <span className={`text-sm font-medium ${stage.state === 'pending' ? 'text-fg-4' : 'text-fg'}`}>{label}</span>
+          {action}
+          <span className={`${action ? '' : 'ml-auto '}font-mono text-[11px] text-fg-4`}>
+            {stage.state === 'running' ? 'in progress' : stage.state === 'done' ? 'done' : stage.state === 'skipped' ? 'skipped' : stage.state === 'error' ? 'failed' : ''}
+          </span>
+        </div>
+        {stage.state === 'running' && <Indeterminate className="mt-2" />}
+        <p className="mt-1 text-[13px] leading-relaxed text-fg-3">{stage.note ?? detail}</p>
       </div>
-      {stage.state === 'running' && <Indeterminate className="mt-2 ml-6 w-auto" />}
-      <p className="mt-0.5 ml-6 text-[11.5px] leading-relaxed text-fg-3">{stage.note ?? detail}</p>
     </li>
+  );
+}
+
+/** The look, revealed: what was measured, in words, with its confidence. */
+/** `result` is a prop (not read from the store) so the card keeps its data while it animates out after a reset. */
+function LookCard({ result }: { result: MappingResult }) {
+  const aiModel = useReference((s) => s.aiModel);
+  const [showWhy, setShowWhy] = useState(false);
+  return (
+    <div className="p-4 pb-0 sm:p-6 sm:pb-0">
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+            className="relative overflow-hidden rounded-xl border border-line-soft bg-raised p-5"
+          >
+            <span aria-hidden className="spectrum absolute inset-x-0 top-0 h-[2px]" />
+            <p className="label-caps flex items-center gap-2 text-accent-fg">
+              <Sparkles size={13} /> The look
+            </p>
+            <p className="mt-3 text-[21px] leading-[1.25] font-medium tracking-[-0.02em] text-fg sm:text-[23px]" data-testid="style-description">
+              {result.description}
+            </p>
+            <p className="mt-2.5 text-xs text-fg-4">
+              {result.descriptionSource === 'ai' ? `Interpreted by ${aiModel ?? 'the vision model'}, grounded in measurements` : 'Written from measurements (no AI)'}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <ConfidenceBadge level={result.confidence} />
+              <span className="rounded-full bg-control px-2.5 py-1 text-xs text-fg-2">
+                {result.explanations.length} setting group{result.explanations.length === 1 ? '' : 's'} generated
+              </span>
+            </div>
+            {result.warnings.length > 0 && (
+              <ul className="mt-4 space-y-1.5">
+                {result.warnings.map((w) => (
+                  <li key={w} className="flex gap-2 text-[13px] leading-relaxed text-fg-2">
+                    <AlertTriangle size={14} className="mt-0.5 shrink-0 text-accent-fg" />
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button type="button" onClick={() => setShowWhy(!showWhy)} aria-expanded={showWhy} className="mt-4 -ml-1 rounded-full px-1 py-1 text-[13px] font-medium text-accent-fg hover:underline coarse:py-2.5">
+              {showWhy ? 'Hide' : 'Show'} how the preset was built
+            </button>
+            <AnimatePresence initial={false}>
+              {showWhy && (
+                <motion.ul initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 space-y-2 overflow-hidden">
+                  {result.explanations.map((e, i) => (
+                    <li key={i} className="rounded-md bg-well px-3.5 py-2.5">
+                      <p className="flex flex-wrap items-center gap-2 text-xs font-medium text-fg-2">
+                        {e.area}
+                        <span className="rounded-full bg-control px-2 font-mono text-[10px] tracking-wide text-fg-3 uppercase">{e.basis.replace('+', ' + ')}</span>
+                        {e.weak && <span className="text-[11px] text-accent-fg">low confidence</span>}
+                      </p>
+                      <p className="mt-1 text-[13px] leading-relaxed text-fg-3">{e.text}</p>
+                    </li>
+                  ))}
+                </motion.ul>
+              )}
+            </AnimatePresence>
+          </motion.div>
+    </div>
   );
 }
 
@@ -414,28 +636,21 @@ function AnalysisPane() {
   const running = useReference((s) => s.running);
   const result = useReference((s) => s.result);
   const health = useReference((s) => s.aiHealth);
-  const aiModel = useReference((s) => s.aiModel);
   const consent = useSettings((s) => s.aiConsent);
-  const anyError = Object.values(stages).some((s) => s.state === 'error');
-  const [showWhy, setShowWhy] = useState(false);
 
   return (
-    <section className="p-4 sm:p-6" aria-labelledby="analysis-heading">
-      <div className="flex items-center justify-between">
-        <h3 id="analysis-heading" className="text-[11px] font-semibold tracking-[0.14em] text-fg-2 uppercase">
+    <section className={`p-4 sm:p-6 ${result ? 'border-t border-line-soft' : ''}`} aria-labelledby="analysis-heading">
+      <div className="mb-4 flex min-h-8 items-center justify-between">
+        <h3 id="analysis-heading" className="label-caps text-fg-3">
           Analysis
         </h3>
-        {running ? (
-          <Button size="sm" variant="ghost" onClick={cancelAnalysis}>
-            Cancel
-          </Button>
-        ) : (
-          <Button size="sm" variant={result ? 'ghost' : 'primary'} icon={<Sparkles size={14} />} onClick={startAnalysis} data-testid="analyze">
-            {result || anyError ? 'Analyse again' : 'Analyse look'}
+        {result && !running && (
+          <Button size="sm" variant="ghost" icon={<Sparkles size={14} />} onClick={startAnalysis} data-testid="analyze">
+            Analyse again
           </Button>
         )}
       </div>
-      <ul className="mt-2 divide-y divide-line-soft" aria-live="polite">
+      <ul aria-live="polite">
         <StageRow label="Image statistics" stage={stages.measure} detail="Tones, colour casts, palette, saturation, grain and vignette evidence, measured from the pixels." />
         <StageRow
           label="Style interpretation"
@@ -459,66 +674,18 @@ function AnalysisPane() {
                 : 'AI is not configured on this server, so the look is built from measurements only.'
           }
         />
-        <StageRow label="Preset generation" stage={stages.build} detail="Converts the analysis into editable settings with fixed, documented rules." />
+        <StageRow label="Preset generation" stage={stages.build} detail="Converts the analysis into editable settings with fixed, documented rules." last />
       </ul>
 
-      <AnimatePresence>
-        {result && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} className="mt-5">
-            <blockquote className="border-l-2 border-accent-fg/60 pl-4">
-              <p className="text-[19px] leading-snug font-medium text-fg" data-testid="style-description">
-                {result.description}
-              </p>
-              <footer className="mt-1.5 text-[11px] text-fg-4">
-                {result.descriptionSource === 'ai' ? `Interpreted by ${aiModel ?? 'the vision model'}, grounded in measurements` : 'Written from measurements (no AI)'}
-              </footer>
-            </blockquote>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <ConfidenceBadge level={result.confidence} />
-              <span className="text-[11px] text-fg-4">
-                {result.explanations.length} setting group{result.explanations.length === 1 ? '' : 's'} generated
-              </span>
-            </div>
-            {result.warnings.length > 0 && (
-              <ul className="mt-3 space-y-1.5">
-                {result.warnings.map((w) => (
-                  <li key={w} className="flex gap-2 text-xs leading-relaxed text-fg-2">
-                    <AlertTriangle size={13} className="mt-0.5 shrink-0 text-accent-fg" />
-                    {w}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <button type="button" onClick={() => setShowWhy(!showWhy)} aria-expanded={showWhy} className="mt-4 text-xs text-accent-fg hover:underline">
-              {showWhy ? 'Hide' : 'Show'} how the preset was built
-            </button>
-            <AnimatePresence initial={false}>
-              {showWhy && (
-                <motion.ul initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 space-y-2 overflow-hidden">
-                  {result.explanations.map((e, i) => (
-                    <li key={i} className="rounded-xs bg-ground px-3 py-2">
-                      <p className="flex items-center gap-2 text-[11px] font-medium text-fg-2">
-                        {e.area}
-                        <span className="rounded-full border border-line px-1.5 text-[9.5px] tracking-wide text-fg-4 uppercase">{e.basis.replace('+', ' + ')}</span>
-                        {e.weak && <span className="text-[10px] text-accent-fg">low confidence</span>}
-                      </p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-fg-3">{e.text}</p>
-                    </li>
-                  ))}
-                </motion.ul>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </section>
   );
 }
 
 function ConfidenceBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
-  const color = level === 'high' ? 'text-success border-success/40' : level === 'medium' ? 'text-accent-fg border-accent-fg/40' : 'text-danger border-danger/40';
+  const color = level === 'high' ? 'text-success bg-success/12' : level === 'medium' ? 'text-accent-fg bg-accent/12' : 'text-danger bg-danger/12';
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[11px] ${color}`} title="How reliable this estimate is">
+    <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${color}`} title="How reliable this estimate is">
+      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
       {level === 'high' ? 'High' : level === 'medium' ? 'Medium' : 'Low'} confidence
     </span>
   );
@@ -558,11 +725,10 @@ interface ApplyPaneProps {
   result: MappingResult;
   refStats: ImageStats;
   working: NonNullable<ReturnType<typeof useReference.getState>['working']>;
-  onClose: () => void;
   onImportTarget: () => void;
 }
 
-function ApplyPane({ result, refStats, working, onClose, onImportTarget }: ApplyPaneProps) {
+function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps) {
   const aiModel = useReference((s) => s.aiModel);
   const activePhotoId = useEditor((s) => s.activePhotoId);
   const photos = useEditor((s) => s.photos);
@@ -716,15 +882,15 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-      className="border-t border-line-soft p-4 sm:p-6"
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+      className="p-4 sm:p-6"
       aria-labelledby="apply-heading"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id="apply-heading" className="text-[11px] font-semibold tracking-[0.14em] text-fg-2 uppercase">
+        <h3 id="apply-heading" className="label-caps text-fg-3">
           Apply to your photo
         </h3>
         {target && (
@@ -741,16 +907,20 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
         )}
       </div>
       {!target ? (
-        <div className="mt-3 rounded-sm border border-dashed border-line p-4 text-sm text-fg-3">
+        <div className="mt-4 flex flex-col items-start gap-3 rounded-xl border border-dashed border-line p-5 text-sm text-fg-3">
           Add the photo you want to apply this look to.
-          <Button size="sm" variant="secondary" className="mt-3" icon={<ImagePlus size={14} />} onClick={onImportTarget}>
+          <Button size="sm" variant="secondary" icon={<ImagePlus size={15} />} onClick={onImportTarget}>
             Add target photo
           </Button>
         </div>
       ) : (
         <>
-          <div className="theme-frame relative mt-3 overflow-hidden rounded-sm bg-well">
-            <canvas ref={canvas} className="block max-h-[340px] w-full object-contain" aria-label={`Preview of ${target.name}`} />
+          <div className="theme-frame relative mt-4 overflow-hidden rounded-xl bg-well ring-1 ring-line-soft">
+            <canvas ref={canvas} className="block max-h-[380px] w-full object-contain" aria-label={`Preview of ${target.name}`} />
+            {isApplied && <div key={`${applied?.name}`} className="lumen-sweep" aria-hidden />}
+            <span className="surface-float pointer-events-none absolute top-3 left-3 rounded-full px-2.5 py-1 font-mono text-[11px] text-fg" aria-hidden>
+              {isApplied ? `Your photo · ${Math.round(applied!.amount)}%` : 'Your photo'}
+            </span>
             {isApplied && (
               <button
                 type="button"
@@ -761,37 +931,39 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
                 onContextMenu={(e) => e.preventDefault()}
                 onKeyDown={(e) => e.key === ' ' && setUi({ compare: 'before' })}
                 onKeyUp={() => setUi({ compare: 'off' })}
-                className="absolute right-2 bottom-2 touch-none rounded-xs bg-well/80 px-2 py-1 text-[11px] text-fg select-none [-webkit-touch-callout:none] coarse:px-3 coarse:py-2 coarse:text-xs"
+                className="surface-float absolute right-3 bottom-3 touch-none rounded-full px-3.5 py-2 text-xs font-medium text-fg select-none [-webkit-touch-callout:none] active:scale-95 coarse:px-4 coarse:py-3"
               >
                 Hold to see before
               </button>
             )}
           </div>
-          <p className="mt-1.5 truncate text-[11px] text-fg-4">
+          <p className="mt-2 truncate text-xs text-fg-4">
             Target: {target.name}
             {isApplied ? ` · look applied${applied?.name.includes('matched') ? ' (matched)' : ''}` : ready ? '' : ' · measuring photo…'}
           </p>
           {effectiveMode === 'matched' && matching && (
-            <div className="mt-2" data-testid="match-progress">
-              <p className="text-[11px] text-fg-3">
+            <div className="mt-3" data-testid="match-progress">
+              <p className="text-xs text-fg-3">
                 {matching.pass === 0 ? 'Matching this photo to the reference…' : `Matching this photo to the reference · refinement pass ${matching.pass} of up to ${matching.max}`}
               </p>
-              <Indeterminate className="mt-1.5" />
+              <Indeterminate className="mt-2" />
             </div>
           )}
           {mode === 'matched' && matchError && (
-            <p className="mt-2 flex gap-2 text-xs text-fg-2">
-              <AlertTriangle size={13} className="mt-0.5 shrink-0 text-danger" /> Matching failed ({matchError}); showing the generic look instead.
+            <p className="mt-3 flex gap-2 text-[13px] text-fg-2">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-danger" /> Matching failed ({matchError}); showing the generic look instead.
             </p>
           )}
+          {/* While matching runs, its status above is the whole story; no disabled button under it. */}
           {!isApplied ? (
-            <Button variant="primary" className="mt-3 w-full" icon={<Wand2 size={15} />} disabled={!ready} onClick={() => apply(100)} data-testid="apply-reference">
+            effectiveMode === 'matched' && matching ? null : <Button variant="primary" className="mt-4 w-full" icon={<Wand2 size={16} />} disabled={!ready} onClick={() => apply(100)} data-testid="apply-reference">
               {ready ? 'Re-apply look to photo' : 'Measuring photo…'}
             </Button>
           ) : (
-            <div className="mt-3 rounded-sm border border-line bg-ground px-3 py-2">
+            <div className="mt-4 rounded-lg bg-raised px-4 pt-2 pb-1">
               <Slider
                 label="Intensity"
+                size="lg"
                 value={applied!.amount}
                 range={{ min: 0, max: 100, default: 100, step: 1 }}
                 format={(v) => `${Math.round(v)}%`}
@@ -802,8 +974,8 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
             </div>
           )}
 
-          <div className="mt-3">
-            <label htmlFor="ref-preset-name" className="mb-1 block text-xs text-fg-3">
+          <div className="mt-4 rounded-lg bg-raised p-4">
+            <label htmlFor="ref-preset-name" className="mb-2 block text-sm font-medium text-fg">
               Save as preset
             </label>
             <div className="flex gap-2">
@@ -812,34 +984,38 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
                 value={name}
                 maxLength={80}
                 onChange={(e) => setName(e.target.value)}
-                className="h-9 min-w-0 flex-1 rounded-sm border border-line bg-well px-3 text-sm text-fg outline-none focus:border-accent-fg/60"
+                className="h-11 min-w-0 flex-1 rounded-full border border-line bg-well px-4 text-sm text-fg outline-none transition-colors focus:border-accent/60"
               />
-              <Button variant="secondary" icon={<Save size={14} />} disabled={!name.trim()} onClick={() => void save()} data-testid="save-reference-preset">
+              <Button variant="primary" className="h-11" icon={<Save size={15} />} disabled={!name.trim()} onClick={() => void save()} data-testid="save-reference-preset">
                 Save
               </Button>
             </div>
-            {saved && <p className="mt-1.5 text-[11px] text-success">Saved as “{saved}”.</p>}
-            <p className="mt-1.5 text-[10.5px] leading-relaxed text-fg-4">
+            <AnimatePresence>
+              {saved && (
+                <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-2 flex items-center gap-1.5 text-[13px] text-success">
+                  <Check size={14} strokeWidth={2.6} />
+                  <span>Saved as “{saved}”.</span>
+                </motion.p>
+              )}
+            </AnimatePresence>
+            <p className="mt-2.5 text-xs leading-relaxed text-fg-4">
               Saves the reusable look at the current intensity, plus the reference's colour statistics so it can be matched
               to any other photo later (“Match to this photo” in the Presets panel). This photo's matched settings are not
               saved; to keep hand-refined settings, use “Save look” in the Presets panel.
             </p>
-            <Button variant="primary" className="mt-3 w-full" icon={<SlidersHorizontal size={15} />} onClick={onClose}>
-              Refine in the editor
-            </Button>
           </div>
 
           {(warnings.length > 0 || notes.length > 0) && (
-            <ul className="mt-3 space-y-1">
+            <ul className="mt-4 space-y-1.5">
               {warnings.map((m) => (
-                <li key={m} className="flex gap-2 text-xs text-fg-2">
-                  <AlertTriangle size={13} className="mt-0.5 shrink-0 text-accent-fg" />
+                <li key={m} className="flex gap-2 text-[13px] text-fg-2">
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0 text-accent-fg" />
                   {m}
                 </li>
               ))}
               {notes.map((m) => (
-                <li key={m} className="flex gap-2 text-xs text-fg-3">
-                  <Info size={13} className="mt-0.5 shrink-0 text-fg-4" />
+                <li key={m} className="flex gap-2 text-[13px] text-fg-3">
+                  <Info size={14} className="mt-0.5 shrink-0 text-fg-4" />
                   {m}
                 </li>
               ))}
@@ -848,19 +1024,19 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
 
           {effectiveMode === 'matched' && match && (
             <>
-              <button type="button" onClick={() => setShowHow(!showHow)} aria-expanded={showHow} className="mt-3 text-xs text-accent-fg hover:underline">
+              <button type="button" onClick={() => setShowHow(!showHow)} aria-expanded={showHow} className="mt-4 -ml-1 rounded-full px-1 py-1 text-[13px] font-medium text-accent-fg hover:underline coarse:py-2.5">
                 {showHow ? 'Hide' : 'Show'} how it was matched to this photo
               </button>
               <AnimatePresence initial={false}>
                 {showHow && (
                   <motion.ul initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 space-y-2 overflow-hidden">
                     {match.explanations.map((e, i) => (
-                      <li key={i} className="rounded-xs bg-ground px-3 py-2">
-                        <p className="flex items-center gap-2 text-[11px] font-medium text-fg-2">
+                      <li key={i} className="rounded-md bg-raised px-3.5 py-2.5">
+                        <p className="flex items-center gap-2 text-xs font-medium text-fg-2">
                           {e.area}
-                          {e.weak && <span className="text-[10px] text-accent-fg">low confidence</span>}
+                          {e.weak && <span className="text-[11px] text-accent-fg">low confidence</span>}
                         </p>
-                        <p className="mt-0.5 text-xs leading-relaxed text-fg-3">{e.text}</p>
+                        <p className="mt-1 text-[13px] leading-relaxed text-fg-3">{e.text}</p>
                       </li>
                     ))}
                   </motion.ul>
@@ -869,7 +1045,7 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
             </>
           )}
 
-          <div className="mt-3 space-y-0.5">
+          <div className="mt-4 space-y-1 border-t border-line-soft pt-3">
             {mode === 'generic' && (
               <Toggle checked={opts.neutralizeCast} onChange={(v) => setOpts({ ...opts, neutralizeCast: v })} label="Neutralise this photo's colour cast first" description="Keeps the reference's grade consistent when the two photos were lit differently." />
             )}
@@ -886,14 +1062,14 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
           </div>
 
           {isApplied && suggestions.length > 0 && (
-            <div className="mt-4">
-              <p className="mb-1.5 text-[11px] font-semibold tracking-[0.12em] text-fg-2 uppercase">Compared with the reference</p>
-              <ul className="space-y-1.5">
+            <div className="mt-5">
+              <p className="label-caps mb-2 text-fg-3">Compared with the reference</p>
+              <ul className="space-y-2">
                 {suggestions.map((s) => (
-                  <li key={s.id} className="flex items-start gap-3 rounded-xs bg-ground px-3 py-2">
+                  <li key={s.id} className="flex items-start gap-3 rounded-md bg-raised px-3.5 py-2.5">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-fg">{s.title}</p>
-                      <p className="text-[11px] leading-relaxed text-fg-3">{s.detail}</p>
+                      <p className="text-[13px] text-fg">{s.title}</p>
+                      <p className="text-xs leading-relaxed text-fg-3">{s.detail}</p>
                     </div>
                     <Button
                       size="sm"
@@ -914,7 +1090,7 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
                   </li>
                 ))}
               </ul>
-              <p className="mt-1.5 text-[10.5px] text-fg-4">Suggestions close part of the gap and leave the photo's own lighting alone.</p>
+              <p className="mt-2 text-xs text-fg-4">Suggestions close part of the gap and leave the photo's own lighting alone.</p>
             </div>
           )}
         </>
@@ -957,7 +1133,7 @@ function ConsentDialog() {
             Measurements only
           </Button>
           <Button
-            variant="primary"
+            variant="accent"
             onClick={() => {
               update({ aiConsent: true });
               close();
@@ -969,7 +1145,7 @@ function ConsentDialog() {
         </>
       }
     >
-      <div className="space-y-3 p-4 text-sm leading-relaxed text-fg-3">
+      <div className="space-y-3 px-5 pb-5 text-sm leading-relaxed text-fg-3">
         <p>
           To describe the style, a <span className="text-fg">downscaled copy (max 1024 px) of the reference image</span> is sent
           through this app's server to Anthropic's API ({health?.model ?? 'Claude'}). Your photos being edited are

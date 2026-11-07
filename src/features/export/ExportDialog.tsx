@@ -1,10 +1,11 @@
 /** Export dialog: format, quality, output size, optional AI upscale, real progress, cancellation. */
 import { create } from 'zustand';
-import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Download, Share2 } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { motion } from 'motion/react';
+import { AlertTriangle, Check, Download, Share2 } from 'lucide-react';
 import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
-import { Segmented, Progress } from '@/components/ui/misc';
+import { Segmented } from '@/components/ui/misc';
 import { Slider } from '@/components/ui/Slider';
 import { useEditor } from '@/state/editorStore';
 import { useSettings } from '@/state/settingsStore';
@@ -141,6 +142,10 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
   const tiles = sizes.reduce((n, s) => n + s.tiles, 0);
   const many = (ids?.length ?? 0) > 1;
 
+  const first = ids ? photos.find((p) => p.id === ids[0]) : undefined;
+  const fraction = progress ? Math.min(1, (progress.index + progress.fraction) / Math.max(1, progress.total)) : 0;
+  const finished = !!result && !result.cancelled && result.done > 0;
+
   return (
     <Dialog
       open={open}
@@ -160,12 +165,12 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
             <Button variant="ghost" onClick={close}>
               Done
             </Button>
-            <Button variant="secondary" icon={<Download size={14} />} onClick={() => shareFiles.forEach((f) => downloadBlob(f, f.name))}>
+            <Button variant="secondary" icon={<Download size={15} />} onClick={() => shareFiles.forEach((f) => downloadBlob(f, f.name))}>
               Download
             </Button>
             <Button
-              variant="primary"
-              icon={<Share2 size={14} />}
+              variant="accent"
+              icon={<Share2 size={15} />}
               data-testid="export-share"
               onClick={() =>
                 void navigator.share({ files: shareFiles }).catch((e: unknown) => {
@@ -185,96 +190,167 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
             <Button variant="ghost" onClick={close}>
               Cancel
             </Button>
-            <Button variant="primary" disabled={!!problem || sizes.length === 0} onClick={() => void start()} data-testid="export-start">
+            <Button
+              variant="accent"
+              className="min-w-32"
+              icon={<Download size={15} />}
+              disabled={!!problem || sizes.length === 0}
+              onClick={() => void start()}
+              data-testid="export-start"
+            >
               Export
             </Button>
           </>
         )
       }
     >
-      <div className="space-y-4 p-4">
-        <div>
-          <p className="mb-1.5 text-xs text-fg-3">Format</p>
-          <Segmented
-            label="Export format"
-            value={format}
-            onChange={setFormat}
-            options={[
-              { value: 'image/jpeg', label: 'JPEG' },
-              { value: 'image/png', label: 'PNG' },
-              { value: 'image/webp', label: 'WebP' },
-            ]}
-          />
-          {format === 'image/jpeg' && <p className="mt-1.5 text-[11px] text-fg-4">Transparent areas are filled with white. Use PNG or WebP to keep transparency.</p>}
-        </div>
-        {format !== 'image/png' && (
-          <Slider label="Quality" value={quality} range={{ min: 40, max: 100, default: 92, step: 1 }} onChange={setQuality} />
-        )}
-        <div>
-          <p className="mb-1.5 text-xs text-fg-3">Size</p>
-          {ai ? (
-            <p className="flex h-8 items-center text-xs text-fg-2">Full size, then AI upscale</p>
-          ) : (
-            <Segmented label="Export size" value={scale} onChange={setScale} options={SCALES} />
-          )}
-        </div>
-        <div>
-          <p className="mb-1.5 text-xs text-fg-3">AI upscale</p>
-          <Segmented
-            label="AI upscale"
-            value={upscale}
-            onChange={(v) => {
-              setUpscale(v);
-              if (v !== 'off') setScale('1');
-            }}
-            options={[...UPSCALES]}
-          />
-          {ai && (
-            <p className="mt-1.5 text-[11px] leading-relaxed text-fg-4" data-testid="upscale-note">
-              Recovers detail with Real-ESRGAN on this device ({upscaler.licence}, {(modelBytes(upscaler) / 1e6).toFixed(1)} MB model). Runs{' '}
-              {tiles} tile{tiles === 1 ? '' : 's'} after rendering, so it takes longer than a normal export
-              {format !== 'image/jpeg' ? '; transparency is kept' : ''}.
-            </p>
-          )}
-        </div>
-        <ul className="tabular max-h-28 space-y-0.5 overflow-auto text-[11.5px] text-fg-2">
-          {sizes.map((s, i) => (
-            <li key={i} className="flex justify-between gap-3" data-testid="export-size">
-              <span className="truncate">{s.name}</span>
-              <span className={s.problem ? 'text-danger' : 'text-fg-3'}>
-                {s.w} × {s.h}px
-              </span>
-            </li>
-          ))}
-        </ul>
-        {problem && <p className="text-xs text-danger" role="alert">{problem}</p>}
-        <p className="text-[11px] leading-relaxed text-fg-4">
-          Exports are rendered from the original at full resolution, in sRGB. Camera metadata (EXIF, GPS) is not copied
-          into exported files.
-        </p>
-        {progress && (
-          <div role="status" aria-live="polite">
-            {result ? (
-              <p className="flex items-center gap-2 text-sm text-fg">
-                <CheckCircle2 size={16} className="text-success" />
-                {result.cancelled
-                  ? `Cancelled. ${result.done} file${result.done === 1 ? '' : 's'} saved.`
-                  : shareFiles.length
-                    ? `Exported ${result.done} file${result.done === 1 ? '' : 's'}. Tap Save / Share to save to Photos or send it.`
-                    : `Exported ${result.done} file${result.done === 1 ? '' : 's'}. Check your downloads.`}
-              </p>
-            ) : (
-              <>
-                <p className="mb-1.5 truncate text-xs text-fg-3">
-                  {many && `${progress.index + 1}/${progress.total} · `}
-                  {progress.stage}
-                </p>
-                <Progress value={(progress.index + progress.fraction) / progress.total} label="Export progress" />
-              </>
+      <div className="space-y-5 px-5 pb-5">
+        {/* What comes out: the photo, its name and the output size. */}
+        <div className="flex items-center gap-3.5 rounded-lg border border-line-soft bg-well p-2.5">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-raised-2">
+            {first?.thumbUrl && <img src={first.thumbUrl} alt="" className="h-full w-full object-cover" />}
+            {many && (
+              <span className="absolute right-1 bottom-1 rounded-full bg-black/70 px-1.5 font-mono text-[10px] text-white">+{(ids?.length ?? 1) - 1}</span>
             )}
           </div>
+          <ul className="scroll-quiet max-h-24 min-w-0 flex-1 space-y-1 overflow-auto">
+            {sizes.map((s, i) => (
+              <li key={i} className="flex items-baseline justify-between gap-3 text-[13px]" data-testid="export-size">
+                <span className="truncate text-fg">{s.name}</span>
+                <span className={`shrink-0 font-mono text-xs ${s.problem ? 'text-danger' : 'text-fg-3'}`}>
+                  {s.w} × {s.h}px
+                </span>
+              </li>
+            ))}
+            {sizes.length === 0 && <li className="skeleton h-4 w-2/3 rounded-full" aria-hidden />}
+          </ul>
+        </div>
+
+        {progress ? (
+          <div role="status" aria-live="polite">
+            {result ? (
+              <ExportFinish result={result} share={shareFiles.length > 0} ok={finished} />
+            ) : (
+              <div className="py-2">
+                <div className="mb-2 flex items-baseline justify-between gap-3">
+                  <p className="truncate text-sm text-fg-2">
+                    {many && `${progress.index + 1}/${progress.total} · `}
+                    {progress.stage}
+                  </p>
+                  <span className="font-mono text-sm text-accent-fg">{Math.round(fraction * 100)}%</span>
+                </div>
+                <div
+                  className="relative h-1.5 w-full overflow-hidden rounded-full bg-control"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(fraction * 100)}
+                  aria-label="Export progress"
+                >
+                  <div className="spectrum h-full rounded-full transition-[width] duration-300 ease-out" style={{ width: `${Math.round(fraction * 100)}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <Field label="Format" note={format === 'image/jpeg' ? 'Transparent areas are filled with white. Use PNG or WebP to keep transparency.' : undefined}>
+              <Segmented
+                label="Export format"
+                value={format}
+                onChange={setFormat}
+                options={[
+                  { value: 'image/jpeg', label: 'JPEG' },
+                  { value: 'image/png', label: 'PNG' },
+                  { value: 'image/webp', label: 'WebP' },
+                ]}
+              />
+            </Field>
+            {format !== 'image/png' && (
+              <Slider label="Quality" value={quality} range={{ min: 40, max: 100, default: 92, step: 1 }} onChange={setQuality} />
+            )}
+            <Field label="Size">
+              {ai ? (
+                <p className="flex h-9 items-center text-[13px] text-fg-2">Full size, then AI upscale</p>
+              ) : (
+                <Segmented label="Export size" value={scale} onChange={setScale} options={SCALES} />
+              )}
+            </Field>
+            <Field label="AI upscale">
+              <Segmented
+                label="AI upscale"
+                value={upscale}
+                onChange={(v) => {
+                  setUpscale(v);
+                  if (v !== 'off') setScale('1');
+                }}
+                options={[...UPSCALES]}
+              />
+              {ai && (
+                <p className="mt-2 text-xs leading-relaxed text-fg-3" data-testid="upscale-note">
+                  Recovers detail with Real-ESRGAN on this device ({upscaler.licence}, {(modelBytes(upscaler) / 1e6).toFixed(1)} MB model). Runs{' '}
+                  {tiles} tile{tiles === 1 ? '' : 's'} after rendering, so it takes longer than a normal export
+                  {format !== 'image/jpeg' ? '; transparency is kept' : ''}.
+                </p>
+              )}
+            </Field>
+            {problem && (
+              <p className="flex gap-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-[13px] text-fg" role="alert">
+                <AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />
+                {problem}
+              </p>
+            )}
+            <p className="text-xs leading-relaxed text-fg-4">
+              Exports are rendered from the original at full resolution, in sRGB. Camera metadata (EXIF, GPS) is not copied
+              into exported files.
+            </p>
+          </>
         )}
       </div>
     </Dialog>
+  );
+}
+
+function Field({ label, note, children }: { label: string; note?: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="label-caps mb-2 text-fg-3">{label}</p>
+      {children}
+      {note && <p className="mt-2 text-xs leading-relaxed text-fg-4">{note}</p>}
+    </div>
+  );
+}
+
+/** The finish: a check inside a ring of split light springs in, then what happened and where the file went. */
+function ExportFinish({ result, share, ok }: { result: { done: number; cancelled: boolean }; share: boolean; ok: boolean }) {
+  const files = `${result.done} file${result.done === 1 ? '' : 's'}`;
+  return (
+    <div className="flex flex-col items-center py-3 text-center">
+      <motion.span
+        initial={{ scale: 0.4, opacity: 0, rotate: -120 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+        className={`relative flex h-16 w-16 items-center justify-center rounded-full p-[3px] ${ok ? '' : 'bg-control-2'}`}
+        style={
+          ok
+            ? { background: 'conic-gradient(from 200deg, var(--color-spec-1), var(--color-spec-2), var(--color-spec-3), var(--color-spec-4), var(--color-spec-5), var(--color-spec-1))' }
+            : undefined
+        }
+        aria-hidden
+      >
+        <span className="flex h-full w-full items-center justify-center rounded-full bg-raised">
+          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.18, type: 'spring', stiffness: 520, damping: 16 }}>
+            <Check size={26} strokeWidth={2.6} className={ok ? 'text-accent' : 'text-fg-3'} />
+          </motion.span>
+        </span>
+      </motion.span>
+      <p className="mt-3 max-w-xs text-[15px] font-medium text-fg">
+        {result.cancelled
+          ? `Cancelled. ${files} saved.`
+          : share
+            ? `Exported ${files}. Tap Save / Share to save to Photos or send it.`
+            : `Exported ${files}. Check your downloads.`}
+      </p>
+    </div>
   );
 }
