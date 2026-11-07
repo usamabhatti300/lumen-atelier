@@ -1,276 +1,260 @@
 ---
 name: Lumen Atelier
-description: A free, private, on-device photo editor where every look is a box of film you load into your photo.
+description: A free, private, on-device photo editor; a dark instrument where the only light is your photo and the look you give it.
 colors:
-  carton-yellow: "#e4a11b"
-  carton-yellow-hi: "#eeb53f"
-  carton-yellow-lo: "#cf8d0c"
-  accent-ink: "#845500"
-  print-paper: "#f4f1ea"
-  paper-shade: "#ece8df"
-  form-white: "#fffdf9"
-  sheet-white: "#fbf9f4"
-  control-grey: "#e6e1d6"
-  hairline: "#cdc6b8"
-  hairline-soft: "#e3ded3"
-  hairline-strong: "#9f978a"
-  ink: "#121212"
-  ink-2: "#36332e"
-  ink-3: "#59544c"
-  ink-4: "#6e685f"
-  band-red: "#c8322b"
-  band-blue: "#2f6db5"
-  frame-black: "#0b0b0b"
-  frame-paper: "#f4f1ea"
-  frame-accent: "#f0b941"
-  error-red: "#b8291f"
-  saved-green: "#2b7148"
+  well: "#08080a"
+  ground: "#0e0e10"
+  ground-2: "#121215"
+  raised: "#18181c"
+  raised-2: "#1f1f24"
+  control: "#26262c"
+  control-2: "#303037"
+  line-soft: "#1e1e23"
+  line: "#2b2b32"
+  line-strong: "#4a4a53"
+  fg: "#f5f5f2"
+  fg-2: "#d2d2cd"
+  fg-3: "#a5a5a0"
+  fg-4: "#8a8a85"
+  lumen-lime: "#d4ff3f"
+  lumen-lime-hi: "#e2ff7a"
+  lumen-lime-lo: "#bfee1f"
+  on-lime: "#0d1003"
+  spec-1-rose: "#ff5c7a"
+  spec-2-amber: "#ffb547"
+  spec-3-lime: "#d4ff3f"
+  spec-4-cyan: "#3fe0ff"
+  spec-5-violet: "#8f7dff"
+  stage: "#09090a"
+  danger: "#ff6f63"
+  success: "#52e394"
 typography:
   display:
-    fontFamily: "Barlow Condensed, Barlow, ui-sans-serif, sans-serif"
-    fontSize: "clamp(3.25rem, 13vw, 6rem)"
-    fontWeight: 800
-    lineHeight: 0.92
-    letterSpacing: "0.01em"
-  headline:
-    fontFamily: "Barlow Condensed, Barlow, ui-sans-serif, sans-serif"
-    fontSize: "2.5rem"
-    fontWeight: 800
-    lineHeight: 0.92
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "clamp(2.75rem, 12vw, 5.5rem)"
+    fontWeight: 640
+    lineHeight: 0.96
+    letterSpacing: "-0.04em"
+  voice:
+    fontFamily: "Instrument Serif, ui-serif, Georgia, serif"
+    fontStyle: italic
+    fontWeight: 400
+    note: "one emphasised word in a headline, never UI"
   title:
-    fontFamily: "Barlow Condensed, Barlow, ui-sans-serif, sans-serif"
+    fontFamily: "Geist Variable, ui-sans-serif, sans-serif"
     fontSize: "15px"
-    fontWeight: 700
-    lineHeight: 1.02
-    letterSpacing: "0.01em"
+    fontWeight: 600
+    letterSpacing: "-0.01em"
   body:
-    fontFamily: "Barlow, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 400
     lineHeight: 1.6
-  label:
-    fontFamily: "Barlow Condensed, Barlow, ui-sans-serif, sans-serif"
-    fontSize: "13px"
-    fontWeight: 700
-    letterSpacing: "0.08em"
-  edge-print:
-    fontFamily: "Barlow Condensed, Barlow, ui-sans-serif, sans-serif"
+  label-caps:
+    fontFamily: "Geist Mono Variable, ui-monospace, monospace"
     fontSize: "11px"
-    fontWeight: 600
-    letterSpacing: "0.16em"
+    fontWeight: 500
+    letterSpacing: "0.08em"
+    textTransform: uppercase
+  readout:
+    fontFamily: "Geist Mono Variable, ui-monospace, monospace"
+    fontSize: "12px"
     fontFeature: "tnum"
 rounded:
-  xs: "2px"
-  sm: "4px"
-  md: "6px"
+  xs: "6px"
+  sm: "10px"
+  md: "16px"
+  lg: "22px"
+  xl: "28px"
+  full: "999px"
 spacing:
   gutter-phone: "16px"
   gutter-desktop: "32px"
   bar: "56px"
+  dock: "68px"
 components:
-  button-primary:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.print-paper}"
-    rounded: "{rounded.sm}"
-    height: "40px"
-    padding: "0 16px"
-  button-primary-hover:
-    backgroundColor: "{colors.ink-2}"
   button-accent:
-    backgroundColor: "{colors.carton-yellow}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.sm}"
-    height: "40px"
-    padding: "0 16px"
-  button-accent-hover:
-    backgroundColor: "{colors.carton-yellow-hi}"
+    backgroundColor: "{colors.lumen-lime}"
+    textColor: "{colors.on-lime}"
+    rounded: "{rounded.full}"
+    height: "40px (48px lg)"
+    hover: "lime-hi + 28px lime glow"
+  button-primary:
+    backgroundColor: "{colors.fg}"
+    textColor: "{colors.ground}"
+    rounded: "{rounded.full}"
   button-secondary:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.sm}"
-    height: "40px"
-  carton-bar:
-    backgroundColor: "{colors.carton-yellow}"
-    textColor: "{colors.ink}"
-    height: "{spacing.bar}"
-  chip-selected:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.print-paper}"
-    typography: "{typography.label}"
-    rounded: "{rounded.sm}"
+    backgroundColor: "{colors.raised-2}"
+    border: "1px {colors.line}"
+    rounded: "{rounded.full}"
   chip:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink-2}"
-    typography: "{typography.label}"
-    rounded: "{rounded.sm}"
-  input:
-    backgroundColor: "{colors.form-white}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.sm}"
-  film-frame:
-    backgroundColor: "{colors.frame-black}"
-    textColor: "{colors.frame-paper}"
+    backgroundColor: "{colors.control}"
+    textColor: "{colors.fg-2}"
+    rounded: "{rounded.full}"
+    height: "32px (36px touch)"
+  chip-selected:
+    backgroundColor: "{colors.fg}"
+    textColor: "{colors.ground}"
+  look-tile:
+    backgroundColor: "{colors.raised-2}"
+    rounded: "{rounded.md} (lg in the library)"
+    selected: "1.5px lime ring + lime glow + lime check"
+  dock:
+    surface: "surface-float (rgb(24 24 28 / 0.86), blur 18px)"
+    rounded: "26px"
+    height: "{spacing.dock}"
 ---
 
 # Design System: Lumen Atelier
 
 ## Overview
 
-**Creative North Star: "The Film Stock Box"**
+**Creative North Star: "Afterglow".** Lumen means light. The interface is a dark, quiet instrument;
+the only light in it is your photo and what you are doing to it. Neutral graphite chrome keeps colour
+judgement honest; a single electric-lime **lumen** marks the one thing you are doing (the main action,
+the value you changed, the look you chose); and the **prism** (light split into rose, amber, lime, cyan,
+violet) appears only at signature moments: a look loading, an analysis running, the brand mark.
 
-Every look is a box of film you pick off a shelf and load into your photo. The chrome is printed carton:
-warm print paper, ink type, a chrome-yellow bar with a red / yellow / blue band strip under it. The photo
-always sits in a black frame with a line of edge printing that says which frame is loaded and which look
-is in it. Looks are colour cartons with a stock code, a big catalogue numeral and the preview as the box's
-window.
+Why this direction (2026-11-08 review): the previous "Film Stock Box" world (yellow carton bar, paper
+chrome, condensed caps) read as vintage packaging, sat close to a film brand's trade dress, and put bright
+paper next to the photo. The category's best apps (Darkroom, Lightroom Mobile, VSCO) and the Gen Z apps the
+owner benchmarks (Arc, Linear, BeReal, Retro) are dark, tactile and photo-led, with one confident accent and
+real motion. Afterglow takes that, with its own signature: lime light and the prism.
 
-It is an Operate surface: the world lends type, palette, density and one signature move, never the
-layout or the controls. Navigation, sliders, tabs and dialogs are ordinary web controls dressed in carton
-type. The photo is the only full-colour image on an editing screen; the cartons around it carry colour
-in flat, printed fields, and nothing glows, blurs or bevels.
-
-The signature move is **loading a look**: the chosen carton lifts off the shelf with its band lit, and
-the frame's edge print rolls in with the new look's name and amount.
-
-**Key Characteristics:**
-- Paper chrome, ink type, one chrome-yellow bar per screen with the band strip printed under it.
-- A black frame (`.theme-frame`) around every photo, with edge printing in condensed tracked caps.
-- Looks as colour cartons: stock code, display numeral, photo window, band strip at the foot.
-- Condensed caps (Barlow Condensed) for titles, labels and print; Barlow for reading text.
-- Crisp 2-6px corners, flat fields, one soft lift shadow for things that rise.
+**Key characteristics:**
+- Dark graphite chrome; the photo stage is a touch deeper (`.theme-frame`) so the photo reads as lit.
+- Soft, generous shapes: pills for every action and chip, 16–28px cards and sheets.
+- Geist for the interface, Geist Mono for numbers and readouts, Instrument Serif italic as the voice on one
+  word per headline ("Made *yours.*", "Start from a *look*").
+- One lime action per screen; lime also marks changed values, the chosen look and active tools.
+- Motion with springs: things settle, glow and sweep rather than slide flatly.
 
 ## Colors
 
-A printed-carton palette: one committed yellow for the shell, ink and paper for everything you read,
-three band inks for identity, and a black frame for the photo.
+### Lumen (accent)
+- **Lumen Lime** `#d4ff3f`: the one main action per screen (Match a look; Export in the export sheet),
+  the chosen look's ring and check, changed slider values and fills, active tool icons, the Match look lens
+  in the phone dock. Text on lime is **On-lime** `#0d1003`. Lime is readable as text on the dark ground
+  (16:1), so `accent-fg` is the same lime.
+- Lime glows: `shadow-glow` (1.5px ring + 28px bloom) on chosen looks and the active filmstrip frame;
+  a soft bloom on the accent button's hover. Nothing else glows.
 
-### Primary
-- **Carton Yellow** (#e4a11b): the shell bar on every screen (`.theme-carton`), the one main action per
-  screen (Match a look, Continue), selected fills, the active-tab marker and the changed-value fill on
-  sliders. Never used as text on paper.
-- **Accent Ink** (#845500): the readable form of the accent on paper: links, focus rings, small accent
-  text (5.6:1 on print paper). Inside the frame it becomes **Frame Accent** (#f0b941).
+### Prism (signature only)
+`spec-1` rose, `spec-2` amber, `spec-3` lime, `spec-4` cyan, `spec-5` violet. Used for: the brand mark's
+ring, the "Match a look" card edge on desktop, the look readout's dot, the lens halo in the dock, the
+analysis scan and indeterminate progress, the lumen sweep. Never as a background for text, never for state.
 
-### Secondary
-- **Band Red** (#c8322b) and **Band Blue** (#2f6db5): with Carton Yellow they make the band strip under
-  bars and on cartons, and the three-band mark. Identity only; never a state colour.
+### Neutrals
+- **Ground** `#0e0e10` (page) < **Raised** `#18181c` (cards, sheets, rails) < **Raised 2** `#1f1f24`
+  (inner cards, tiles) < **Control** `#26262c` (chips, icon-button hover) < **Control 2** `#303037`.
+  **Well** `#08080a` for inputs and the histogram; **Stage** `#09090a` around the photo.
+- Lines: `line-soft` `#1e1e23` (section dividers), `line` `#2b2b32` (borders), `line-strong` `#4a4a53`.
+- Text: `fg` `#f5f5f2`, `fg-2` `#d2d2cd`, `fg-3` `#a5a5a0` (7.9:1), `fg-4` `#8a8a85` (5.6:1 on ground,
+  4.9:1 on raised-2). All text roles pass AA on every surface they're used on.
+- **Danger** `#ff6f63` (errors, destructive) and **Success** `#52e394` (saved) only.
 
-### Neutral
-- **Ink** (#121212): all primary text, primary buttons, selected chips and segments.
-- **Ink 2 / 3 / 4** (#36332e / #59544c / #6e685f): secondary, tertiary and quiet text (4.9:1 or better on paper).
-- **Print Paper** (#f4f1ea): the page. **Paper Shade** (#ece8df) for quiet bands; **Sheet White**
-  (#fbf9f4) for menus and sheets; **Form White** (#fffdf9) for input fields.
-- **Hairline / Soft / Strong** (#cdc6b8 / #e3ded3 / #9f978a): borders and dividers; section rules are
-  2px Ink instead.
-- **Frame Black** (#0b0b0b → #000): the photo frame, filmstrip, histogram and on-photo labels. Inside it,
-  the same role tokens flip to light values (`.theme-frame`).
-- **Error Red** (#b8291f) and **Saved Green** (#2b7148): errors / destructive actions and saved state only.
+### Category tints
+`src/lib/presets/codes.ts` gives each preset category a three-letter code (SIG, CIN, PBL, FLM, MAT, POR, WED,
+LUX, GLD, TRV, ERT, STR, B/W, SOC; OWN and REF) and one tint, used only as a small dot or a faint wash on
+category tiles. Looks are identified by their real preview, not by colour.
 
-### Carton inks
-Each preset category has its own carton ink and three-letter stock code (`src/lib/presets/carton.ts`:
-SIG, CIN, PBL, FLM, MAT, POR, WED, LUX, GLD, TRV, ERT, STR, B/W, SOC; OWN and REF for the user's own).
-Within a category, looks cycle through the inks starting from the category's own, so a shelf never reads
-as one colour. Every ink pair keeps its text at 4.5:1 or better.
+### Named rules
+**The Scoped Theme Rule.** Components use role tokens (`ground`, `raised`, `fg`, `accent`…), never raw
+values. `.theme-frame` deepens the ground for the photo stage.
 
-### Named Rules
-**The Scoped Theme Rule.** Components use role tokens (`ground`, `fg`, `accent`…), never raw values. The
-same component renders on paper, inside `.theme-frame` (dark) or on `.theme-carton` (yellow; accent
-becomes ink) without a variant.
+**The One Lumen Rule.** One lime action per screen. Everything else is white (primary), raised (secondary)
+or ghost.
 
-**The Photo Is The Only Picture Rule.** On an editing screen nothing competes with the photo: no
-gradients, glows, blurred backdrops or ambient colour behind it. The frame is black.
+**The Photo Leads Rule.** On editing screens nothing is brighter or more saturated than the photo: no
+coloured panels, no gradients behind it. The prism appears at the edges, briefly.
 
 ## Typography
 
-**Display / Label Font:** Barlow Condensed (500-800), self-hosted
-**Body Font:** Barlow (400-700), self-hosted
+- **Display** (Geist 640, tight −0.04em, 0.96): screen titles and the home headline
+  (`clamp(2.75rem, 12vw, 5.5rem)`), section titles 1.75–2.5rem, sheet titles 19px, dialog titles 23px.
+- **Voice** (Instrument Serif italic): exactly one word in a headline, often in lime. Never in controls.
+- **Body** (Geist 400, 15px, 1.6): descriptions and help; 13px for secondary help in panels.
+- **Label caps** (Geist Mono 500, 11px, 0.08em, uppercase): section heads in rails ("WHITE BALANCE"),
+  eyebrows over titles ("PREVIEWED ON YOUR LAST PHOTO"), catalogue codes on look tiles ("SIG 26").
+- **Readout** (Geist Mono, tabular): slider values, percentages, pixel sizes, histogram footer.
 
-**Character:** carton lettering. Condensed heavy caps do the shouting on titles, cartons and labels;
-Barlow at 15px does the reading. Numbers use tabular figures.
-
-### Hierarchy
-- **Display** (800, clamp(3.25rem, 13vw, 6rem), 0.92): the home headline and screen titles.
-- **Headline** (800, 2-2.5rem, 0.92): section titles ("The shelf", "Your edits"), dialog titles (1.6rem).
-- **Title** (700, 15px, 1.02, uppercase): look names on cartons, two lines max.
-- **Body** (400, 15-17px, 1.6): descriptions and help, at most ~46ch on the home hero.
-- **Label** (700, 11-13px, 0.08em, uppercase): nav tabs, chips, bar actions, section heads.
-- **Edge print** (600, 11px, 0.16em, uppercase, tabular): frame lines and catalogue codes.
-
-### Named Rules
-**The Caps Are Printed Rule.** Condensed caps are for printed things (titles, labels, codes, look names).
-Sentences, help text and values stay in sentence-case Barlow.
+Self-hosted via Fontsource (OFL): `@fontsource-variable/geist`, `@fontsource-variable/geist-mono`,
+`@fontsource/instrument-serif` (latin italic only).
 
 ## Layout
 
-Phone first. Every screen opens with the 56px carton bar (48px on the desktop editor) and the band rule.
-Pages use a 16px gutter on phones and 32px from `sm`, max width 1280px. The editor is a frame in the
-middle: on desktop a 284px shelf rail (left), the frame, a 300px tools rail (right) and the filmstrip; on
-phones and tablets the frame fills the screen above a paper bottom nav (Looks, Light, Match look, Colour,
-More), and each tool docks as a sheet under the photo, with "Pick a look" and the carton strip directly
-under the frame. Section rules are 2px Ink with more space above a heading than below.
+Phone first. Pages use a 16px gutter (32px from `sm`), max width 1280px, a 56px sticky blurred app bar
+(`AppBar`) with a round back button and the wordmark.
 
-## Elevation & Depth
+**Editor, phone/tablet (<1024px):** top bar (round back, import, undo/redo, compare, ⋮, white Export
+pill) → the photo stage → the look readout (pill: prism dot, look name, lime amount) → a raised sheet
+that docks under the photo when a tool is open (rounded top, grab handle, display title, round close) →
+the floating **dock** (Looks, Light, *Match look* lens, Colour, More). The active dock tab gets a soft
+white pill (shared-layout spring) and a lime icon; Match look is a lime lens with a prism halo, never a tab.
 
-Flat by default: paper, ink and colour fields. Depth appears only when something rises.
+**Editor, desktop (≥1024px):** 52px top bar (mark, project name, save state; the tool cluster in a raised
+pill; Save; Export) → left rail 284px (prism-edged *Match a look* card, Looks/Photos, applied-look card,
+look grid) | stage | right rail 320px (histogram in a well, seven tool tabs in a raised segmented strip
+with a sliding pill, sections) → filmstrip.
 
-### Shadow Vocabulary
-- **Lift** (`0 10px 22px -10px rgb(18 18 18 / 0.45)`): a carton or print raised on hover or when chosen.
-- **Float** (`0 18px 40px -14px rgb(18 18 18 / 0.35), 0 2px 6px -2px rgb(18 18 18 / 0.18)`): menus, toasts, dialogs.
+## Elevation & depth
 
-### Named Rules
-**The Off The Shelf Rule.** Only a chosen or hovered carton lifts (8px when chosen, 2-4px on hover);
-nothing else floats at rest.
+Surfaces step up in lightness (ground → raised → raised-2 → control), not in shadow. Shadows are for things
+that float: `shadow-float` (sheets, dialogs, menus, dock, toasts) and `shadow-lift`. Floating chrome over
+the stage uses `.surface-float` (86% raised + 18px backdrop blur + 7% white hairline).
 
 ## Shapes
 
-Crisp printed corners: 2px (marks, small tags), 4px (buttons, chips, cartons, inputs), 6px (dialogs).
-No pills or circles for actions; circles only for slider thumbs, colour swatches, the toggle knob and
-status dots. Borders are 1px hairlines or 1.5px ink outlines on secondary buttons; section and sheet
-edges are 2px Ink. The film frame has sprocket holes (14 small rounded rectangles) on the home screen.
+Pills (`rounded-full`) for every button, chip, segmented control, toggle and the look readout. Cards 16px
+(`rounded-md`) to 22px (`rounded-lg`); sheets and dialogs 28px (`rounded-xl`, top corners only on phone
+sheets). Look tiles 16px in rails, 22px in the library. Inputs 10px; search fields are pills.
 
 ## Components
 
-### Buttons
-- **Shape:** gently squared (4px).
-- **Primary:** Ink fill, paper text, 600 weight, 40px tall (44px on touch). Inverts inside the frame;
-  stays an ink block on the carton bar.
-- **Accent:** Carton Yellow fill, ink text: one per screen (Match a look).
-- **Secondary:** transparent with a 1.5px ink outline. **Ghost:** text only with an 8% ink hover.
-- **Icon buttons:** 32px (40px touch), 4px corners; pressed state is an ink square with paper icon.
+- **Buttons** (`Button`): accent (lime), primary (white), secondary (raised + line), ghost, danger
+  (tinted), accent-outline. Sizes sm 32 / md 40 / lg 48 (touch +4–8px). Press scales to 0.97.
+- **Icon buttons**: 36px round (40px touch); active is `control-2` with a lime icon; tooltips are raised
+  pills that scale in after 500ms (not rendered on touch screens).
+- **Look tile** (`PresetBrowser`): the real preview fills the tile (fades and settles in from 1.06×; a
+  shimmer skeleton while it renders), a bottom scrim with the name in white, the catalogue code in mono at
+  the top left. Chosen: lime ring + glow + a lime check that spins in. Favourite / more actions are round
+  blurred buttons (always visible on touch, on hover with a mouse).
+- **Slider**: 3px graphite track, lime fill from the default with a soft glow, a white thumb that grows on
+  hover and turns lime with a bloom while dragged; mono value turns lime when changed. The phone "one
+  slider at a time" view adds a fading tick ruler and a round reset.
+- **Section**: label-caps head with a glowing lime dot when modified; round reset that spins on press.
+- **Dialog**: a bottom sheet on phones, a centred 28px card on larger screens; spring in; blurred scrim.
+- **Toasts**: `surface-float` pills that spring up.
+- **Masks**: with no masks, the ways to make one are shown as tiles (Select object first, lime).
 
-### Chips and segmented controls
-Condensed caps on a 1px hairline; selected is solid Ink with paper text. Rows scroll sideways on phones
-and fade at the edge where they overflow.
+## Motion
 
-### Inputs
-Form White field, 1px hairline, 4px corners; focus is a 2px Accent Ink ring.
+Durations: instant 80ms (press), fast 140ms (hover), base 220ms (panels), slow 420ms (reveals).
+Easing `cubic-bezier(0.22, 1, 0.36, 1)`; springs (`stiffness ~420–520, damping ~22–40`) for things that
+settle: dock pill, tab pill, segmented thumb, dialogs, toasts, the chosen look's check.
 
-### Navigation
-The carton bar holds Back (an ink block with "Back"), the three-band mark and screen actions. The phone
-bottom nav is paper with a 2px ink top rule; the active tab is ink with a 3px yellow marker above it;
-Match look is a yellow tile, not a tab.
+Signature moments:
+- **Loading a look**: the tile's lime check spins in, a soft band of light (**lumen sweep**, 900ms,
+  screen blend) passes once across the photo, and the look readout rises in sharp (`readout-in`).
+- **Opening a photo**: the photo develops in (fade + 0.97→1 scale, 700ms).
+- **Home**: a GSAP timeline stages hero → stage → rail once; the empty stage's prism ring turns slowly.
+- **Screens** arrive with `screen-enter` (fade + 10px rise).
 
-### Film Carton (signature)
-A look: carton ink face, stock code plus a display numeral (28-34px), the preview as an inset window,
-the name in condensed caps (two lines), and the band strip at the foot (3px, 60% opacity; 7px and full
-strength when chosen). Chosen cartons lift 8px with an ink outline and a check.
+All of it is skipped with `prefers-reduced-motion` or the in-app *Animations: reduced* setting (the sweep
+is removed entirely, other animations collapse to 1ms).
 
-### Film Frame and Edge Print (signature)
-The black frame around every photo, with a 28px line of edge print: `FRAME 01A · LOOK <NAME> · <N>%`
-and the pixel size. The look part rolls in (420ms, out-quint, blur to sharp) whenever the look changes.
+## Do's and don'ts
 
-## Do's and Don'ts
+**Do**
+- Put the photo first; let the chrome recede into graphite.
+- Use one lime action per screen and lime for "this is what changed".
+- Use the prism only at the signature moments listed above.
+- Use real previews for looks; show a shimmer while they render; never fake progress.
+- Keep touch targets ≥44px on coarse pointers.
 
-### Do:
-- **Do** put every new screen under the carton bar and band rule (`CartonBar`).
-- **Do** show photos inside `.theme-frame`, never on paper.
-- **Do** give anything that represents a look a carton ink, a stock code and a numeral.
-- **Do** keep one Carton Yellow action per screen; everything else is ink or outline.
-- **Do** honour reduced motion: the shelf stocking (GSAP) and the edge-print roll are skipped.
-
-### Don't:
-- **Don't** use frosted glass, glows, gradients or blurred photo backdrops; the world is printed.
-- **Don't** use Carton Yellow as text on paper; use Accent Ink.
-- **Don't** imitate real film brands' cartons, logos or stock names.
-- **Don't** use Unicode glyphs or emoji as icons; use Lucide at the surrounding stroke.
-- **Don't** use pills or circles for buttons and chips.
+**Don't**
+- Don't add coloured panels, gradients or glows behind the photo.
+- Don't use lime for decoration or more than one lime button per screen.
+- Don't use the serif for UI text or more than one word per headline.
+- Don't use emoji or Unicode glyphs as icons; use Lucide.
+- Don't imitate other apps' or film brands' trade dress.

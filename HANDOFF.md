@@ -1,6 +1,6 @@
 # Handoff: read this first in a new session
 
-_Last updated: 2026-10-10. Owner: Usama (usama@doppellabs.ai)._
+_Last updated: 2026-11-08. Owner: Usama (usama@doppellabs.ai)._
 
 ## What this project is
 
@@ -32,7 +32,9 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
 
 ## State as of the last session
 
-- **2026-11-08: full visual redesign ("Film Stock Box"), uncommitted.** Read `DESIGN.md` before any UI work;
+- **2026-11-08 (later): critic review → second redesign, "Afterglow"** (dark graphite, lime lumen accent,
+  prism for signature moments, Geist + Instrument Serif). It replaced "Film Stock Box", which failed the
+  review (5.6/10). Before/after scorecard and test results are in `PROJECT_STATUS.md`. Read `DESIGN.md` before any UI work;
   `PRODUCT.md` holds product truth. Skills (Impeccable, shadcn, UI UX Pro Max, Vercel React, Web Design
   Guidelines) live in `.claude/skills`; MCP servers (Playwright, Context7, Chrome DevTools, shadcn) in
   `.mcp.json`. shadcn is set up (`components.json`, `cn()` in `src/lib/utils.ts`) but `shadcn init` was not
@@ -144,4 +146,4 @@ licence notes in README/Settings and must disclose download size.
 
 Read `AGENTS.md`. Key rules: change pixel maths in **both** `pixel.ts` and `shaders.ts` with tests;
 the AI returns only categorical descriptions (`shared/ai-schema.ts`); no fake progress; report only
-tests actually run; follow DESIGN.md (role tokens, photos in `.theme-frame`, one yellow action per screen).
+tests actually run; follow DESIGN.md (role tokens, the photo stage is `.theme-frame`, one lime action per screen, prism only at signature moments).

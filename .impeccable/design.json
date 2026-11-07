@@ -1,138 +1,96 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-08T02:30:00Z",
+  "generatedAt": "2026-11-08T22:00:00Z",
   "title": "Design System: Lumen Atelier",
+  "northStar": "Afterglow",
+  "source": "DESIGN.md (frontmatter and prose) and src/styles/index.css (@theme tokens) are the source of truth.",
   "extensions": {
     "colorMeta": {
-      "carton-yellow": { "role": "primary", "displayName": "Carton Yellow", "canonical": "#e4a11b", "tonalRamp": ["#3d2a05", "#5e410a", "#845500", "#b07a0f", "#e4a11b", "#eeb53f", "#f4cd7e", "#faebc7"] },
-      "accent-ink": { "role": "primary", "displayName": "Accent Ink", "canonical": "#845500", "tonalRamp": ["#2a1b00", "#452d00", "#634200", "#845500", "#a8721a", "#c9974a", "#e2c08a", "#f4e3c4"] },
-      "band-red": { "role": "secondary", "displayName": "Band Red", "canonical": "#c8322b", "tonalRamp": ["#3a0e0c", "#5e1714", "#86211c", "#c8322b", "#d9625c", "#e58f8a", "#f0bbb8", "#f9e2e1"] },
-      "band-blue": { "role": "secondary", "displayName": "Band Blue", "canonical": "#2f6db5", "tonalRamp": ["#0c1d31", "#143152", "#1f4a7c", "#2f6db5", "#5b8dc9", "#89afdb", "#b9d0ea", "#e2ecf7"] },
-      "print-paper": { "role": "neutral", "displayName": "Print Paper", "canonical": "#f4f1ea", "tonalRamp": ["#2b2925", "#4a4741", "#6e685f", "#9f978a", "#cdc6b8", "#e3ded3", "#f4f1ea", "#fffdf9"] },
-      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#121212", "tonalRamp": ["#000000", "#121212", "#262626", "#36332e", "#59544c", "#6e685f", "#9f978a", "#cdc6b8"] },
-      "frame-black": { "role": "neutral", "displayName": "Frame Black", "canonical": "#0b0b0b", "tonalRamp": ["#000000", "#0b0b0b", "#1a1a1a", "#262626", "#4a4a4a", "#8f8a81", "#d4cfc5", "#f4f1ea"] }
-    },
-    "typographyMeta": {
-      "display": { "displayName": "Display", "purpose": "Home headline and screen titles." },
-      "headline": { "displayName": "Headline", "purpose": "Section and dialog titles." },
-      "title": { "displayName": "Carton title", "purpose": "Look names on cartons, two lines max." },
-      "body": { "displayName": "Body", "purpose": "Descriptions, help and values." },
-      "label": { "displayName": "Label", "purpose": "Nav tabs, chips, bar actions, section heads." },
-      "edge-print": { "displayName": "Edge print", "purpose": "Frame lines and catalogue codes." }
-    },
-    "shadows": [
-      { "name": "lift", "value": "0 10px 22px -10px rgb(18 18 18 / 0.45)", "purpose": "A carton or print raised on hover or when chosen." },
-      { "name": "float", "value": "0 18px 40px -14px rgb(18 18 18 / 0.35), 0 2px 6px -2px rgb(18 18 18 / 0.18)", "purpose": "Menus, toasts, dialogs." }
-    ],
-    "motion": [
-      { "name": "ease-out-quint", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Default easing for movement." },
-      { "name": "edge-advance", "value": "420ms ease-out-quint, translateX(14px) blur(2px) to rest", "purpose": "Edge print rolls in when a look loads." },
-      { "name": "shelf-stock", "value": "GSAP from y:28 opacity:0, expo.out 0.6s, stagger 0.035s", "purpose": "Home shelf cartons arrive once; skipped with reduced motion." },
-      { "name": "dur-fast", "value": "140ms", "purpose": "Hover, focus, slider thumb." },
-      { "name": "dur-base", "value": "220ms", "purpose": "Panels, tabs, segmented control." }
-    ],
-    "breakpoints": [
-      { "name": "sm", "value": "640px" },
-      { "name": "md", "value": "768px" },
-      { "name": "lg", "value": "1024px" },
-      { "name": "phone-landscape", "value": "(orientation: landscape) and (max-height: 540px)" }
-    ]
-  },
-  "components": [
-    {
-      "name": "Primary Button",
-      "kind": "button",
-      "refersTo": "button-primary",
-      "description": "Ink block for confirming actions; inverts inside the frame.",
-      "html": "<button class=\"ds-btn-primary\">Open a photo</button>",
-      "css": ".ds-btn-primary { background: #121212; color: #f4f1ea; height: 40px; padding: 0 16px; border: 0; border-radius: 4px; font: 600 14px Barlow, sans-serif; transition: background-color 150ms, transform 150ms; } .ds-btn-primary:hover { background: #36332e; } .ds-btn-primary:active { transform: scale(0.98); } .ds-btn-primary:focus-visible { outline: 2px solid #845500; outline-offset: 2px; }"
-    },
-    {
-      "name": "Accent Button",
-      "kind": "button",
-      "refersTo": "button-accent",
-      "description": "The one carton-yellow action on a screen.",
-      "html": "<button class=\"ds-btn-accent\">Match a look</button>",
-      "css": ".ds-btn-accent { background: #e4a11b; color: #121212; height: 40px; padding: 0 16px; border: 0; border-radius: 4px; font: 600 14px Barlow, sans-serif; transition: background-color 150ms; } .ds-btn-accent:hover { background: #eeb53f; } .ds-btn-accent:active { background: #cf8d0c; } .ds-btn-accent:focus-visible { outline: 2px solid #845500; outline-offset: 2px; }"
-    },
-    {
-      "name": "Secondary Button",
-      "kind": "button",
-      "refersTo": "button-secondary",
-      "description": "Ink outline for secondary actions.",
-      "html": "<button class=\"ds-btn-secondary\">Resume</button>",
-      "css": ".ds-btn-secondary { background: transparent; color: #121212; height: 40px; padding: 0 16px; border: 1.5px solid rgb(18 18 18 / 0.85); border-radius: 4px; font: 600 14px Barlow, sans-serif; } .ds-btn-secondary:hover { background: rgb(18 18 18 / 0.06); } .ds-btn-secondary:focus-visible { outline: 2px solid #845500; outline-offset: 2px; }"
-    },
-    {
-      "name": "Filter Chip",
-      "kind": "chip",
-      "refersTo": "chip",
-      "description": "Category filter in condensed caps; selected is solid ink.",
-      "html": "<button class=\"ds-chip ds-chip--on\">Signature Collection</button><button class=\"ds-chip\">Cinematic</button>",
-      "css": ".ds-chip { height: 28px; padding: 0 10px; margin-right: 4px; border: 1px solid #cdc6b8; border-radius: 4px; background: transparent; color: #36332e; font: 700 11.5px 'Barlow Condensed', sans-serif; letter-spacing: 0.08em; text-transform: uppercase; } .ds-chip:hover { border-color: #121212; color: #121212; } .ds-chip--on { background: #121212; border-color: #121212; color: #f4f1ea; }"
-    },
-    {
-      "name": "Search Input",
-      "kind": "input",
-      "refersTo": "input",
-      "description": "Form-white field with a hairline and an accent-ink focus ring.",
-      "html": "<input class=\"ds-input\" placeholder=\"Search 186 looks\" />",
-      "css": ".ds-input { height: 32px; width: 240px; padding: 0 10px; border: 1px solid #cdc6b8; border-radius: 4px; background: #fffdf9; color: #121212; font: 400 13px Barlow, sans-serif; } .ds-input::placeholder { color: #6e685f; } .ds-input:focus-visible { outline: 2px solid #845500; outline-offset: 2px; }"
-    },
-    {
-      "name": "Carton Bar",
-      "kind": "nav",
-      "refersTo": "carton-bar",
-      "description": "The chrome-yellow shell bar with the three-band mark and the band rule under it.",
-      "html": "<div><header class=\"ds-bar\"><a class=\"ds-bar-back\">Back</a><span class=\"ds-mark\"><i></i><i></i><i></i></span><b class=\"ds-bar-name\">Lumen Atelier</b></header><div class=\"ds-band-rule\"></div></div>",
-      "css": ".ds-bar { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 16px; background: #e4a11b; color: #121212; } .ds-bar-back { display: flex; align-items: center; height: 40px; padding: 0 12px; border-radius: 4px; background: #121212; color: #e4a11b; font: 700 13px 'Barlow Condensed', sans-serif; letter-spacing: 0.08em; text-transform: uppercase; } .ds-mark { display: flex; width: 24px; height: 24px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 2px #121212; } .ds-mark i { flex: 1; } .ds-mark i:nth-child(1) { background: #c8322b; } .ds-mark i:nth-child(2) { background: #e4a11b; } .ds-mark i:nth-child(3) { background: #2f6db5; } .ds-bar-name { font: 800 22px 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 0.02em; } .ds-band-rule { height: 7px; background: linear-gradient(180deg, #e4a11b 0 1px, #c8322b 1px 4px, #2f6db5 4px 7px); }"
-    },
-    {
-      "name": "Film Carton",
-      "kind": "custom",
-      "refersTo": "film-carton",
-      "description": "A look: carton ink, stock code and numeral, photo window, two-line name, band strip; lifts when chosen.",
-      "html": "<button class=\"ds-carton\"><span class=\"ds-carton-code\">CIN <b>07</b></span><span class=\"ds-carton-window\"></span><span class=\"ds-carton-name\">Cinema Tungsten 500</span><span class=\"ds-carton-band\"></span></button>",
-      "css": ".ds-carton { display: flex; flex-direction: column; width: 140px; padding: 0; border: 0; border-radius: 4px; overflow: hidden; background: #2f6db5; color: #f4f1ea; text-align: left; cursor: pointer; transition: transform 200ms, box-shadow 200ms; } .ds-carton:hover, .ds-carton:focus-visible { transform: translateY(-8px); box-shadow: 0 10px 22px -10px rgb(18 18 18 / 0.45); outline: 2px solid #121212; outline-offset: 2px; } .ds-carton-code { padding: 8px 8px 6px; font: 700 11px 'Barlow Condensed', sans-serif; letter-spacing: 0.12em; } .ds-carton-code b { font-size: 34px; font-weight: 800; line-height: 0.8; letter-spacing: 0.02em; } .ds-carton-window { margin: 0 8px; aspect-ratio: 3 / 2; background: linear-gradient(180deg, #c7cdd0 0 35%, #4c6b34 35% 75%, #36452c 75%); } .ds-carton-name { padding: 6px 8px 8px; font: 700 15px/1.02 'Barlow Condensed', sans-serif; text-transform: uppercase; } .ds-carton-band { height: 3px; opacity: 0.6; background: linear-gradient(90deg, #c8322b 0 33.3%, #e4a11b 33.3% 66.6%, #2f6db5 66.6%); } .ds-carton:hover .ds-carton-band { height: 7px; opacity: 1; }"
-    },
-    {
-      "name": "Edge Print",
-      "kind": "custom",
-      "refersTo": "film-frame",
-      "description": "The line printed along the black frame under the photo.",
-      "html": "<div class=\"ds-edge\"><span class=\"ds-edge-dim\">Frame 01A</span><span class=\"ds-edge-dot\"></span><span>Look Airy Pastel Negative · 100%</span></div>",
-      "css": ".ds-edge { display: flex; align-items: center; gap: 12px; height: 28px; padding: 0 16px; background: #0b0b0b; color: #f0b941; font: 600 11px 'Barlow Condensed', sans-serif; letter-spacing: 0.16em; text-transform: uppercase; font-variant-numeric: tabular-nums; } .ds-edge-dim { color: #8f8a81; } .ds-edge-dot { width: 4px; height: 4px; border-radius: 50%; background: #8f8a81; }"
+      "lumen-lime": {
+        "role": "primary",
+        "displayName": "Lumen Lime",
+        "canonical": "#d4ff3f"
+      },
+      "on-lime": {
+        "role": "primary",
+        "displayName": "On Lime",
+        "canonical": "#0d1003"
+      },
+      "spec-1-rose": {
+        "role": "secondary",
+        "displayName": "Prism Rose",
+        "canonical": "#ff5c7a"
+      },
+      "spec-2-amber": {
+        "role": "secondary",
+        "displayName": "Prism Amber",
+        "canonical": "#ffb547"
+      },
+      "spec-4-cyan": {
+        "role": "secondary",
+        "displayName": "Prism Cyan",
+        "canonical": "#3fe0ff"
+      },
+      "spec-5-violet": {
+        "role": "secondary",
+        "displayName": "Prism Violet",
+        "canonical": "#8f7dff"
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Ground",
+        "canonical": "#0e0e10"
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Raised",
+        "canonical": "#18181c"
+      },
+      "raised-2": {
+        "role": "neutral",
+        "displayName": "Raised 2",
+        "canonical": "#1f1f24"
+      },
+      "control": {
+        "role": "neutral",
+        "displayName": "Control",
+        "canonical": "#26262c"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Line",
+        "canonical": "#2b2b32"
+      },
+      "stage": {
+        "role": "neutral",
+        "displayName": "Stage",
+        "canonical": "#09090a"
+      },
+      "fg": {
+        "role": "neutral",
+        "displayName": "Text",
+        "canonical": "#f5f5f2"
+      },
+      "fg-3": {
+        "role": "neutral",
+        "displayName": "Text 3",
+        "canonical": "#a5a5a0"
+      },
+      "fg-4": {
+        "role": "neutral",
+        "displayName": "Text 4",
+        "canonical": "#8a8a85"
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Danger",
+        "canonical": "#ff6f63"
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Success",
+        "canonical": "#52e394"
+      }
     }
-  ],
-  "narrative": {
-    "northStar": "The Film Stock Box",
-    "overview": "Every look is a box of film you pick off a shelf and load into your photo. The chrome is printed carton: warm print paper, ink type, a chrome-yellow bar with a red / yellow / blue band strip under it. The photo always sits in a black frame with a line of edge printing that says which frame is loaded and which look is in it. It is an Operate surface: the world lends type, palette, density and one signature move, never the layout or the controls.",
-    "keyCharacteristics": [
-      "Paper chrome, ink type, one chrome-yellow bar per screen with the band strip printed under it.",
-      "A black frame (.theme-frame) around every photo, with edge printing in condensed tracked caps.",
-      "Looks as colour cartons: stock code, display numeral, photo window, band strip at the foot.",
-      "Condensed caps (Barlow Condensed) for titles, labels and print; Barlow for reading text.",
-      "Crisp 2-6px corners, flat fields, one soft lift shadow for things that rise."
-    ],
-    "rules": [
-      { "name": "The Scoped Theme Rule", "body": "Components use role tokens, never raw values; the same component renders on paper, inside .theme-frame or on .theme-carton without a variant.", "section": "colors" },
-      { "name": "The Photo Is The Only Picture Rule", "body": "On an editing screen nothing competes with the photo: no gradients, glows, blurred backdrops or ambient colour behind it.", "section": "colors" },
-      { "name": "The Caps Are Printed Rule", "body": "Condensed caps are for printed things; sentences, help text and values stay in sentence-case Barlow.", "section": "typography" },
-      { "name": "The Off The Shelf Rule", "body": "Only a chosen or hovered carton lifts; nothing else floats at rest.", "section": "elevation" }
-    ],
-    "dos": [
-      "Do put every new screen under the carton bar and band rule (CartonBar).",
-      "Do show photos inside .theme-frame, never on paper.",
-      "Do give anything that represents a look a carton ink, a stock code and a numeral.",
-      "Do keep one Carton Yellow action per screen; everything else is ink or outline.",
-      "Do honour reduced motion: the shelf stocking (GSAP) and the edge-print roll are skipped."
-    ],
-    "donts": [
-      "Don't use frosted glass, glows, gradients or blurred photo backdrops; the world is printed.",
-      "Don't use Carton Yellow as text on paper; use Accent Ink.",
-      "Don't imitate real film brands' cartons, logos or stock names.",
-      "Don't use Unicode glyphs or emoji as icons; use Lucide at the surrounding stroke.",
-      "Don't use pills or circles for buttons and chips."
-    ]
   }
 }

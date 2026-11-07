@@ -9,17 +9,25 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-08: full visual redesign, "Film Stock Box"** (owner chose it on the Impeccable decision
-page). Paper and ink chrome, a chrome-yellow carton bar with a red / yellow / blue band rule, every
-photo in a black frame with edge printing (`EdgePrint.tsx`), and looks as colour cartons with a stock
-code, numeral and preview window (`src/lib/presets/carton.ts`). Role tokens with scoped themes
-(`.theme-frame`, `.theme-carton`); Barlow / Barlow Condensed replace Inter, Instrument Serif,
-Unbounded and Plex Mono; new home (film-frame drop zone, category shelf, edits as prints), `CartonBar`
-on secondary screens, and new app icons. Spec: `DESIGN.md`, `PRODUCT.md`, `.impeccable/`. Tests run
-after the redesign: typecheck, lint (0 errors), 193 Vitest, e2e `editor` + `mobile` (11 passed),
-`test:e2e:pwa` (4 passed, including a production build). The critical-journey and AI-feature e2e
-specs were not re-run. Open from the design review: home category cartons have no photo window
-(declined: it needs a renderer or produced sample plates on the home screen).
+**2026-11-08 (later): critic review and second redesign, "Afterglow"** (brief: `docs/CRITIC_BRIEF.md`).
+The Film Stock Box UI scored 5.6/10 (crave 4, motion 4) and failed on identity: it read as vintage
+packaging, sat close to a film brand's trade dress and put bright paper chrome next to the photo. It was
+replaced, not recoloured: dark graphite chrome, one lime "lumen" accent (`#d4ff3f`), a prism spectrum only
+at signature moments, Geist / Geist Mono / Instrument Serif italic, pills and 16-28px cards, springs.
+Every screen was rebuilt: home (headline with a serif word, photo-led continue card, category rail with
+real look renders on your last photo), editor (floating phone dock with a lime Match look lens, raised
+sheets, look readout pill, photo-filled look tiles with a lime glow, prism-edged Match a look card, segmented
+tool tabs, mask tools shown as tiles when there are none), match studio (step pills, prism scan while
+analysing, the look as the hero, sticky action bar), export (summary card, pill controls, prism progress,
+finish ring), paste, library and settings. Signature motion: the lumen sweep across the photo and the
+readout rising in when a look loads, the photo developing in, a GSAP-staged home, screen enter; all
+reduced-motion safe. `carton.ts`, `CartonBar`, `EdgePrint` and the Barlow fonts are gone (`codes.ts`,
+`AppBar`, `LookReadout`, `Wordmark.tsx`). New mark and PWA icons. Tests run after: typecheck, lint
+(0 errors), Vitest 193 passed (two `match.test.ts` timing tests failed once under heavy CPU load and passed
+alone and in the next full run), e2e `editor` + `mobile` 11 passed, `test:e2e:pwa` 4 passed (production
+build), `critical-journey` and `reference-replace` passed. Other AI-feature e2e specs were not re-run.
+Open: real-phone check of the new UI (iOS Safari untested); shadcn/ui components still unused (no
+component in this redesign needed one); React Three Fiber still installed and unused.
 
 ## Stage checklist
 
