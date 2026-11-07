@@ -23,12 +23,12 @@ export function LookInterop() {
 
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase">Creative LUT</p>
+      <p className="mb-1.5 text-[11px] font-semibold tracking-[0.12em] text-fg-2 uppercase">Creative LUT</p>
       {lut ? (
-        <div className="mb-3 rounded-xs bg-ink-900 px-2 py-1.5">
+        <div className="mb-3 rounded-xs bg-ground px-2 py-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="truncate text-ivory">{lut.name}</span>
-            <button type="button" aria-label="Remove LUT" onClick={() => commit('Remove LUT', (e) => ({ ...e, lut: null }))} className="coarse:p-2.5 p-0.5 text-faint hover:text-ivory">
+            <span className="truncate text-fg">{lut.name}</span>
+            <button type="button" aria-label="Remove LUT" onClick={() => commit('Remove LUT', (e) => ({ ...e, lut: null }))} className="coarse:p-2.5 p-0.5 text-fg-4 hover:text-fg">
               <X size={12} />
             </button>
           </div>
@@ -67,7 +67,7 @@ export function LookInterop() {
         }}
       />
 
-      <p className="mb-1.5 text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase">Export this look</p>
+      <p className="mb-1.5 text-[11px] font-semibold tracking-[0.12em] text-fg-2 uppercase">Export this look</p>
       <div className="grid grid-cols-3 gap-1">
         <Button
           size="sm"
@@ -110,8 +110,8 @@ export function LookInterop() {
         </Button>
       </div>
       {notes && (
-        <div className="mt-2 rounded-xs border border-line-soft p-2 text-[11px] leading-relaxed text-mute" role="status">
-          <p className="text-ivory-dim">{notes.title}</p>
+        <div className="mt-2 rounded-xs border border-line-soft p-2 text-[11px] leading-relaxed text-fg-3" role="status">
+          <p className="text-fg-2">{notes.title}</p>
           <ul className="mt-1 list-disc pl-4">
             {notes.items.map((n) => (
               <li key={n}>{n}</li>

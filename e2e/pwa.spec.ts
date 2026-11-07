@@ -57,7 +57,7 @@ test('offline: gallery, editor, presets, settings and export work without a conn
   await page.goto(projectUrl);
   await waitForRender(page);
   const nav = page.getByRole('navigation', { name: 'Editing tools' });
-  await nav.getByRole('button', { name: 'Presets' }).click();
+  await nav.getByRole('button', { name: 'Looks' }).click();
   await page.getByRole('button', { name: 'Apply Golden Hour Glow', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Apply Golden Hour Glow', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Close panel' }).click();
@@ -68,7 +68,7 @@ test('offline: gallery, editor, presets, settings and export work without a conn
   await page.keyboard.press('Escape');
 
   await page.goto('/presets');
-  await expect(page.getByRole('heading', { name: 'Preset library' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'The shelf' })).toBeVisible();
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await expect(page.getByText('The editor is saved on this device')).toBeVisible();
@@ -92,7 +92,10 @@ test('share target: photos shared from another app open in a new project', async
   await page.goto('/?share=1');
   await page.waitForURL(/\/project\//);
   await waitForRender(page);
-  await expect(page.getByRole('button', { name: 'Open shared.jpg' })).toBeVisible();
+  // Phones hide the filmstrip for a single photo; the Photos tab lists the project's photos.
+  await page.getByRole('navigation', { name: 'Editing tools' }).getByRole('button', { name: 'Looks' }).click();
+  await page.getByTestId('compact-sheet').getByRole('radio', { name: 'Photos' }).click();
+  await expect(page.getByRole('list', { name: 'Photos in this project' })).toContainText('shared.jpg');
 });
 
 test('offline AI: saved models run portrait detection and the AI runtime with no connection', async ({ page, context }) => {

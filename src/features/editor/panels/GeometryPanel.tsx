@@ -35,7 +35,7 @@ export function GeometryPanel() {
   const begin = useEditor((s) => s.beginGesture);
   const end = useEditor((s) => s.endGesture);
   const full = useEngine((s) => s.fullSize);
-  if (!full) return <p className="p-4 text-xs text-mute">Open a photo to crop and rotate it.</p>;
+  if (!full) return <p className="p-4 text-xs text-fg-3">Open a photo to crop and rotate it.</p>;
 
   const frame = frameSize(full, geometry);
   const activeAspect = (v: (typeof ASPECTS)[number]['value']) => {
@@ -79,14 +79,14 @@ export function GeometryPanel() {
               onClick={() => setAspect(a.value)}
               aria-pressed={activeAspect(a.value)}
               className={`h-7 rounded-xs border text-xs transition-colors ${
-                activeAspect(a.value) ? 'border-amber/60 bg-amber/10 text-amber' : 'border-line text-ivory-dim hover:border-line-strong'
+                activeAspect(a.value) ? 'border-accent-fg/60 bg-accent/10 text-accent-fg' : 'border-line text-fg-2 hover:border-line-strong'
               }`}
             >
               {a.label}
             </button>
           ))}
         </div>
-        <p className="tabular mt-2 text-[11px] text-faint">
+        <p className="tabular mt-2 text-[11px] text-fg-4">
           Output {Math.round(geometry.crop.w * frame.width)} × {Math.round(geometry.crop.h * frame.height)} px
         </p>
       </Section>

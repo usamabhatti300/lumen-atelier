@@ -185,7 +185,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
   return (
     <div
       ref={container}
-      className="relative h-full w-full touch-none overflow-hidden bg-ink-950"
+      className="relative h-full w-full touch-none overflow-hidden bg-well max-lg:bg-transparent"
       style={{ cursor: canPan ? (isPanning ? 'grabbing' : 'grab') : undefined }}
       onWheel={(e) => {
         if (!activePhotoId || !canvasSize.w) return;
@@ -231,19 +231,19 @@ export function Viewport({ onImport }: { onImport: () => void }) {
         <div ref={attachCanvas} className="h-full w-full shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] [&>canvas]:h-full [&>canvas]:w-full" />
         {activePhotoId && !loading && compare === 'split' && tool !== 'crop' && <SplitDivider box={box} />}
         {compare === 'split' && tool !== 'crop' && (
-          <div className="pointer-events-none absolute top-2 flex w-full justify-between px-2 font-mono text-[10px] tracking-widest text-ivory/80 uppercase">
-            <span className="rounded-xs bg-ink-950/60 px-1.5 py-0.5">Before</span>
-            <span className="rounded-xs bg-ink-950/60 px-1.5 py-0.5">After</span>
+          <div className="pointer-events-none absolute top-2 flex w-full justify-between px-2 font-mono text-[10px] tracking-widest text-fg/80 uppercase">
+            <span className="rounded-xs bg-well/60 px-1.5 py-0.5">Before</span>
+            <span className="rounded-xs bg-well/60 px-1.5 py-0.5">After</span>
           </div>
         )}
         {compare === 'side' && (
-          <div className="pointer-events-none absolute top-2 flex w-full px-2 font-mono text-[10px] tracking-widest text-ivory/80 uppercase">
+          <div className="pointer-events-none absolute top-2 flex w-full px-2 font-mono text-[10px] tracking-widest text-fg/80 uppercase">
             <span className="w-1/2 rounded-xs px-1.5 py-0.5">Before</span>
             <span className="w-1/2 rounded-xs px-1.5 py-0.5 text-right">After</span>
           </div>
         )}
         {compare === 'before' && (
-          <span className="pointer-events-none absolute top-2 left-2 rounded-xs bg-ink-950/60 px-1.5 py-0.5 font-mono text-[10px] tracking-widest text-ivory/80 uppercase">
+          <span className="pointer-events-none absolute top-2 left-2 rounded-xs bg-well/60 px-1.5 py-0.5 font-mono text-[10px] tracking-widest text-fg/80 uppercase">
             Before
           </span>
         )}
@@ -256,7 +256,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       {coarse && activePhotoId && !loading && !error && compare !== 'side' && <TouchModeChip />}
 
       {!fitted && activePhotoId && currentZoom > previewToFull * 1.01 && (
-        <p className="pointer-events-none absolute bottom-3 left-3 rounded-xs bg-ink-950/80 px-2 py-1 text-[11px] text-mute">
+        <p className="pointer-events-none absolute bottom-3 left-3 rounded-xs bg-well/80 px-2 py-1 text-[11px] text-fg-3">
           Preview resolution. Export renders full detail.
         </p>
       )}
@@ -264,25 +264,25 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       <AnimatePresence>
         {loading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="animate-spin text-faint" size={22} aria-label="Loading photo" />
+            <Loader2 className="animate-spin text-fg-4" size={22} aria-label="Loading photo" />
           </motion.div>
         )}
       </AnimatePresence>
       {error && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
-          <div role="alert" className="max-w-sm rounded-md border border-safelight/40 bg-ink-850 p-5 text-center">
-            <AlertTriangle className="mx-auto mb-2 text-safelight" size={20} />
-            <p className="text-sm text-ivory">{error}</p>
-            <p className="mt-2 text-xs text-mute">Remove this photo from the filmstrip, or import it again.</p>
+          <div role="alert" className="max-w-sm rounded-md border border-danger/40 bg-ground-2 p-5 text-center">
+            <AlertTriangle className="mx-auto mb-2 text-danger" size={20} />
+            <p className="text-sm text-fg">{error}</p>
+            <p className="mt-2 text-xs text-fg-3">Remove this photo from the filmstrip, or import it again.</p>
           </div>
         </div>
       )}
       {!activePhotoId && !loading && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
           <button type="button" onClick={onImport} className="group flex max-w-sm flex-col items-center rounded-md border border-dashed border-line px-10 py-12 text-center hover:border-line-strong">
-            <ImagePlus className="mb-3 text-faint group-hover:text-amber" size={26} />
-            <span className="font-display text-2xl text-ivory-dim">Add a photo to edit</span>
-            <span className="mt-1 text-sm text-mute">
+            <ImagePlus className="mb-3 text-fg-4 group-hover:text-accent-fg" size={26} />
+            <span className="font-display text-2xl text-fg-2">Add a photo to edit</span>
+            <span className="mt-1 text-sm text-fg-3">
               <span className="coarse:hidden">Drop files here or click to choose.</span>
               <span className="hidden coarse:inline">Tap to choose from your library or camera.</span> JPEG, PNG and WebP.
             </span>

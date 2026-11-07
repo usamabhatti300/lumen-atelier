@@ -127,7 +127,7 @@ export const Slider = memo(function Slider({
         htmlFor={id}
         onDoubleClick={reset}
         title={hint ?? 'Double-click to reset'}
-        className={`cursor-default select-none truncate ${lg ? `text-sm font-medium ${changed ? 'text-ivory' : 'text-ivory-dim'}` : `text-xs ${changed ? 'text-ivory' : 'text-mute'}`}`}
+        className={`cursor-default select-none truncate ${lg ? `text-sm font-medium ${changed ? 'text-fg' : 'text-fg-2'}` : `text-xs ${changed ? 'text-fg' : 'text-fg-3'}`}`}
       >
         {label}
       </label>
@@ -135,7 +135,7 @@ export const Slider = memo(function Slider({
         <input
           autoFocus
           aria-label={`${label} value`}
-          className={`tabular rounded-xs border border-amber/60 bg-ink-950 px-1 text-right text-ivory outline-none ${lg ? 'h-8 w-20 text-base' : 'h-5 w-14 text-xs'}`}
+          className={`tabular rounded-xs border border-accent-fg/60 bg-well px-1 text-right text-fg outline-none ${lg ? 'h-8 w-20 text-base' : 'h-5 w-14 text-xs'}`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commitDraft}
@@ -153,8 +153,8 @@ export const Slider = memo(function Slider({
             setDraft(value.toFixed(d));
             setEditing(true);
           }}
-          className={`tabular rounded-xs px-1 text-right transition-colors hover:bg-ink-700 ${lg ? 'h-8 min-w-14 text-base font-medium' : 'h-5 min-w-10 text-xs'} ${
-            changed ? 'text-amber' : 'text-faint'
+          className={`tabular rounded-xs px-1 text-right transition-colors hover:bg-control ${lg ? 'h-8 min-w-14 text-base font-medium' : 'h-5 min-w-10 text-xs'} ${
+            changed ? 'text-accent-fg' : 'text-fg-4'
           }`}
         >
           {display}
@@ -166,7 +166,7 @@ export const Slider = memo(function Slider({
           aria-label={`Reset ${label}`}
           disabled={!changed || disabled}
           onClick={reset}
-          className="flex h-8 w-8 items-center justify-center rounded-sm text-mute transition-opacity hover:text-ivory disabled:opacity-25"
+          className="flex h-8 w-8 items-center justify-center rounded-sm text-fg-3 transition-opacity hover:text-fg disabled:opacity-25"
         >
           <RotateCcw size={15} />
         </button>
@@ -193,7 +193,7 @@ export const Slider = memo(function Slider({
         />
         {!track && (
           <div
-            className="pointer-events-none absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-amber/80 transition-[left,width] duration-75"
+            className="pointer-events-none absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-accent transition-[left,width] duration-75"
             style={fillStyle}
           />
         )}

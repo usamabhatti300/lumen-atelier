@@ -97,7 +97,7 @@ export function RemoveToolOverlay({ box }: { box: ViewBox }) {
               key={i}
               d={pathOf(s)}
               fill="none"
-              stroke="var(--color-amber)"
+              stroke="var(--color-accent)"
               strokeOpacity={0.5}
               strokeWidth={cssFor(s.size)}
               strokeLinecap="round"
@@ -108,16 +108,16 @@ export function RemoveToolOverlay({ box }: { box: ViewBox }) {
         {cursor && (
           <g>
             <circle cx={cursor.x} cy={cursor.y} r={cssFor(size) / 2} fill="none" stroke="#000" strokeOpacity={0.5} strokeWidth={2.5} />
-            <circle cx={cursor.x} cy={cursor.y} r={cssFor(size) / 2} fill="none" stroke="var(--color-ivory)" strokeWidth={1} />
+            <circle cx={cursor.x} cy={cursor.y} r={cssFor(size) / 2} fill="none" stroke="var(--color-fg)" strokeWidth={1} />
           </g>
         )}
       </svg>
       {working && (
         <p
-          className="pointer-events-none absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-xs bg-ink-950/85 px-2.5 py-1 text-xs text-ivory-dim"
+          className="pointer-events-none absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-xs bg-well/85 px-2.5 py-1 text-xs text-fg-2"
           role="status"
         >
-          <Loader2 size={12} className="animate-spin text-amber" />
+          <Loader2 size={12} className="animate-spin text-accent-fg" />
           {status.phase === 'download' ? 'Loading the removal model…' : 'Removing…'}
         </p>
       )}

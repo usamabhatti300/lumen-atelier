@@ -173,7 +173,8 @@ models** shows each model's size, licence and download state, and can check the 
 ## Licences
 
 Code: project licence TBD by the owner. Third-party: React, Vite, Tailwind, Motion, Zustand, Zod,
-idb, Lucide (MIT/ISC); ONNX Runtime Web (MIT); Transformers.js (Apache-2.0); MediaPipe Tasks Vision and its
-models (Apache-2.0); the AI models listed above under their own licences; Inter, Instrument Serif and
-IBM Plex Mono (SIL OFL). The built-in presets are original works and imply no affiliation with film
-manufacturers or other preset makers.
+idb, Lucide (MIT/ISC); GSAP (standard "no charge" GreenSock licence); ONNX Runtime Web (MIT); Transformers.js
+(Apache-2.0); MediaPipe Tasks Vision and its models (Apache-2.0); the AI models listed above under their own
+licences; Barlow and Barlow Condensed (SIL OFL). The built-in presets are original works and imply no
+affiliation with film manufacturers or other preset makers; the film-carton colours and stock codes are
+our own and copy no real film brand.

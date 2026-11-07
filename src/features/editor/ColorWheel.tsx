@@ -115,11 +115,11 @@ export const ColorWheel = memo(function ColorWheel({
         onEnd?.();
       }}
     >
-      <div className="pointer-events-none absolute top-1/2 left-1/2 h-1 w-1 -translate-1/2 rounded-full bg-ivory/40" />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 h-1 w-1 -translate-1/2 rounded-full bg-fg/40" />
       {/* Touch handle around the marker: a finger that lands here drags it. */}
       <div data-puck="1" className="absolute hidden h-11 w-11 -translate-1/2 touch-none rounded-full coarse:block" style={{ left: px, top: py }} />
       <div
-        className="pointer-events-none absolute h-3 w-3 -translate-1/2 rounded-full border-2 border-ivory shadow-[0_0_0_1px_rgba(0,0,0,0.6)] coarse:h-4 coarse:w-4"
+        className="pointer-events-none absolute h-3 w-3 -translate-1/2 rounded-full border-2 border-fg shadow-[0_0_0_1px_rgba(0,0,0,0.6)] coarse:h-4 coarse:w-4"
         style={{ left: px, top: py, background: value.saturation > 0 ? hueCss(value.hue, 0.7, 0.15) : 'transparent' }}
       />
     </div>

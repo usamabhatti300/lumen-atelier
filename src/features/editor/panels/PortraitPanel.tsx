@@ -44,20 +44,20 @@ export function PortraitPanel() {
     ], adjustments);
   };
 
-  if (!hasPhoto) return <p className="p-4 text-xs text-mute">Open a portrait to retouch it.</p>;
+  if (!hasPhoto) return <p className="p-4 text-xs text-fg-3">Open a portrait to retouch it.</p>;
 
   return (
     <>
       <Section title="Face detection">
         {!gpu && (
-          <p className="mb-2 text-xs leading-relaxed text-safelight">
+          <p className="mb-2 text-xs leading-relaxed text-danger">
             Portrait retouching needs WebGL2, which is unavailable or disabled here. Masks and global adjustments
             still work.
           </p>
         )}
         {p.status === 'idle' && (
           <>
-            <p className="mb-3 text-xs leading-relaxed text-mute">
+            <p className="mb-3 text-xs leading-relaxed text-fg-3">
               Finds faces, eyes, lips and the person in this photo with on-device models. Nothing is uploaded.
             </p>
             <Button variant="secondary" size="sm" icon={<ScanFace size={14} />} onClick={() => void ensurePortraitAnalysis()}>
@@ -66,19 +66,19 @@ export function PortraitPanel() {
           </>
         )}
         {p.status === 'running' && (
-          <p className="flex items-center gap-2 text-xs text-mute" role="status">
+          <p className="flex items-center gap-2 text-xs text-fg-3" role="status">
             <Loader2 size={13} className="animate-spin" /> Detecting faces and subject…
           </p>
         )}
         {p.status === 'ready' && (
-          <p className="text-xs text-ivory-dim" role="status">
-            <UserRound size={12} className="mr-1 inline text-amber" />
+          <p className="text-xs text-fg-2" role="status">
+            <UserRound size={12} className="mr-1 inline text-accent-fg" />
             {p.faces === 0 ? 'No face found' : p.faces === 1 ? '1 face found' : `${p.faces} faces found`}
             {p.person ? ' · person detected' : ''}
           </p>
         )}
         {(p.status === 'missing-models' || p.status === 'error') && (
-          <div role="alert" className="rounded-xs border border-safelight/40 p-2.5 text-xs leading-relaxed text-ivory-dim">
+          <div role="alert" className="rounded-xs border border-danger/40 p-2.5 text-xs leading-relaxed text-fg-2">
             {p.message}
             <Button
               variant="ghost"
@@ -93,12 +93,12 @@ export function PortraitPanel() {
             </Button>
           </div>
         )}
-        {p.message && p.status === 'ready' && <p className="mt-2 text-[11px] leading-relaxed text-mute">{p.message}</p>}
+        {p.message && p.status === 'ready' && <p className="mt-2 text-[11px] leading-relaxed text-fg-3">{p.message}</p>}
       </Section>
 
       <Section title="Retouch">
         {!faceTools && (
-          <p className="mb-2 text-[11px] leading-relaxed text-faint">
+          <p className="mb-2 text-[11px] leading-relaxed text-fg-4">
             {ready ? 'These controls need a detected face.' : 'Run face detection to enable these controls.'}
           </p>
         )}
@@ -118,7 +118,7 @@ export function PortraitPanel() {
       </Section>
 
       <Section title="Spot healing">
-        <p className="mb-2 text-xs leading-relaxed text-mute">
+        <p className="mb-2 text-xs leading-relaxed text-fg-3">
           <span className="coarse:hidden">Click blemishes to heal them. A matching patch nearby is chosen automatically. Alt-click a spot to remove it.</span>
           <span className="hidden coarse:inline">Tap blemishes to heal them. A matching patch nearby is chosen automatically. Choose Delete spot on the photo to remove one.</span>
         </p>
@@ -144,7 +144,7 @@ export function PortraitPanel() {
       </Section>
 
       <Section title="Background">
-        <p className="mb-2 text-xs leading-relaxed text-mute">
+        <p className="mb-2 text-xs leading-relaxed text-fg-3">
           Creates a mask layer from the detected background. Its sliders are in the Masks tab.
         </p>
         <div className="grid grid-cols-3 gap-1">

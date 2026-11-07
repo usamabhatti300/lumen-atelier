@@ -56,13 +56,13 @@ export function RightPanel() {
             aria-controls="right-tabpanel"
             onClick={() => selectRightTab(t.id)}
             className={`relative flex flex-col items-center gap-0.5 py-2 text-[10px] tracking-wide transition-colors ${
-              tab === t.id ? 'text-ivory' : 'text-faint hover:text-ivory-dim'
+              tab === t.id ? 'text-fg' : 'text-fg-4 hover:text-fg-2'
             }`}
           >
             <t.icon size={15} strokeWidth={1.6} />
             {t.label}
             {tab === t.id && (
-              <motion.span layoutId="right-tab-underline" className="absolute inset-x-2 -bottom-px h-px bg-amber" transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }} />
+              <motion.span layoutId="right-tab-underline" className="absolute inset-x-2 -bottom-px h-px bg-accent" transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }} />
             )}
           </button>
         ))}

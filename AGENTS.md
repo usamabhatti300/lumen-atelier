@@ -42,4 +42,4 @@ The product specification is `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`; progress is 
 - Don't fake progress: show percentages only for measurable work.
 - Keep the app runnable; run `npm run typecheck && npm test` before finishing a change, and the
   e2e suite for workflow changes. Report only tests you actually ran.
-- UI: use the tokens in `src/styles/index.css`; amber is the only accent, safelight is for errors only.
+- UI: follow `DESIGN.md` (Film Stock Box). Use the role tokens in `src/styles/index.css` (never raw colours); photos sit in `.theme-frame`, screens open with `CartonBar`; carton yellow is the one main action per screen, `danger` is for errors only.

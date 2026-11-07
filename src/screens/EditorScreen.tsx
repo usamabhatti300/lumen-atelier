@@ -20,6 +20,7 @@ import { selectRightTab } from '@/features/editor/rightTabs';
 import { Histogram } from '@/features/editor/Histogram';
 import { Viewport } from '@/features/editor/Viewport';
 import { Filmstrip } from '@/features/editor/Filmstrip';
+import { EdgePrint } from '@/features/editor/EdgePrint';
 import { PasteDialog } from '@/features/editor/PasteDialog';
 import { useShortcuts } from '@/features/editor/useShortcuts';
 import { ExportDialog } from '@/features/export/ExportDialog';
@@ -124,12 +125,12 @@ export default function EditorScreen() {
   };
 
   if (!loadedId || loadedId !== projectId) {
-    return <div className="h-full bg-ink-900" />;
+    return <div className="h-full bg-ground" />;
   }
 
   return (
     <div
-      className="flex h-full flex-col bg-ink-900"
+      className="flex h-full flex-col bg-ground"
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes('Files')) {
           e.preventDefault();
@@ -166,7 +167,7 @@ export default function EditorScreen() {
                   animate={{ width: 284, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-                  className="shrink-0 overflow-hidden border-r border-line-soft bg-ink-850"
+                  className="shrink-0 overflow-hidden border-r border-line-soft bg-ground-2"
                   aria-label="Presets and photos"
                 >
                   <div className="h-full w-[284px]">
@@ -175,8 +176,11 @@ export default function EditorScreen() {
                 </motion.aside>
               )}
             </AnimatePresence>
-            <main className="relative min-w-0 flex-1">
-              <Viewport onImport={openImport} />
+            <main className="theme-frame relative flex min-w-0 flex-1 flex-col">
+              <div className="relative min-h-0 flex-1">
+                <Viewport onImport={openImport} />
+              </div>
+              <EdgePrint />
             </main>
             <AnimatePresence initial={false}>
               {rightOpen && (
@@ -185,7 +189,7 @@ export default function EditorScreen() {
                   animate={{ width: 300, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-                  className="shrink-0 overflow-hidden border-l border-line-soft bg-ink-850"
+                  className="shrink-0 overflow-hidden border-l border-line-soft bg-ground-2"
                   aria-label="Adjustments"
                 >
                   <div className="h-full w-[300px]">
@@ -197,8 +201,11 @@ export default function EditorScreen() {
           </>
         ) : (
           <>
-            <main className="relative min-w-0 flex-1">
-              <Viewport onImport={openImport} />
+            <main className="theme-frame relative flex min-w-0 flex-1 flex-col">
+              <div className="relative min-h-0 flex-1">
+                <Viewport onImport={openImport} />
+              </div>
+              <EdgePrint />
             </main>
             {landscape && <CompactSheet sheet={sheet} setSheet={setSheet} side />}
           </>
@@ -215,16 +222,16 @@ export default function EditorScreen() {
       )}
 
       {importing && (
-        <div className="fixed top-14 left-1/2 z-50 w-72 -translate-x-1/2 rounded-sm border border-line bg-ink-850 p-3 shadow-float" role="status">
-          <p className="tabular mb-2 text-xs text-mute">
+        <div className="fixed top-14 left-1/2 z-50 w-72 -translate-x-1/2 rounded-sm border border-line bg-ground-2 p-3 shadow-float" role="status">
+          <p className="tabular mb-2 text-xs text-fg-3">
             Importing {importing.done} of {importing.total}…
           </p>
           <Progress value={importing.done / importing.total} label="Import progress" />
         </div>
       )}
       {dragOver && !referenceOpen && (
-        <div className="pointer-events-none fixed inset-3 z-40 flex items-center justify-center rounded-md border-2 border-dashed border-amber/70 bg-ink-950/60">
-          <p className="font-display text-3xl text-ivory">Drop to add photos</p>
+        <div className="pointer-events-none fixed inset-3 z-40 flex items-center justify-center rounded-md border-2 border-dashed border-fg bg-accent/85">
+          <p className="carton-title text-4xl text-fg">Drop to add photos</p>
         </div>
       )}
 
@@ -250,26 +257,29 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
     setSheet(id);
   };
   return (
-    <nav className="flex shrink-0 items-stretch border-t border-line-soft bg-ink-900 pb-[env(safe-area-inset-bottom)]" aria-label="Editing tools">
-      <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={SwatchBook} label="Presets" />
-      <CompactTab active={sheet === 'adjust'} onClick={() => open('adjust')} icon={SlidersHorizontal} label="Light" />
-      {/* A featured action, not a tab: filled icon, neutral label, so it never reads as the selected tab. */}
-      <button type="button" onClick={onOpenReference} className="flex h-14 flex-1 flex-col items-center justify-center gap-1 text-[10.5px] text-ivory-dim">
-        <span className="flex h-7 w-9 items-center justify-center rounded-full bg-amber text-ink-950 shadow-[0_0_14px_-2px_rgba(201,162,107,0.55)]">
-          <Wand2 size={15} />
-        </span>
-        Match look
-      </button>
-      <CompactTab active={sheet === 'color'} onClick={() => open('color')} icon={Palette} label="Colour" />
-      <CompactTab active={isMore} onClick={() => open('masks')} icon={Layers} label="More" />
-    </nav>
+    // A printed paper bar under the frame: tools as labelled tabs, the main action as a yellow tile.
+    <div className="shrink-0 border-t-2 border-fg bg-ground pb-[max(env(safe-area-inset-bottom),6px)]">
+      <nav className="flex h-16 items-stretch px-1" aria-label="Editing tools">
+        <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={SwatchBook} label="Looks" />
+        <CompactTab active={sheet === 'adjust'} onClick={() => open('adjust')} icon={SlidersHorizontal} label="Light" />
+        {/* A featured action, not a tab: a yellow carton tile, so it never reads as the selected tab. */}
+        <button type="button" onClick={onOpenReference} className="group flex flex-1 flex-col items-center justify-center gap-1">
+          <span className="flex h-9 w-11 items-center justify-center rounded-sm bg-accent text-on-accent shadow-lift transition-transform duration-150 group-active:scale-95">
+            <Wand2 size={18} strokeWidth={2.2} />
+          </span>
+          <span className="carton-label text-[11px] text-fg">Match look</span>
+        </button>
+        <CompactTab active={sheet === 'color'} onClick={() => open('color')} icon={Palette} label="Colour" />
+        <CompactTab active={isMore} onClick={() => open('masks')} icon={Layers} label="More" />
+      </nav>
+    </div>
   );
 }
 
 /** Sheets with a compact view that sizes itself: the preset strip and the one-slider tools. */
 const focusable = (s: Sheet) => s === 'presets' || s === 'adjust' || s === 'color';
 
-const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Presets', adjust: 'Light', color: 'Colour' };
+const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Looks', adjust: 'Light', color: 'Colour' };
 
 /**
  * The open panel: docked under the photo (portrait) or beside it (phone landscape), so edits
@@ -292,10 +302,10 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
           initial={side ? { width: 0 } : { height: 0 }}
           // Keep the photo the hero: presets, Light and Colour get compact content-sized views (a
           // strip, or one slider at a time); other tools a short sheet. Drag the handle up for everything.
-          animate={side ? { width: 'min(320px, 46vw)' } : { height: tall ? '78dvh' : focusable(sheet) ? 'auto' : '40dvh' }}
+          animate={side ? { width: 'min(320px, 46vw)' } : { height: tall ? '64dvh' : focusable(sheet) ? 'auto' : '40dvh' }}
           exit={side ? { width: 0 } : { height: 0 }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-          className={`flex shrink-0 flex-col overflow-hidden bg-ink-850 ${side ? 'border-l border-line-soft' : 'rounded-t-md border-t border-line shadow-[0_-12px_30px_-12px_rgba(0,0,0,0.6)]'}`}
+          className={`flex shrink-0 flex-col overflow-hidden ${side ? 'border-l-2 border-fg bg-ground' : 'border-t-2 border-fg bg-ground'}`}
           role="region"
           aria-label={`${SHEET_TITLE[sheet] ?? 'More'} panel`}
           data-testid="compact-sheet"
@@ -335,13 +345,13 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
                 }
               }}
             >
-              <span className="h-1 w-10 rounded-full bg-line-strong" />
+              <span className="h-1 w-10 rounded-full bg-fg/30" />
             </button>
           )}
           {sheet !== 'presets' && (
             <div className={`flex h-10 shrink-0 items-center justify-between gap-2 pr-1 pl-3 ${inner}`}>
               {SHEET_TITLE[sheet] ? (
-                <span className="text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase">{SHEET_TITLE[sheet]}</span>
+                <span className="carton-label text-sm text-fg">{SHEET_TITLE[sheet]}</span>
               ) : (
                 <MoreTabs
                   value={sheet as RightTab}
@@ -351,7 +361,7 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
                   }}
                 />
               )}
-              <button type="button" aria-label="Close panel" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-mute">
+              <button type="button" aria-label="Close panel" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-fg-3">
                 <X size={17} />
               </button>
             </div>
@@ -388,7 +398,7 @@ function MoreTabs({ value, onChange }: { value: RightTab; onChange: (t: RightTab
   return (
     <div className="scroll-quiet -ml-1 flex min-w-0 gap-1 overflow-x-auto">
       {tabs.map((t) => (
-        <button key={t.id} type="button" onClick={() => onChange(t.id)} aria-pressed={value === t.id} className={`h-8 shrink-0 rounded-xs px-2.5 text-xs ${value === t.id ? 'bg-champagne text-ink-950' : 'text-mute'}`}>
+        <button key={t.id} type="button" onClick={() => onChange(t.id)} aria-pressed={value === t.id} className={`carton-label h-8 shrink-0 rounded-sm px-2.5 text-xs ${value === t.id ? 'bg-fg text-ground' : 'text-fg-3'}`}>
           {t.label}
         </button>
       ))}
@@ -402,11 +412,17 @@ function CompactTab({ active, onClick, icon: Icon, label }: { active: boolean; o
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`relative flex h-14 flex-1 flex-col items-center justify-center gap-1 text-[10.5px] transition-colors ${active ? 'text-amber' : 'text-mute'}`}
+      className={`relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors ${active ? 'text-fg' : 'text-fg-3'}`}
     >
-      {active && <motion.span layoutId="compact-tab-indicator" className="absolute top-0 h-0.5 w-8 rounded-full bg-amber" />}
-      <Icon size={18} strokeWidth={active ? 2 : 1.6} />
-      {label}
+      {active && (
+        <motion.span
+          layoutId="compact-tab-indicator"
+          className="absolute inset-x-3 top-0 h-[3px] bg-accent"
+          transition={{ type: 'spring', stiffness: 520, damping: 38 }}
+        />
+      )}
+      <Icon size={20} strokeWidth={active ? 2.2 : 1.7} />
+      <span className="carton-label text-[11px]">{label}</span>
     </button>
   );
 }

@@ -158,9 +158,9 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
               const a = toScreen([c.x0, c.y0]);
               const b = toScreen([c.x1, c.y1]);
               return (
-                <g key={c.id} stroke="var(--color-champagne)" strokeWidth={1.2}>
+                <g key={c.id} stroke="var(--color-selected)" strokeWidth={1.2}>
                   <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} strokeDasharray="4 3" />
-                  <circle cx={a.x} cy={a.y} r={4} fill="var(--color-champagne)" />
+                  <circle cx={a.x} cy={a.y} r={4} fill="var(--color-selected)" />
                   <circle cx={b.x} cy={b.y} r={4} fill="none" />
                 </g>
               );
@@ -169,10 +169,10 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
               const ctr = toScreen([c.cx, c.cy]);
               const r = c.rx * longEdge * cssPerFullPx;
               return (
-                <g key={c.id} stroke="var(--color-champagne)" strokeWidth={1.2} fill="none">
+                <g key={c.id} stroke="var(--color-selected)" strokeWidth={1.2} fill="none">
                   <circle cx={ctr.x} cy={ctr.y} r={r} />
                   <circle cx={ctr.x} cy={ctr.y} r={r * (1 - c.feather)} strokeDasharray="3 3" opacity={0.6} />
-                  <circle cx={ctr.x} cy={ctr.y} r={3} fill="var(--color-champagne)" />
+                  <circle cx={ctr.x} cy={ctr.y} r={3} fill="var(--color-selected)" />
                 </g>
               );
             }
@@ -186,9 +186,9 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
                   return (
                     <g key={`${c.id}-${i}`} data-testid={p.include ? 'object-point-include' : 'object-point-exclude'}>
                       <circle cx={t.x} cy={t.y} r={7} fill="#000" fillOpacity={0.35} />
-                      <circle cx={t.x} cy={t.y} r={5.5} fill={p.include ? 'var(--color-amber)' : 'var(--color-ink-950)'} stroke="var(--color-ivory)" strokeWidth={1.4} />
-                      <line x1={t.x - 2.5} y1={t.y} x2={t.x + 2.5} y2={t.y} stroke={p.include ? 'var(--color-ink-950)' : 'var(--color-ivory)'} strokeWidth={1.4} />
-                      {p.include && <line x1={t.x} y1={t.y - 2.5} x2={t.x} y2={t.y + 2.5} stroke="var(--color-ink-950)" strokeWidth={1.4} />}
+                      <circle cx={t.x} cy={t.y} r={5.5} fill={p.include ? 'var(--color-accent)' : 'var(--color-well)'} stroke="var(--color-fg)" strokeWidth={1.4} />
+                      <line x1={t.x - 2.5} y1={t.y} x2={t.x + 2.5} y2={t.y} stroke={p.include ? 'var(--color-well)' : 'var(--color-fg)'} strokeWidth={1.4} />
+                      {p.include && <line x1={t.x} y1={t.y - 2.5} x2={t.x} y2={t.y + 2.5} stroke="var(--color-well)" strokeWidth={1.4} />}
                     </g>
                   );
                 })
@@ -201,14 +201,14 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
             const r = sp.r * longEdge * cssPerFullPx;
             return (
               <g key={sp.id}>
-                <line x1={t.x} y1={t.y} x2={s.x} y2={s.y} stroke="var(--color-ivory)" strokeOpacity={0.4} />
-                <circle cx={s.x} cy={s.y} r={r} fill="none" stroke="var(--color-ivory)" strokeOpacity={0.5} strokeDasharray="3 3" />
+                <line x1={t.x} y1={t.y} x2={s.x} y2={s.y} stroke="var(--color-fg)" strokeOpacity={0.4} />
+                <circle cx={s.x} cy={s.y} r={r} fill="none" stroke="var(--color-fg)" strokeOpacity={0.5} strokeDasharray="3 3" />
                 <circle
                   cx={t.x}
                   cy={t.y}
                   r={r}
                   fill="none"
-                  stroke="var(--color-champagne)"
+                  stroke="var(--color-selected)"
                   strokeWidth={1.4}
                   className="pointer-events-auto cursor-pointer"
                   onPointerDown={(e) => {
@@ -224,19 +224,19 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
         {cursor && (tool === 'brush' || tool === 'heal') && (
           <g>
             <circle cx={cursor.x} cy={cursor.y} r={Math.max(2, brushCss / 2)} fill="none" stroke="#000" strokeOpacity={0.5} strokeWidth={2.5} />
-            <circle cx={cursor.x} cy={cursor.y} r={Math.max(2, brushCss / 2)} fill="none" stroke="var(--color-ivory)" strokeWidth={1} />
+            <circle cx={cursor.x} cy={cursor.y} r={Math.max(2, brushCss / 2)} fill="none" stroke="var(--color-fg)" strokeWidth={1} />
             {tool === 'brush' && brush.softness > 0.05 && (
-              <circle cx={cursor.x} cy={cursor.y} r={Math.max(1, (brushCss / 2) * (1 - brush.softness * 0.6))} fill="none" stroke="var(--color-ivory)" strokeOpacity={0.45} strokeDasharray="2 3" />
+              <circle cx={cursor.x} cy={cursor.y} r={Math.max(1, (brushCss / 2) * (1 - brush.softness * 0.6))} fill="none" stroke="var(--color-fg)" strokeOpacity={0.45} strokeDasharray="2 3" />
             )}
             {tool === 'brush' && brush.mode === 'erase' && (
-              <line x1={cursor.x - 4} y1={cursor.y} x2={cursor.x + 4} y2={cursor.y} stroke="var(--color-ivory)" />
+              <line x1={cursor.x - 4} y1={cursor.y} x2={cursor.x + 4} y2={cursor.y} stroke="var(--color-fg)" />
             )}
           </g>
         )}
       </svg>
       {tool === 'object' && !disabled && <ObjectToolChip />}
       {disabled && (
-        <p className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-xs bg-ink-950/85 px-2.5 py-1 text-xs text-mute">
+        <p className="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-xs bg-well/85 px-2.5 py-1 text-xs text-fg-3">
           Select or add a mask layer first.
         </p>
       )}

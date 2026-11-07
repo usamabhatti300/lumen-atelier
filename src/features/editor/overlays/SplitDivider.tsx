@@ -19,7 +19,7 @@ export function SplitDivider({ box }: { box: ViewBox }) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(split * 100)}
-      className="absolute top-0 z-10 h-full w-6 -translate-x-1/2 cursor-ew-resize touch-none focus:outline-none [&:focus-visible>span]:bg-amber"
+      className="absolute top-0 z-10 h-full w-6 -translate-x-1/2 cursor-ew-resize touch-none focus:outline-none [&:focus-visible>span]:bg-accent"
       style={{ left: split * box.width }}
       onPointerDown={(e) => {
         e.stopPropagation();
@@ -34,8 +34,8 @@ export function SplitDivider({ box }: { box: ViewBox }) {
         if (e.key === 'ArrowRight') setUi({ split: Math.min(1, split + step) });
       }}
     >
-      <span className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-ivory/85 shadow-[0_0_0_1px_rgba(0,0,0,0.25)]" />
-      <span className="absolute top-1/2 left-1/2 flex h-7 w-7 -translate-1/2 items-center justify-center rounded-full border border-ivory/80 bg-ink-950/70 text-[10px] text-ivory">
+      <span className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-fg/85 shadow-[0_0_0_1px_rgba(0,0,0,0.25)]" />
+      <span className="absolute top-1/2 left-1/2 flex h-7 w-7 -translate-1/2 items-center justify-center rounded-full border border-fg/80 bg-well/70 text-[10px] text-fg">
         ⇆
       </span>
     </div>

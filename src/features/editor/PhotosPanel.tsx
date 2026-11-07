@@ -59,14 +59,14 @@ export function PhotosPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-center justify-between px-3 py-2 text-[11px] text-mute">
+      <div className="flex shrink-0 items-center justify-between px-3 py-2 text-[11px] text-fg-3">
         <span>
           {photos.length} photo{photos.length === 1 ? '' : 's'}
           {targets.length > 0 && ` · ${targets.length} selected`}
         </span>
         <button
           type="button"
-          className="text-amber hover:underline"
+          className="text-accent-fg hover:underline"
           onClick={() => setSelected(targets.length === photos.length ? [] : photos.map((p) => p.id))}
         >
           {targets.length === photos.length && photos.length ? 'Select none' : 'Select all'}
@@ -74,15 +74,15 @@ export function PhotosPanel() {
       </div>
       <ul className="scroll-quiet min-h-0 flex-1 space-y-1 overflow-y-auto px-3" aria-label="Photos in this project">
         {photos.map((p) => (
-          <li key={p.id} className={`flex items-center gap-2 rounded-xs p-1 ${p.id === activeId ? 'bg-ink-700' : 'hover:bg-ink-800'}`}>
-            <button type="button" onClick={() => toggle(p.id)} aria-label={`${selected.includes(p.id) ? 'Deselect' : 'Select'} ${p.name}`} className="coarse:p-2.5 text-mute hover:text-ivory">
-              {selected.includes(p.id) ? <CheckSquare size={15} className="text-amber" /> : <Square size={15} />}
+          <li key={p.id} className={`flex items-center gap-2 rounded-xs p-1 ${p.id === activeId ? 'bg-control' : 'hover:bg-raised'}`}>
+            <button type="button" onClick={() => toggle(p.id)} aria-label={`${selected.includes(p.id) ? 'Deselect' : 'Select'} ${p.name}`} className="coarse:p-2.5 text-fg-3 hover:text-fg">
+              {selected.includes(p.id) ? <CheckSquare size={15} className="text-accent-fg" /> : <Square size={15} />}
             </button>
             <button type="button" onClick={() => setActive(p.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
               <img src={p.thumbUrl} alt="" className="h-9 w-12 shrink-0 rounded-[2px] object-cover" />
               <span className="min-w-0">
-                <span className="block truncate text-xs text-ivory">{p.name}</span>
-                <span className="tabular block text-[10.5px] text-faint">
+                <span className="block truncate text-xs text-fg">{p.name}</span>
+                <span className="tabular block text-[10.5px] text-fg-4">
                   {p.width} × {p.height}
                 </span>
               </span>
@@ -93,7 +93,7 @@ export function PhotosPanel() {
       <div className="shrink-0 space-y-2 border-t border-line-soft p-3">
         {progress ? (
           <div role="status">
-            <p className="mb-1.5 truncate text-[11px] text-mute">
+            <p className="mb-1.5 truncate text-[11px] text-fg-3">
               {progress.stage}: {progress.name} ({progress.index + 1}/{progress.total})
             </p>
             <Progress value={(progress.index + progress.fraction) / progress.total} label="Batch progress" />
@@ -111,7 +111,7 @@ export function PhotosPanel() {
                 value={presetId}
                 onChange={(e) => setPresetId(e.target.value)}
                 aria-label="Preset to apply"
-                className="h-7 min-w-0 flex-1 rounded-xs border border-line bg-ink-950 px-1.5 text-xs text-ivory"
+                className="h-7 min-w-0 flex-1 rounded-xs border border-line bg-well px-1.5 text-xs text-fg"
               >
                 <option value="">Choose a preset…</option>
                 {allPresets().map((p) => (
@@ -158,7 +158,7 @@ export function PhotosPanel() {
           </>
         }
       >
-        <p className="px-4 py-4 text-sm text-mute">The selected photos and their edits will be removed from this project. Files on your computer are not affected.</p>
+        <p className="px-4 py-4 text-sm text-fg-3">The selected photos and their edits will be removed from this project. Files on your computer are not affected.</p>
       </Dialog>
     </div>
   );

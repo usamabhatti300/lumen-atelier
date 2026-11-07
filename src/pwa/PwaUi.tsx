@@ -27,11 +27,11 @@ export function PwaPrompts() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="fixed right-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[85] flex max-w-[calc(100vw-1.5rem)] items-center gap-3 rounded-sm border border-amber/40 bg-ink-850 py-2 pr-2 pl-3.5 text-[13px] text-ivory shadow-float sm:bottom-6"
+            className="fixed right-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[85] flex max-w-[calc(100vw-1.5rem)] items-center gap-3 rounded-sm border border-accent-fg/40 bg-ground-2 py-2 pr-2 pl-3.5 text-[13px] text-fg shadow-float sm:bottom-6"
             role="status"
             data-testid="update-ready"
           >
-            <RefreshCw size={14} className="shrink-0 text-amber" />
+            <RefreshCw size={14} className="shrink-0 text-accent-fg" />
             <span>A new version of Lumen Atelier is ready.</span>
             <Button size="sm" variant="primary" onClick={applyUpdate}>
               Reload
@@ -40,7 +40,7 @@ export function PwaPrompts() {
         )}
       </AnimatePresence>
       {!online && (
-        <span className="pointer-events-none fixed top-[calc(0.5rem+env(safe-area-inset-top))] left-1/2 z-[85] flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-line bg-ink-850/95 px-2.5 py-1 text-[11px] text-mute shadow-float" data-testid="offline-pill">
+        <span className="pointer-events-none fixed top-[calc(0.5rem+env(safe-area-inset-top))] left-1/2 z-[85] flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-line bg-ground-2/95 px-2.5 py-1 text-[11px] text-fg-3 shadow-float" data-testid="offline-pill">
           <CloudOff size={12} /> Offline
         </span>
       )}
@@ -61,7 +61,7 @@ export function InstallButton({ className = 'flex' }: { className?: string }) {
       <button
         type="button"
         onClick={() => (installEvent ? void promptInstall() : setIosHelp(true))}
-        className={`h-8 shrink-0 items-center gap-2 rounded-sm px-3 text-[13px] whitespace-nowrap text-amber hover:bg-amber/10 coarse:h-10 ${className}`}
+        className={`h-8 shrink-0 items-center gap-2 rounded-sm px-3 text-[13px] whitespace-nowrap text-accent-fg hover:bg-accent/10 coarse:h-10 ${className}`}
         data-testid="install-app"
       >
         <Download size={15} /> <span>Install app</span>
@@ -88,15 +88,19 @@ export function InstallBanner() {
   const ios = isIosSafari();
   if (hidden || standalone || (!installEvent && !ios)) return null;
   return (
-    <div className="mx-4 mt-1 mb-2 flex items-center gap-3 rounded-md border border-amber/35 bg-gradient-to-r from-amber/10 to-transparent py-2 pr-1 pl-3 sm:hidden" data-testid="install-banner">
-      <Download size={18} className="shrink-0 text-amber" />
-      <p className="min-w-0 flex-1 text-[13px] leading-snug text-ivory">
+    <div className="mx-4 mt-3 mb-1 flex items-center gap-3 rounded-sm border-2 border-fg bg-raised py-2 pr-1.5 pl-3.5 sm:hidden" data-testid="install-banner">
+      <Download size={18} className="shrink-0 text-accent-fg" />
+      <p className="min-w-0 flex-1 text-[13px] leading-snug text-fg">
         Install Lumen Atelier
-        <span className="block text-xs text-mute">Full screen, works offline. Photos stay on this phone.</span>
+        <span className="block text-xs text-fg-3">Full screen, works offline. Photos stay on this phone.</span>
       </p>
-      <Button size="sm" variant="primary" onClick={() => (installEvent ? void promptInstall() : setIosHelp(true))}>
+      <button
+        type="button"
+        onClick={() => (installEvent ? void promptInstall() : setIosHelp(true))}
+        className="carton-label h-10 shrink-0 rounded-sm bg-fg px-4 text-[13px] text-ground active:scale-95"
+      >
         Install
-      </Button>
+      </button>
       <button
         type="button"
         aria-label="Hide install suggestion"
@@ -108,7 +112,7 @@ export function InstallBanner() {
             // Private mode: hidden for this visit only.
           }
         }}
-        className="flex h-9 w-9 shrink-0 items-center justify-center text-faint"
+        className="flex h-9 w-9 shrink-0 items-center justify-center text-fg-4"
       >
         <X size={15} />
       </button>
@@ -129,22 +133,22 @@ export function IosInstallDialog({ open, onClose }: { open: boolean; onClose: ()
         </Button>
       }
     >
-      <ol className="space-y-3 p-4 text-sm leading-relaxed text-ivory-dim">
+      <ol className="space-y-3 p-4 text-sm leading-relaxed text-fg-2">
         <li className="flex gap-3">
-          <span className="tabular w-4 shrink-0 text-amber">1</span>
+          <span className="tabular w-4 shrink-0 text-accent-fg">1</span>
           <span>
-            In Safari, tap <Share size={14} className="mx-0.5 inline align-[-2px] text-ivory" /> <span className="text-ivory">Share</span> in the toolbar.
+            In Safari, tap <Share size={14} className="mx-0.5 inline align-[-2px] text-fg" /> <span className="text-fg">Share</span> in the toolbar.
           </span>
         </li>
         <li className="flex gap-3">
-          <span className="tabular w-4 shrink-0 text-amber">2</span>
+          <span className="tabular w-4 shrink-0 text-accent-fg">2</span>
           <span>
-            Choose <SquarePlus size={14} className="mx-0.5 inline align-[-2px] text-ivory" /> <span className="text-ivory">Add to Home Screen</span>, then
+            Choose <SquarePlus size={14} className="mx-0.5 inline align-[-2px] text-fg" /> <span className="text-fg">Add to Home Screen</span>, then
             Add.
           </span>
         </li>
         <li className="flex gap-3">
-          <span className="tabular w-4 shrink-0 text-amber">3</span>
+          <span className="tabular w-4 shrink-0 text-accent-fg">3</span>
           <span>Open Lumen Atelier from your Home Screen. It runs full screen and works offline; your photos stay on the device.</span>
         </li>
       </ol>

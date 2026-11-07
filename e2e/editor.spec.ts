@@ -106,7 +106,7 @@ test.describe('editor', () => {
     await setRange(page, 'Amount', 40);
     await expect(page.getByRole('slider', { name: 'Amount' })).toHaveValue('40');
     await page.getByRole('button', { name: 'Add Velvet Slide to favourites' }).click();
-    await page.getByRole('tab', { name: '★ Favourites' }).click();
+    await page.getByRole('tab', { name: 'Favourites' }).click();
     await expect(page.getByRole('button', { name: 'Apply Velvet Slide' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(1);
     // Search covers the whole library, not just the open tab.

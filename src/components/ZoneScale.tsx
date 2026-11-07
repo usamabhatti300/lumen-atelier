@@ -40,10 +40,10 @@ export function ZoneScale({
         <div className="mb-1 flex h-10 items-end gap-[2px]">
           {distribution.map((v, i) => (
             <div key={i} className="relative flex h-full flex-1 items-end">
-              <div className="w-full rounded-t-[1px] bg-champagne/70 transition-[height] duration-500" style={{ height: `${(v / max) * 100}%` }} />
+              <div className="w-full rounded-t-[1px] bg-selected/70 transition-[height] duration-500" style={{ height: `${(v / max) * 100}%` }} />
               {compareDistribution && (
                 <div
-                  className="absolute inset-x-0 border-t border-dashed border-verdigris"
+                  className="absolute inset-x-0 border-t border-dashed border-success"
                   style={{ bottom: `${(compareDistribution[i] / max) * 100}%` }}
                 />
               )}
@@ -54,8 +54,8 @@ export function ZoneScale({
       <div className="flex gap-[2px]">
         {ROMAN.map((r, i) => (
           <div key={r} className="flex-1">
-            <div className="h-3 rounded-[1px] ring-1 ring-white/5" style={{ background: zoneGrey(i) }} />
-            {labels && <div className="mt-1 text-center font-mono text-[8.5px] tracking-wider text-faint">{r}</div>}
+            <div className="h-3 rounded-[1px] ring-1 ring-black/10" style={{ background: zoneGrey(i) }} />
+            {labels && <div className="mt-1 text-center font-mono text-[8.5px] tracking-wider text-fg-4">{r}</div>}
           </div>
         ))}
       </div>

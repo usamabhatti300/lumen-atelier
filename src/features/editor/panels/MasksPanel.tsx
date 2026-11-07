@@ -105,7 +105,7 @@ export function MasksPanel() {
             type="button"
             onClick={() => setMenu(!menu)}
             aria-expanded={menu}
-            className="flex items-center gap-1 rounded-xs px-1.5 py-1 text-[11px] text-amber hover:bg-amber/10"
+            className="flex items-center gap-1 rounded-xs px-1.5 py-1 text-[11px] text-accent-fg hover:bg-accent/10"
           >
             <Plus size={13} /> New mask
           </button>
@@ -118,16 +118,16 @@ export function MasksPanel() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.16 }}
-              className="mb-3 grid grid-cols-2 gap-1 rounded-sm border border-line bg-ink-900 p-1.5"
+              className="mb-3 grid grid-cols-2 gap-1 rounded-sm border border-line bg-ground p-1.5"
             >
               <button
                 type="button"
                 onClick={addObjectLayer}
-                className="col-span-2 flex h-9 items-center gap-2 rounded-xs border border-amber/30 px-2 text-left text-xs text-ivory hover:border-amber/60 hover:bg-amber/5"
+                className="col-span-2 flex h-9 items-center gap-2 rounded-xs border border-accent-fg/30 px-2 text-left text-xs text-fg hover:border-accent-fg/60 hover:bg-accent/5"
               >
-                <MousePointerClick size={14} className="text-amber" />
+                <MousePointerClick size={14} className="text-accent-fg" />
                 <span className="flex-1">Select object</span>
-                <span className="text-[10px] text-faint">
+                <span className="text-[10px] text-fg-4">
                   <span className="coarse:hidden">click anything</span>
                   <span className="hidden coarse:inline">tap anything</span>
                 </span>
@@ -138,7 +138,7 @@ export function MasksPanel() {
               {(['subject', 'background', 'hair', 'skin', 'clothes'] as SegmentTarget[]).map((t) => (
                 <MenuItem key={t} icon={<UserRound size={14} />} label={SEGMENT_LABEL[t]} onClick={() => void addSegmentLayer(t)} />
               ))}
-              <p className="col-span-2 px-1 pt-1 text-[10.5px] leading-snug text-faint">
+              <p className="col-span-2 px-1 pt-1 text-[10.5px] leading-snug text-fg-4">
                 Subject, background, hair, skin and clothes use an on-device person segmentation model. It is built
                 for people; other subjects are not detected.
               </p>
@@ -147,7 +147,7 @@ export function MasksPanel() {
         </AnimatePresence>
 
         {layers.length === 0 ? (
-          <p className="py-2 text-xs leading-relaxed text-mute">
+          <p className="py-2 text-xs leading-relaxed text-fg-3">
             Masks apply adjustments to part of the photo. Select any object by clicking it, paint with a brush, add a
             gradient, or use a detected subject or background.
           </p>
@@ -157,14 +157,14 @@ export function MasksPanel() {
               <li key={l.id}>
                 <div
                   className={`flex items-center gap-1 rounded-xs border px-1.5 py-1 ${
-                    l.id === activeLayerId ? 'border-amber/50 bg-amber/5' : 'border-line-soft hover:border-line'
+                    l.id === activeLayerId ? 'border-accent-fg/50 bg-accent/5' : 'border-line-soft hover:border-line'
                   }`}
                 >
                   <button
                     type="button"
                     aria-label={l.visible ? `Hide ${l.name}` : `Show ${l.name}`}
                     onClick={() => updateLayer(l.id, { visible: !l.visible }, 'Toggle mask')}
-                    className="coarse:p-2.5 rounded-xs p-1 text-mute hover:text-ivory"
+                    className="coarse:p-2.5 rounded-xs p-1 text-fg-3 hover:text-fg"
                   >
                     {l.visible ? <Eye size={13} /> : <EyeOff size={13} />}
                   </button>
@@ -174,15 +174,15 @@ export function MasksPanel() {
                     aria-pressed={l.id === activeLayerId}
                     className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
                   >
-                    <Layers size={12} className="shrink-0 text-faint" />
-                    <span className={`truncate text-xs ${l.visible ? 'text-ivory' : 'text-faint'}`}>{l.name}</span>
-                    {warnings[l.id] && <span className="text-[10px] text-safelight">!</span>}
+                    <Layers size={12} className="shrink-0 text-fg-4" />
+                    <span className={`truncate text-xs ${l.visible ? 'text-fg' : 'text-fg-4'}`}>{l.name}</span>
+                    {warnings[l.id] && <span className="text-[10px] text-danger">!</span>}
                   </button>
-                  <span className="tabular text-[10px] text-faint">{Math.round(l.opacity)}%</span>
-                  <button type="button" aria-label={`Move ${l.name} up`} onClick={() => moveLayer(l.id, 1)} className="coarse:p-2.5 rounded-xs p-0.5 text-faint hover:text-ivory">
+                  <span className="tabular text-[10px] text-fg-4">{Math.round(l.opacity)}%</span>
+                  <button type="button" aria-label={`Move ${l.name} up`} onClick={() => moveLayer(l.id, 1)} className="coarse:p-2.5 rounded-xs p-0.5 text-fg-4 hover:text-fg">
                     <ArrowUp size={12} />
                   </button>
-                  <button type="button" aria-label={`Move ${l.name} down`} onClick={() => moveLayer(l.id, -1)} className="coarse:p-2.5 rounded-xs p-0.5 text-faint hover:text-ivory">
+                  <button type="button" aria-label={`Move ${l.name} down`} onClick={() => moveLayer(l.id, -1)} className="coarse:p-2.5 rounded-xs p-0.5 text-fg-4 hover:text-fg">
                     <ArrowDown size={12} />
                   </button>
                 </div>
@@ -197,10 +197,10 @@ export function MasksPanel() {
           title={active.name}
           aside={
             <div className="flex">
-              <button type="button" aria-label="Duplicate mask" title="Duplicate" onClick={() => duplicateLayer(active.id)} className="coarse:p-2.5 rounded-xs p-1 text-faint hover:text-ivory">
+              <button type="button" aria-label="Duplicate mask" title="Duplicate" onClick={() => duplicateLayer(active.id)} className="coarse:p-2.5 rounded-xs p-1 text-fg-4 hover:text-fg">
                 <Copy size={12} />
               </button>
-              <button type="button" aria-label="Delete mask" title="Delete" onClick={() => removeLayer(active.id)} className="coarse:p-2.5 rounded-xs p-1 text-faint hover:text-safelight">
+              <button type="button" aria-label="Delete mask" title="Delete" onClick={() => removeLayer(active.id)} className="coarse:p-2.5 rounded-xs p-1 text-fg-4 hover:text-danger">
                 <Trash2 size={12} />
               </button>
             </div>
@@ -215,8 +215,8 @@ export function MasksPanel() {
 
 function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex h-8 coarse:h-11 items-center gap-2 rounded-xs px-2 text-xs text-ivory-dim hover:bg-ink-700 hover:text-ivory">
-      <span className="text-faint">{icon}</span>
+    <button type="button" onClick={onClick} className="flex h-8 coarse:h-11 items-center gap-2 rounded-xs px-2 text-xs text-fg-2 hover:bg-control hover:text-fg">
+      <span className="text-fg-4">{icon}</span>
       {label}
     </button>
   );
@@ -248,7 +248,7 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
           setUi({ tool: on ? 'none' : t });
         }}
         className={`flex h-8 flex-1 items-center justify-center gap-1.5 rounded-xs border text-xs ${
-          on ? 'border-amber/60 bg-amber/10 text-amber' : 'border-line text-ivory-dim hover:border-line-strong'
+          on ? 'border-accent-fg/60 bg-accent/10 text-accent-fg' : 'border-line text-fg-2 hover:border-line-strong'
         }`}
       >
         {icon}
@@ -259,7 +259,7 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
 
   return (
     <div>
-      <label className="mb-1 block text-[11px] text-mute" htmlFor={`name-${layerId}`}>
+      <label className="mb-1 block text-[11px] text-fg-3" htmlFor={`name-${layerId}`}>
         Name
       </label>
       <input
@@ -268,7 +268,7 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
         maxLength={80}
         onChange={(e) => setName(e.target.value)}
         onBlur={() => name.trim() && name !== layer.name && updateLayer(layerId, { name: name.trim() }, 'Rename mask')}
-        className="mb-3 h-7 w-full rounded-xs border border-line bg-ink-950 px-2 text-xs text-ivory outline-none focus:border-amber/60"
+        className="mb-3 h-7 w-full rounded-xs border border-line bg-well px-2 text-xs text-fg outline-none focus:border-accent-fg/60"
       />
 
       <button
@@ -276,7 +276,7 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
         aria-pressed={tool === 'object'}
         onClick={() => (tool === 'object' ? setUi({ tool: 'none' }) : activateSelectObject())}
         className={`mb-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-xs border text-xs ${
-          tool === 'object' ? 'border-amber/60 bg-amber/10 text-amber' : 'border-line text-ivory-dim hover:border-line-strong'
+          tool === 'object' ? 'border-accent-fg/60 bg-accent/10 text-accent-fg' : 'border-line text-fg-2 hover:border-line-strong'
         }`}
       >
         <MousePointerClick size={13} />
@@ -293,7 +293,7 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
       </div>
 
       {tool === 'brush' && (
-        <div className="mb-3 rounded-xs bg-ink-900 px-2 py-1">
+        <div className="mb-3 rounded-xs bg-ground px-2 py-1">
           <Slider label="Brush size" value={Math.round(brush.size * 1000) / 10} range={{ min: 0.2, max: 40, default: 6, step: 0.1 }} format={(v) => `${v.toFixed(1)}%`} onChange={(v) => setBrush({ size: v / 100 })} />
           <Slider label="Softness" value={Math.round(brush.softness * 100)} range={{ min: 0, max: 100, default: 60, step: 1 }} onChange={(v) => setBrush({ softness: v / 100 })} />
           <Slider label="Flow" value={Math.round(brush.opacity * 100)} range={{ min: 1, max: 100, default: 100, step: 1 }} onChange={(v) => setBrush({ opacity: v / 100 })} />
@@ -312,12 +312,12 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
       />
 
       {portraitBusy && (
-        <p className="mt-2 flex items-center gap-2 text-[11px] text-mute">
+        <p className="mt-2 flex items-center gap-2 text-[11px] text-fg-3">
           <Loader2 size={12} className="animate-spin" /> Detecting subject…
         </p>
       )}
       {warning && !portraitBusy && (
-        <p className="mt-2 text-[11px] text-safelight">
+        <p className="mt-2 text-[11px] text-danger">
           {warning}
           {warning.startsWith('Subject detection') ? ' Open the Portrait tab to run detection.' : ''}
         </p>
@@ -326,20 +326,20 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
       {layer.components.length > 0 && (
         <ul className="mt-3 space-y-0.5" aria-label="Mask shapes">
           {layer.components.map((c) => (
-            <li key={c.id} className="flex items-center justify-between rounded-xs px-1 py-0.5 text-[11px] text-mute hover:bg-ink-800">
+            <li key={c.id} className="flex items-center justify-between rounded-xs px-1 py-0.5 text-[11px] text-fg-3 hover:bg-raised">
               <span>{componentLabel(c)}</span>
               <span className="flex items-center gap-1">
                 {c.type === 'radial' && (
-                  <button type="button" onClick={() => updateComponent(layerId, { ...c, invert: !c.invert })} className="rounded-xs px-1 coarse:px-2.5 coarse:py-2 text-faint hover:text-ivory">
+                  <button type="button" onClick={() => updateComponent(layerId, { ...c, invert: !c.invert })} className="rounded-xs px-1 coarse:px-2.5 coarse:py-2 text-fg-4 hover:text-fg">
                     {c.invert ? 'inside' : 'outside'}
                   </button>
                 )}
                 {c.type !== 'brush' && (
-                  <button type="button" onClick={() => updateComponent(layerId, { ...c, mode: c.mode === 'add' ? 'erase' : 'add' })} className="rounded-xs px-1 coarse:px-2.5 coarse:py-2 text-faint hover:text-ivory">
+                  <button type="button" onClick={() => updateComponent(layerId, { ...c, mode: c.mode === 'add' ? 'erase' : 'add' })} className="rounded-xs px-1 coarse:px-2.5 coarse:py-2 text-fg-4 hover:text-fg">
                     {c.mode === 'add' ? 'add' : 'subtract'}
                   </button>
                 )}
-                <button type="button" aria-label={`Remove ${componentLabel(c)}`} onClick={() => removeComponent(layerId, c.id)} className="coarse:p-2.5 rounded-xs p-0.5 text-faint hover:text-safelight">
+                <button type="button" aria-label={`Remove ${componentLabel(c)}`} onClick={() => removeComponent(layerId, c.id)} className="coarse:p-2.5 rounded-xs p-0.5 text-fg-4 hover:text-danger">
                   <X size={11} />
                 </button>
               </span>
@@ -349,7 +349,7 @@ function ActiveLayerEditor({ layerId, gpu, portraitBusy, warning }: { layerId: s
       )}
 
       <div className="mt-3 border-t border-line-soft pt-2">
-        <p className="mb-1 text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase">Adjust masked area</p>
+        <p className="mb-1 text-[11px] font-semibold tracking-[0.12em] text-fg-2 uppercase">Adjust masked area</p>
         {LOCAL_LABELS.map(([key, label]) => (
           <Slider
             key={key}

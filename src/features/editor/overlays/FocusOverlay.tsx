@@ -50,11 +50,11 @@ export function FocusOverlay({ box }: { box: ViewBox }) {
         <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
           <g transform={`translate(${marker.x} ${marker.y})`}>
             <circle r={15} fill="none" stroke="#000" strokeOpacity={0.45} strokeWidth={3} />
-            <circle r={15} fill="none" stroke="var(--color-amber)" strokeWidth={1.4} />
+            <circle r={15} fill="none" stroke="var(--color-accent)" strokeWidth={1.4} />
             {[0, 90, 180, 270].map((a) => (
-              <line key={a} x1={0} y1={-19} x2={0} y2={-11} stroke="var(--color-amber)" strokeWidth={1.4} transform={`rotate(${a})`} />
+              <line key={a} x1={0} y1={-19} x2={0} y2={-11} stroke="var(--color-accent)" strokeWidth={1.4} transform={`rotate(${a})`} />
             ))}
-            <circle r={1.6} fill="var(--color-amber)" />
+            <circle r={1.6} fill="var(--color-accent)" />
           </g>
         </svg>
       )}

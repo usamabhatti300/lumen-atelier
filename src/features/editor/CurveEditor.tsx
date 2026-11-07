@@ -14,7 +14,7 @@ import { useEditor } from '@/state/editorStore';
 import { useEngine } from '@/engine/engineStore';
 
 const CHANNEL_COLOR: Record<CurveChannel, string> = {
-  master: 'var(--color-ivory)',
+  master: 'var(--color-fg)',
   red: '#d9776a',
   green: '#86b07e',
   blue: '#7d9bd1',
@@ -139,7 +139,7 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
       <svg
         ref={svg}
         viewBox={`0 0 ${size} ${size}`}
-        className="mx-auto block aspect-square w-full max-w-[300px] touch-none select-none rounded-xs bg-ink-950 coarse:touch-pan-y"
+        className="mx-auto block aspect-square w-full max-w-[300px] touch-none select-none rounded-xs bg-well coarse:touch-pan-y"
         onPointerDown={onPointerDownBg}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -204,7 +204,7 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
             cx={pad + x * inner}
             cy={pad + (1 - y) * inner}
             r={focus === i || drag === i ? 5.5 : 4.5}
-            fill={drag === i ? CHANNEL_COLOR[channel] : 'var(--color-ink-900)'}
+            fill={drag === i ? CHANNEL_COLOR[channel] : 'var(--color-ground)'}
             stroke={CHANNEL_COLOR[channel]}
             strokeWidth={1.5}
             tabIndex={0}
@@ -246,7 +246,7 @@ export function CurveEditor({ channel }: { channel: CurveChannel }) {
           />
         ))}
       </svg>
-      <p className="mt-1.5 text-[11px] text-faint">
+      <p className="mt-1.5 text-[11px] text-fg-4">
         <span className="coarse:hidden">Click to add a point. Drag a point off the graph to remove it.</span>
         <span className="hidden coarse:inline">Tap the graph to add a point, drag a point to move it, double-tap a point to remove it.</span>
       </p>

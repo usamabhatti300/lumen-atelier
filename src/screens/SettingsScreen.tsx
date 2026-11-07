@@ -1,7 +1,7 @@
 /** Settings: performance, privacy, AI configuration, on-device AI models, data. */
-import { ArrowLeft, BrainCircuit, Cpu, Database, Gauge, Loader2, ShieldCheck, Smartphone, Sparkles } from 'lucide-react';
+import { BrainCircuit, Cpu, Database, Gauge, Loader2, ShieldCheck, Smartphone, Sparkles } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { CartonBar } from '@/components/CartonBar';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Segmented, Toggle } from '@/components/ui/misc';
@@ -12,7 +12,6 @@ import { clearAllData, listProjects, storageEstimate } from '@/lib/storage/db';
 import { AiModels } from '@/features/settings/AiModels';
 import { AppSettings } from '@/features/settings/AppSettings';
 import { runBenchmark, type BenchmarkResult } from '@/engine/benchmark';
-import { Wordmark } from './GalleryScreen';
 
 export default function SettingsScreen() {
   const s = useSettings();
@@ -30,22 +29,17 @@ export default function SettingsScreen() {
   }, []);
 
   return (
-    <div className="scroll-quiet h-full overflow-y-auto bg-ink-900">
-      <header className="mx-auto flex h-14 max-w-3xl items-center gap-3 px-4 sm:px-8">
-        <Link to="/" className="rounded-xs p-1.5 text-mute coarse:p-2.5 hover:bg-ink-700 hover:text-ivory" aria-label="Back">
-          <ArrowLeft size={17} />
-        </Link>
-        <Wordmark />
-      </header>
+    <div className="scroll-quiet h-full overflow-y-auto bg-ground">
+      <CartonBar />
       <main className="mx-auto max-w-3xl space-y-10 px-4 pt-6 pb-24 sm:px-8">
-        <h1 className="font-display text-5xl text-ivory">Settings</h1>
+        <h1 className="carton-title text-[3rem] text-fg sm:text-[4.5rem]">Settings</h1>
 
         <Block icon={<Smartphone size={16} />} title="App & offline">
           <AppSettings />
         </Block>
 
         <Block icon={<Gauge size={16} />} title="Performance">
-          <p className="mb-2 text-xs text-mute">Preview resolution while editing. Exports always use the full original resolution.</p>
+          <p className="mb-2 text-xs text-fg-3">Preview resolution while editing. Exports always use the full original resolution.</p>
           <Segmented<PreviewQuality>
             label="Preview quality"
             value={s.previewQuality}
@@ -59,16 +53,16 @@ export default function SettingsScreen() {
             description="For troubleshooting GPU problems. Much slower; portrait retouching and mask blur are unavailable."
           />
           <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-            <dt className="text-mute">Renderer</dt>
-            <dd className="text-ivory">{engine.mode === 'webgl' ? 'WebGL2 (GPU)' : engine.mode === 'cpu' ? 'CPU (worker)' : 'Starts when you open a project'}</dd>
-            <dt className="text-mute">Max texture size</dt>
-            <dd className="tabular text-ivory">{engine.maxTextureSize || '–'} px</dd>
-            <dt className="text-mute">Float pipeline</dt>
-            <dd className="text-ivory">{engine.mode === 'webgl' ? (engine.floatPipeline ? '16-bit float intermediates' : '8-bit fallback') : '–'}</dd>
+            <dt className="text-fg-3">Renderer</dt>
+            <dd className="text-fg">{engine.mode === 'webgl' ? 'WebGL2 (GPU)' : engine.mode === 'cpu' ? 'CPU (worker)' : 'Starts when you open a project'}</dd>
+            <dt className="text-fg-3">Max texture size</dt>
+            <dd className="tabular text-fg">{engine.maxTextureSize || '–'} px</dd>
+            <dt className="text-fg-3">Float pipeline</dt>
+            <dd className="text-fg">{engine.mode === 'webgl' ? (engine.floatPipeline ? '16-bit float intermediates' : '8-bit fallback') : '–'}</dd>
           </dl>
           <div className="mt-4 rounded-sm border border-line-soft p-3">
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-mute">Measure full-pipeline render time on this device (2048 × 1365, a demanding edit).</p>
+              <p className="text-xs text-fg-3">Measure full-pipeline render time on this device (2048 × 1365, a demanding edit).</p>
               <Button
                 size="sm"
                 variant="secondary"
@@ -87,7 +81,7 @@ export default function SettingsScreen() {
               </Button>
             </div>
             {bench && bench !== 'running' && (
-              <p className="tabular mt-2 text-xs text-ivory" role="status">
+              <p className="tabular mt-2 text-xs text-fg" role="status">
                 {typeof bench === 'string'
                   ? bench
                   : `Median ${bench.medianMs.toFixed(1)} ms (90th percentile ${bench.p90Ms.toFixed(1)} ms) for the demanding edit; ${bench.simpleMedianMs.toFixed(1)} ms for a simple edit. Measured over ${bench.iterations - 1} renders at ${bench.width}×${bench.height}.`}
@@ -97,7 +91,7 @@ export default function SettingsScreen() {
         </Block>
 
         <Block icon={<ShieldCheck size={16} />} title="Privacy">
-          <ul className="mb-3 list-disc space-y-1 pl-4 text-xs leading-relaxed text-mute">
+          <ul className="mb-3 list-disc space-y-1 pl-4 text-xs leading-relaxed text-fg-3">
             <li>Photos, edits, projects and presets are stored only in this browser (IndexedDB). There are no accounts and no analytics.</li>
             <li>Editing, portrait detection and masking run on this device.</li>
             <li>Only the reference-matching feature can send an image off the device, and only with your permission. With a local model (Ollama) nothing is sent.</li>
@@ -112,26 +106,26 @@ export default function SettingsScreen() {
 
         <Block icon={<Sparkles size={16} />} title="AI configuration">
           {!health ? (
-            <p className="text-xs text-mute">Checking server…</p>
+            <p className="text-xs text-fg-3">Checking server…</p>
           ) : !health.reachable ? (
-            <p className="text-xs leading-relaxed text-safelight">
-              The app server is not reachable. Start the app with <code className="text-ivory">npm run dev</code> (or{' '}
-              <code className="text-ivory">npm start</code> after building). Reference analysis still works with measurements only.
+            <p className="text-xs leading-relaxed text-danger">
+              The app server is not reachable. Start the app with <code className="text-fg">npm run dev</code> (or{' '}
+              <code className="text-fg">npm start</code> after building). Reference analysis still works with measurements only.
             </p>
           ) : (
-            <div className="text-xs leading-relaxed text-mute">
+            <div className="text-xs leading-relaxed text-fg-3">
               <p>
                 Status:{' '}
-                <span className={health.configured ? 'text-verdigris' : 'text-amber'}>
+                <span className={health.configured ? 'text-success' : 'text-accent-fg'}>
                   {health.configured ? `configured (${health.model}${health.local ? ', running on this computer' : ''})` : 'not configured'}
                 </span>
               </p>
               {!health.configured && (
                 <p className="mt-2">
-                  Free and private: install <span className="text-ivory">Ollama</span> and run{' '}
-                  <code className="text-ivory">ollama pull qwen3-vl:4b-instruct</code> (3.3 GB, Apache-2.0). The app uses it automatically while Ollama
-                  is running, and the reference never leaves this computer. Or add <code className="text-ivory">ANTHROPIC_API_KEY=…</code> to a{' '}
-                  <code className="text-ivory">.env</code> file and restart the server to use Claude. Without either, presets are built from
+                  Free and private: install <span className="text-fg">Ollama</span> and run{' '}
+                  <code className="text-fg">ollama pull qwen3-vl:4b-instruct</code> (3.3 GB, Apache-2.0). The app uses it automatically while Ollama
+                  is running, and the reference never leaves this computer. Or add <code className="text-fg">ANTHROPIC_API_KEY=…</code> to a{' '}
+                  <code className="text-fg">.env</code> file and restart the server to use Claude. Without either, presets are built from
                   measurements only.
                 </p>
               )}
@@ -157,7 +151,7 @@ export default function SettingsScreen() {
         </Block>
 
         <Block icon={<Database size={16} />} title="Data">
-          <p className="text-xs text-mute">
+          <p className="text-xs text-fg-3">
             {projects} project{projects === 1 ? '' : 's'} stored.
             {usage && ` Using ${(usage.usage / 1e6).toFixed(0)} MB of about ${(usage.quota / 1e9).toFixed(1)} GB available to this site.`}
           </p>
@@ -188,7 +182,7 @@ export default function SettingsScreen() {
           </>
         }
       >
-        <p className="px-4 py-4 text-sm text-mute">All projects, photos, edits, your presets and settings will be removed from this browser. This cannot be undone.</p>
+        <p className="px-4 py-4 text-sm text-fg-3">All projects, photos, edits, your presets and settings will be removed from this browser. This cannot be undone.</p>
       </Dialog>
     </div>
   );
@@ -196,9 +190,9 @@ export default function SettingsScreen() {
 
 function Block({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
-    <section className="border-t border-line-soft pt-5">
-      <h2 className="mb-3 flex items-center gap-2 text-[11px] font-semibold tracking-[0.14em] text-ivory-dim uppercase">
-        <span className="text-amber">{icon}</span>
+    <section className="border-t-2 border-fg pt-4">
+      <h2 className="carton-label mb-4 flex items-center gap-2 text-[15px] text-fg">
+        <span className="flex h-7 w-7 items-center justify-center rounded-sm bg-accent text-on-accent">{icon}</span>
         {title}
       </h2>
       {children}

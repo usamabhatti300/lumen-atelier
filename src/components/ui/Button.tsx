@@ -1,6 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent-outline';
+type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger' | 'accent-outline';
 type Size = 'sm' | 'md';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -10,18 +10,20 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<Variant, string> = {
-  primary:
-    'bg-amber text-ink-950 hover:bg-amber-bright active:bg-amber-deep active:text-ivory disabled:bg-ink-600 disabled:text-faint',
+  // Ink-black pill (inverts inside the black frame; black on the yellow carton bar).
+  primary: 'bg-fg text-ground hover:bg-fg-2 active:bg-fg disabled:bg-control-2 disabled:text-fg-4',
+  // Carton yellow: the one main action on a screen (Match a look, Export).
+  accent: 'bg-accent text-on-accent hover:bg-accent-hi active:bg-accent-lo disabled:bg-control-2 disabled:text-fg-4',
   secondary:
-    'bg-ink-700 text-ivory border border-line hover:border-line-strong hover:bg-ink-600 active:bg-ink-750 disabled:text-faint',
-  ghost: 'text-ivory-dim hover:text-ivory hover:bg-ink-700 active:bg-ink-750 disabled:text-faint',
-  danger: 'bg-transparent text-safelight border border-safelight/40 hover:bg-safelight/10',
-  'accent-outline': 'text-amber border border-amber/40 hover:bg-amber/10 hover:border-amber/70',
+    'bg-transparent text-fg border-[1.5px] border-fg/85 hover:bg-fg/[0.06] active:bg-fg/10 disabled:border-line disabled:text-fg-4',
+  ghost: 'text-fg-2 hover:text-fg hover:bg-control active:bg-raised-2 disabled:text-fg-4',
+  danger: 'bg-transparent text-danger border border-danger/40 hover:bg-danger/10',
+  'accent-outline': 'text-accent-fg border border-accent-fg/40 hover:bg-accent/10 hover:border-accent-fg/70',
 };
 
 const SIZES: Record<Size, string> = {
-  sm: 'h-7 px-2.5 text-xs gap-1.5 coarse:h-9',
-  md: 'h-9 px-3.5 text-[13px] gap-2 coarse:h-10',
+  sm: 'h-8 px-3 text-[13px] gap-1.5 coarse:h-10',
+  md: 'h-10 px-4 text-sm gap-2 coarse:h-11',
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -32,7 +34,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       type={type}
-      className={`inline-flex select-none items-center justify-center rounded-sm font-medium tracking-[0.01em] whitespace-nowrap transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
+      className={`inline-flex select-none items-center justify-center rounded-sm font-semibold tracking-[0.01em] whitespace-nowrap transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 ${VARIANTS[variant]} ${SIZES[size]} ${className}`}
       {...rest}
     >
       {icon}
@@ -69,7 +71,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         aria-label={label}
         aria-pressed={active === undefined ? undefined : active}
         className={`inline-flex h-8 w-8 items-center justify-center rounded-sm coarse:h-10 coarse:w-10 transition-[background-color,color,transform] duration-150 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 ${
-          active ? 'bg-amber/15 text-amber' : 'text-ivory-dim hover:bg-ink-700 hover:text-ivory'
+          active ? 'bg-fg text-ground' : 'text-fg-2 hover:bg-fg/[0.08] hover:text-fg'
         }`}
         {...rest}
       >
@@ -77,7 +79,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       </button>
       <Tooltip side={tooltipSide} className={SIDES[tooltipSide]}>
         {label}
-        {shortcut && <kbd className="ml-2 font-mono text-[10px] text-faint">{shortcut}</kbd>}
+        {shortcut && <kbd className="ml-2 font-mono text-[10px] text-fg-4">{shortcut}</kbd>}
       </Tooltip>
     </span>
   );
@@ -87,7 +89,7 @@ export function Tooltip({ children, className = '' }: { children: ReactNode; sid
   return (
     <span
       role="tooltip"
-      className={`pointer-events-none absolute z-50 whitespace-nowrap coarse:hidden rounded-xs border border-line bg-ink-950 px-2 py-1 text-[11px] text-ivory opacity-0 shadow-float transition-opacity delay-0 duration-100 group-hover/tt:opacity-100 group-hover/tt:delay-500 group-has-[:focus-visible]/tt:opacity-100 ${className}`}
+      className={`pointer-events-none absolute z-50 whitespace-nowrap coarse:hidden theme-frame rounded-xs px-2 py-1 text-xs font-medium opacity-0 shadow-float transition-opacity delay-0 duration-100 group-hover/tt:opacity-100 group-hover/tt:delay-500 group-has-[:focus-visible]/tt:opacity-100 ${className}`}
     >
       {children}
     </span>

@@ -71,7 +71,7 @@ export function ColorPanel() {
       <Section title="Channel mixer" modified={mixerMod} onReset={resetMixer} defaultOpen={false}>
         {(['red', 'green', 'blue'] as const).map((row) => (
           <div key={row} className="mb-2">
-            <p className="mb-0.5 text-[11px] font-medium tracking-wide text-ivory-dim uppercase">{row} output</p>
+            <p className="mb-0.5 text-[11px] font-medium tracking-wide text-fg-2 uppercase">{row} output</p>
             <AdjustmentSlider path={`mixer.${row}.r`} label="Red" />
             <AdjustmentSlider path={`mixer.${row}.g`} label="Green" />
             <AdjustmentSlider path={`mixer.${row}.b`} label="Blue" />
@@ -157,9 +157,9 @@ export function WheelControl({ zone, size }: { zone: GradeZone; size: number }) 
   );
   return (
     <div className="flex flex-col items-center">
-      <p className="mb-1.5 text-[11px] text-mute">
+      <p className="mb-1.5 text-[11px] text-fg-3">
         {label}
-        <span className="tabular ml-1.5 text-faint">
+        <span className="tabular ml-1.5 text-fg-4">
           {Math.round(wheel.hue)}° · {Math.round(wheel.saturation)}
         </span>
       </p>

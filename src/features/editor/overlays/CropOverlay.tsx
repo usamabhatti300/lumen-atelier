@@ -92,7 +92,7 @@ export function CropOverlay({ box }: { box: ViewBox }) {
   return (
     <div className="absolute inset-0 overflow-hidden" onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
       <div
-        className="absolute cursor-move touch-none shadow-[0_0_0_9999px_rgba(13,12,11,0.62)] outline outline-1 outline-ivory/90"
+        className="absolute cursor-move touch-none shadow-[0_0_0_9999px_rgba(13,12,11,0.62)] outline outline-1 outline-fg/90"
         style={style}
         onPointerDown={(e) => startDrag('move', e)}
         role="group"
@@ -109,10 +109,10 @@ export function CropOverlay({ box }: { box: ViewBox }) {
         }}
       >
         {[1, 2].map((i) => (
-          <div key={`v${i}`} className="pointer-events-none absolute top-0 h-full w-px bg-ivory/25" style={{ left: `${(i * 100) / 3}%` }} />
+          <div key={`v${i}`} className="pointer-events-none absolute top-0 h-full w-px bg-fg/25" style={{ left: `${(i * 100) / 3}%` }} />
         ))}
         {[1, 2].map((i) => (
-          <div key={`h${i}`} className="pointer-events-none absolute left-0 h-px w-full bg-ivory/25" style={{ top: `${(i * 100) / 3}%` }} />
+          <div key={`h${i}`} className="pointer-events-none absolute left-0 h-px w-full bg-fg/25" style={{ top: `${(i * 100) / 3}%` }} />
         ))}
         {handles.map((h) => (
           <div
@@ -121,10 +121,10 @@ export function CropOverlay({ box }: { box: ViewBox }) {
             className={`absolute h-4 w-4 -translate-1/2 touch-none coarse:h-11 coarse:w-11 ${pos[h]}`}
             aria-hidden
           >
-            <span className={`absolute top-1/2 left-1/2 -translate-1/2 bg-ivory ${h.length === 2 ? 'h-2.5 w-2.5' : h === 'n' || h === 's' ? 'h-1 w-4' : 'h-4 w-1'}`} />
+            <span className={`absolute top-1/2 left-1/2 -translate-1/2 bg-fg ${h.length === 2 ? 'h-2.5 w-2.5' : h === 'n' || h === 's' ? 'h-1 w-4' : 'h-4 w-1'}`} />
           </div>
         ))}
-        <span className="tabular pointer-events-none absolute -bottom-6 left-0 font-mono text-[10px] text-ivory/80">
+        <span className="tabular pointer-events-none absolute -bottom-6 left-0 font-mono text-[10px] text-fg/80">
           {Math.round(c.w * frame.width)} × {Math.round(c.h * frame.height)}
         </span>
       </div>

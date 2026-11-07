@@ -18,7 +18,7 @@ test('mobile: compact controls, presets sheet and reference entry point', async 
   await waitForRender(page);
   const nav = page.getByRole('navigation', { name: 'Editing tools' });
   await expect(nav).toBeVisible();
-  await nav.getByRole('button', { name: 'Presets' }).click();
+  await nav.getByRole('button', { name: 'Looks' }).click();
   // The Signature Collection is the default tab in the mobile presets sheet too.
   await expect(page.getByRole('tab', { name: 'Signature Collection' })).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('button', { name: 'Apply Golden Hour Glow', exact: true }).click();
@@ -63,12 +63,12 @@ test('mobile: every editor feature is reachable by touch', async ({ page }) => {
     .toBe(true);
 
   // Presets sheet: the full left panel, including the Photos tab and the preset amount.
-  await nav.getByRole('button', { name: 'Presets' }).click();
+  await nav.getByRole('button', { name: 'Looks' }).click();
   await page.getByRole('button', { name: 'Apply Velvet Slide', exact: true }).click();
   await expect(sheet.getByRole('slider', { name: 'Amount' })).toBeVisible();
   await sheet.getByRole('radio', { name: 'Photos' }).click();
   await expect(page.getByRole('list', { name: 'Photos in this project' })).toBeVisible();
-  await sheet.getByRole('radio', { name: 'Presets' }).click();
+  await sheet.getByRole('radio', { name: 'Looks' }).click();
   await page.getByRole('button', { name: 'Close panel' }).click();
 
   // Top-bar actions hidden on phones live in the "More actions" menu.
@@ -134,7 +134,7 @@ test('mobile landscape: panels sit beside the photo and nothing overflows', asyn
     })
     .toBe(true);
   await page.getByRole('navigation', { name: 'Editing tools' }).getByRole('button', { name: 'Match look' }).click();
-  await expect(page.getByRole('heading', { name: 'Match a reference look' })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole('heading', { name: 'Match a look' })).toBeInViewport({ ratio: 1 });
   await expectFitsScreen(page);
 });
 
@@ -170,7 +170,7 @@ test('mobile touch: scrolling panels never changes edits; strip, curve and slide
   const scroller = page.locator('[data-testid="compact-sheet"] .overflow-y-auto').first();
 
   // Presets: a sideways strip of large cards; a tap applies.
-  await nav.getByRole('button', { name: 'Presets' }).click();
+  await nav.getByRole('button', { name: 'Looks' }).click();
   const strip = page.locator('[data-testid="compact-sheet"] ul[aria-label="Presets"]');
   const sb = (await strip.boundingBox())!;
   expect(sb.height).toBeGreaterThan(120);

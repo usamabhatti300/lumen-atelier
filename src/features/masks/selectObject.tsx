@@ -39,19 +39,19 @@ export function SelectObjectPanel({ layerId }: { layerId: string }) {
   const missing = st.errorName === 'ModelMissingError';
 
   return (
-    <div className="mb-3 rounded-xs border border-line-soft bg-ink-900 px-2.5 py-2" data-testid="select-object-panel">
+    <div className="mb-3 rounded-xs border border-line-soft bg-ground px-2.5 py-2" data-testid="select-object-panel">
       {busy ? (
         <div aria-live="polite">
           <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-ivory-dim" data-testid="select-object-status">
-              <Loader2 size={12} className="shrink-0 animate-spin text-amber" />
+            <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-fg-2" data-testid="select-object-status">
+              <Loader2 size={12} className="shrink-0 animate-spin text-accent-fg" />
               <span className="truncate">{statusText(st)}</span>
             </span>
             {st.phase !== 'selecting' && (
               <button
                 type="button"
                 onClick={() => objectMasks.cancel()}
-                className="flex shrink-0 items-center gap-1 rounded-xs px-1.5 py-0.5 text-[11px] text-mute hover:bg-ink-700 hover:text-ivory"
+                className="flex shrink-0 items-center gap-1 rounded-xs px-1.5 py-0.5 text-[11px] text-fg-3 hover:bg-control hover:text-fg"
               >
                 <X size={11} /> Cancel
               </button>
@@ -65,11 +65,11 @@ export function SelectObjectPanel({ layerId }: { layerId: string }) {
         </div>
       ) : st.phase === 'error' && st.error ? (
         <div role="alert" className="text-[11px] leading-snug">
-          <p className="flex items-start gap-1.5 text-safelight">
+          <p className="flex items-start gap-1.5 text-danger">
             <AlertTriangle size={12} className="mt-0.5 shrink-0" />
             <span>{missing ? 'The Select object model is not installed.' : st.error}</span>
           </p>
-          <p className="mt-1 text-mute">
+          <p className="mt-1 text-fg-3">
             {missing ? SETUP_HINT : 'Check the model files, then try again.'}
           </p>
           <Button size="sm" variant="secondary" className="mt-2" onClick={activateSelectObject}>
@@ -77,29 +77,29 @@ export function SelectObjectPanel({ layerId }: { layerId: string }) {
           </Button>
         </div>
       ) : (
-        <div className="text-[11px] leading-relaxed text-mute">
-          <p className="text-ivory-dim">
+        <div className="text-[11px] leading-relaxed text-fg-3">
+          <p className="text-fg-2">
             {startNew || !hasObject ? 'Tap or click an object in the photo to select it.' : 'Refine the selection, or tap elsewhere to start over.'}
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 coarse:hidden">
             <Kbd>Shift</Kbd> click adds · <Kbd>Alt</Kbd> click subtracts
           </p>
           <p className="mt-1 hidden coarse:block">Use Add or Subtract on the photo to refine it.</p>
-          {st.notice && <p className="mt-1 text-faint">{st.notice}</p>}
+          {st.notice && <p className="mt-1 text-fg-4">{st.notice}</p>}
         </div>
       )}
-      {hint && <p className="mt-1.5 text-[11px] text-amber">{hint}</p>}
+      {hint && <p className="mt-1.5 text-[11px] text-accent-fg">{hint}</p>}
       {hasObject && !busy && st.phase !== 'error' && (
         <button
           type="button"
           onClick={() => useObjectTool.setState({ startNew: true })}
           aria-pressed={startNew}
-          className={`mt-2 flex items-center gap-1 rounded-xs px-1.5 py-0.5 text-[11px] ${startNew ? 'bg-amber/10 text-amber' : 'text-mute hover:bg-ink-700 hover:text-ivory'}`}
+          className={`mt-2 flex items-center gap-1 rounded-xs px-1.5 py-0.5 text-[11px] ${startNew ? 'bg-accent/10 text-accent-fg' : 'text-fg-3 hover:bg-control hover:text-fg'}`}
         >
           <Plus size={11} /> {startNew ? 'Tap the next object' : 'Add another object'}
         </button>
       )}
-      <p className="mt-2 border-t border-line-soft pt-1.5 text-[10px] leading-snug text-faint">
+      <p className="mt-2 border-t border-line-soft pt-1.5 text-[10px] leading-snug text-fg-4">
         Runs on this device with SlimSAM (Apache-2.0, 39.8 MB download once). The photo never leaves your computer.
       </p>
     </div>
@@ -123,10 +123,10 @@ export function ObjectToolChip() {
 function Chip({ children, busy, tone }: { children: React.ReactNode; busy?: boolean; tone?: 'error' }) {
   return (
     <p
-      className={`pointer-events-none absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-xs bg-ink-950/85 px-2.5 py-1 text-xs whitespace-nowrap backdrop-blur-sm ${tone === 'error' ? 'text-safelight' : 'text-ivory-dim'}`}
+      className={`pointer-events-none absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-xs bg-well/85 px-2.5 py-1 text-xs whitespace-nowrap backdrop-blur-sm ${tone === 'error' ? 'text-danger' : 'text-fg-2'}`}
       data-testid="select-object-chip"
     >
-      {busy && <Loader2 size={12} className="animate-spin text-amber" />}
+      {busy && <Loader2 size={12} className="animate-spin text-accent-fg" />}
       {children}
     </p>
   );

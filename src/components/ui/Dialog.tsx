@@ -77,7 +77,7 @@ export function Dialog({
           transition={{ duration: 0.18 }}
         >
           <div
-            className="absolute inset-0 bg-ink-950/75 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/55"
             onClick={dismissible ? onClose : undefined}
             aria-hidden
           />
@@ -91,13 +91,13 @@ export function Dialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.99 }}
             transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-            className={`relative flex max-h-full w-full min-w-0 flex-col overflow-hidden border border-line bg-ink-850 shadow-float ${
+            className={`relative flex max-h-full w-full min-w-0 flex-col overflow-hidden border-2 border-fg bg-ground shadow-float ${
               fullscreen ? 'h-full sm:h-[min(860px,100%)] sm:max-w-6xl sm:rounded-md' : `${width} rounded-md`
             }`}
           >
             {title !== undefined && (
-              <header className="flex h-12 shrink-0 items-center justify-between border-b border-line-soft px-4">
-                <h2 id={labelledBy} className="font-display text-xl leading-none text-ivory">
+              <header className="flex h-14 shrink-0 items-center justify-between border-b-2 border-fg px-4">
+                <h2 id={labelledBy} className="carton-title text-[1.6rem] text-fg">
                   {title}
                 </h2>
                 {dismissible && (
@@ -105,7 +105,7 @@ export function Dialog({
                     type="button"
                     onClick={onClose}
                     aria-label="Close"
-                    className="rounded-xs p-1.5 text-mute hover:bg-ink-700 hover:text-ivory"
+                    className="rounded-sm p-2 text-fg-2 hover:bg-control hover:text-fg"
                   >
                     <X size={16} />
                   </button>

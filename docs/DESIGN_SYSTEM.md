@@ -1,28 +1,26 @@
 # Design system
 
-**Direction:** a darkroom, not a dashboard. Warm near-black inks, warm-grey hairlines, ivory type,
-one muted amber accent. The signature motif is the **Zone System scale** (Zones 0–X, one stop apart,
-Zone V = 18% grey). It appears on the welcome screen, under the histogram, and as the measured
-tonal readout in reference analysis. Film-rebate edge printing (mono, letter-spaced, amber) labels
-the filmstrip and contact-sheet gallery.
+**Source of truth: [DESIGN.md](../DESIGN.md)** (tokens, rules, components; machine-readable sidecar in
+`.impeccable/design.json`). Redesigned 2026-11-08 ("Film Stock Box"); this file keeps the behavioural
+layout, touch and accessibility notes.
+
+**Direction:** every look is a box of film you load into your photo. Printed carton chrome (paper
+`#f4f1ea`, ink `#121212`), a chrome-yellow bar (`#e4a11b`) with a red / yellow / blue band rule, the photo
+in a black frame with edge printing, looks as colour cartons with a stock code and numeral.
 
 ## Tokens (`src/styles/index.css`, Tailwind v4 `@theme`)
 
-| Token | Value | Use |
-| --- | --- | --- |
-| `ink-950 … ink-600` | `#0d0c0b` … `#322f2b` | Canvas surround, panels, raised controls |
-| `line-soft / line / line-strong` | `#2a2724 / #38342e / #4a453d` | Hairline borders |
-| `ivory / ivory-dim / mute / faint` | `#ece6da / #c9c2b5 / #9c958a / #6f695f` | Text hierarchy |
-| `amber` (+ `-bright`, `-deep`) | `#c9a26b` | The single accent: selection, active state, primary action |
-| `champagne` | `#e3cfa6` | Selected chips and segmented controls |
-| `safelight` | `#d0584a` | Errors and destructive actions only |
-| `verdigris` | `#7fa391` | Success / saved |
+Role tokens, not literal colours: `well` < `ground` / `ground-2` < `raised` / `raised-2`, `control`,
+`line-soft` / `line` / `line-strong`, text `fg` … `fg-4`, `accent` (yellow fill), `accent-fg` (accent as
+text / rings), `on-accent`, `selected`, `danger`, `success`, `band-red` / `band-yellow` / `band-blue`.
+Three scopes re-point them: default (paper), `.theme-frame` (black frame: viewport, filmstrip, histogram,
+toasts, tooltips, on-photo labels) and `.theme-carton` (yellow bar; accent becomes ink). Helpers:
+`.carton-title`, `.carton-label`, `.edge-code`, `.bands` (carton strip), `.bands-rule` (under bars),
+`.edge-advance` (signature roll-in). Carton inks and stock codes: `src/lib/presets/carton.ts`.
 
-Type: **Inter Variable** for UI (tabular numerals for values), **Instrument Serif** for screen
-titles and the reference description (sparingly), **IBM Plex Mono** for edge codes and readouts.
-All fonts are self-hosted via Fontsource (OFL).
-
-Radii: 3 / 5 / 8 px. Elevation: one shadow (`shadow-float`) for menus and dialogs only.
+Type: **Barlow Condensed** (titles, labels, edge print, numerals) and **Barlow** (body), self-hosted via
+Fontsource (OFL). Radii 2 / 4 / 6 px. Shadows: `shadow-lift` (raised cartons) and `shadow-float` (menus,
+dialogs).
 
 ## Motion
 
@@ -31,12 +29,12 @@ Radii: 3 / 5 / 8 px. Elevation: one shadow (`shadow-float`) for menus and dialog
 | instant | 80 ms | Pressed states |
 | fast | 140 ms | Hover, focus, slider thumb |
 | base | 220 ms | Panels, tabs, segmented control, section collapse |
-| slow | 380–450 ms | Canvas reveal on photo change, analysis results reveal |
+| slow | 380–450 ms | Canvas reveal, edge-print roll-in (420 ms) |
 
-Easing: `cubic-bezier(0.22, 1, 0.36, 1)` (out-quint) for most movement. The analysis scan is a
-restrained 2.4 s sweep that runs only while analysis is running. Progress is shown as a percentage
-only where it is measurable (import, export tiles, batch); otherwise as an indeterminate bar.
-`prefers-reduced-motion` is respected, with a Settings override (system / reduced / full).
+Easing `cubic-bezier(0.22, 1, 0.36, 1)`. Signature: loading a look lifts its carton 8 px with the band
+lit and rolls the edge print in. The home shelf is stocked once with GSAP (`@gsap/react`, skipped with
+reduced motion). Motion (`motion/react`) drives panels, tabs and sheets. Progress is a percentage only
+where measurable. `prefers-reduced-motion` is respected, with a Settings override.
 
 ## Layout
 
@@ -48,7 +46,7 @@ only where it is measurable (import, export tiles, batch); otherwise as an indet
   The Presets panel is the full left panel (Presets / Photos, Save look, preset Amount); Light adds
   the histogram. Top-bar actions that don't fit move into the ⋮ *More actions* menu (below 1024 px).
 - Phone panels have a grab handle: tap or drag up to expand to 78 dvh, drag down to shrink or close.
-  Presets on phones are a sideways strip of 3:4 cards (search behind an icon); expanded, a grid.
+  Looks on phones are a sideways strip of cartons under a "Pick a look" heading (search behind an icon); expanded, a grid.
   Card menus render in a portal so scrolling containers never clip them. No `scroll-snap` on the
   strip (with mandatory snap Chrome drops the first tap after a swipe).
 - Touch: pinch to zoom and pan with two fingers, double-tap to toggle fit / zoom, one finger pans
@@ -69,6 +67,6 @@ only where it is measurable (import, export tiles, batch); otherwise as an indet
 ## Accessibility
 
 Native range inputs behind the custom slider track (keyboard, screen readers, `aria-valuetext`),
-double-click / typed values, focus-visible rings in amber, focus-trapped dialogs that restore
+double-click / typed values, focus-visible rings in accent ink (#845500; #f0b941 in the frame), focus-trapped dialogs that restore
 focus, `aria-live` status for saving / analysis / export, labelled icon buttons with tooltips and
 shortcuts, keyboard-operable colour wheels, curve points and before/after divider.

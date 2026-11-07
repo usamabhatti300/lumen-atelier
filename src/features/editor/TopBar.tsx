@@ -59,13 +59,19 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
   const disabled = !activePhotoId;
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-1 border-b border-line-soft bg-ink-900 px-2 sm:px-3">
+    <>
+    <header className="theme-carton relative z-10 flex h-14 shrink-0 items-center gap-1 px-2 sm:px-3 lg:h-12">
       <span className="hidden lg:contents">
         <Wordmark compact />
       </span>
-      {/* Phones and tablets: a plain back arrow says "leave the editor" better than the logo. */}
-      <Link to="/" aria-label="Back to all edits" className="-ml-1 flex h-10 w-10 items-center justify-center rounded-sm text-ivory-dim hover:bg-ink-700 hover:text-ivory lg:hidden">
-        <ChevronLeft size={22} />
+      {/* Phones and tablets: a plain back button says "leave the editor" better than the logo. */}
+      <Link
+        to="/"
+        aria-label="Back to all edits"
+        className="carton-label flex h-10 items-center gap-0.5 rounded-sm bg-fg pr-3 pl-1.5 text-[13px] text-ground transition-transform active:scale-95 lg:hidden"
+      >
+        <ChevronLeft size={20} strokeWidth={2.4} />
+        Back
       </Link>
       <input
         aria-label="Project name"
@@ -77,7 +83,7 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
           setName(null);
         }}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        className="ml-2 hidden h-7 w-44 truncate rounded-xs border border-transparent bg-transparent px-1.5 text-[13px] text-ivory-dim outline-none hover:border-line focus:border-amber/60 lg:block"
+        className="ml-2 hidden h-7 w-44 truncate rounded-xs border border-transparent bg-transparent px-1.5 text-[13px] text-fg-2 outline-none hover:border-line focus:border-accent-fg/60 lg:block"
       />
       <SaveIndicator state={saveState} />
 
@@ -112,7 +118,7 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
         <IconButton label="Actual size (100%)" shortcut="1" active={zoom === 1} disabled={disabled} onClick={() => setUi({ zoom: 1 })} className="hidden md:inline-flex">
           <ZoomIn size={16} />
         </IconButton>
-        <span className="tabular hidden w-11 text-center text-[11px] text-faint md:block">{zoom === 'fit' ? 'Fit' : `${Math.round(zoom * 100)}%`}</span>
+        <span className="tabular hidden w-11 text-center text-[11px] text-fg-4 md:block">{zoom === 'fit' ? 'Fit' : `${Math.round(zoom * 100)}%`}</span>
         <span className="mx-1 hidden h-5 w-px bg-line-soft lg:block" />
         <IconButton label="Copy settings" shortcut={`${mod}+⇧+C`} disabled={disabled} onClick={copy} className="hidden lg:inline-flex">
           <ClipboardCopy size={15} />
@@ -136,6 +142,8 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
         <span className="hidden sm:inline">Export</span>
       </Button>
     </header>
+    <div aria-hidden className="bands-rule shrink-0" />
+    </>
   );
 }
 
@@ -191,7 +199,7 @@ function CompactMenu({ onPaste }: { onPaste: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.16 }}
-            className="absolute top-full right-0 z-[70] mt-1.5 w-60 rounded-sm border border-line bg-ink-850 py-1 shadow-float"
+            className="absolute top-full right-0 z-[70] mt-1.5 w-60 rounded-sm border border-line bg-ground-2 py-1 shadow-float"
           >
             <MenuItem
               icon={<Pencil size={15} />}
@@ -246,11 +254,11 @@ function MenuItem({ icon, children, onClick, disabled, checked }: { icon: ReactN
       aria-checked={checked}
       disabled={disabled}
       onClick={onClick}
-      className="flex h-11 w-full items-center gap-3 px-3.5 text-left text-[13px] text-ivory-dim hover:bg-ink-700 hover:text-ivory disabled:text-faint"
+      className="flex h-11 w-full items-center gap-3 px-3.5 text-left text-[13px] text-fg-2 hover:bg-control hover:text-fg disabled:text-fg-4"
     >
-      <span className={checked ? 'text-amber' : 'text-mute'}>{icon}</span>
+      <span className={checked ? 'text-accent-fg' : 'text-fg-3'}>{icon}</span>
       <span className="flex-1">{children}</span>
-      {checked && <span className="h-1.5 w-1.5 rounded-full bg-amber" aria-hidden />}
+      {checked && <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />}
     </button>
   );
 }
@@ -258,7 +266,7 @@ function MenuItem({ icon, children, onClick, disabled, checked }: { icon: ReactN
 function SaveIndicator({ state }: { state: string }) {
   const label = state === 'saved' ? 'Saved' : state === 'saving' ? 'Saving…' : state === 'error' ? 'Not saved' : 'Unsaved';
   return (
-    <span className="ml-1 hidden items-center gap-1.5 text-[11px] text-faint sm:flex" role="status" aria-live="polite" data-testid="save-state">
+    <span className="ml-1 hidden items-center gap-1.5 text-[11px] text-fg-4 sm:flex" role="status" aria-live="polite" data-testid="save-state">
       <AnimatePresence mode="wait" initial={false}>
         <motion.span
           key={state}
@@ -266,7 +274,7 @@ function SaveIndicator({ state }: { state: string }) {
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.4, opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className={`h-1.5 w-1.5 rounded-full ${state === 'saved' ? 'bg-verdigris' : state === 'error' ? 'bg-safelight' : 'bg-amber'}`}
+          className={`h-1.5 w-1.5 rounded-full ${state === 'saved' ? 'bg-success' : state === 'error' ? 'bg-danger' : 'bg-accent'}`}
         />
       </AnimatePresence>
       {label}

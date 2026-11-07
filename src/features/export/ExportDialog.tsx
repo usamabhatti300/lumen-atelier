@@ -194,7 +194,7 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
     >
       <div className="space-y-4 p-4">
         <div>
-          <p className="mb-1.5 text-xs text-mute">Format</p>
+          <p className="mb-1.5 text-xs text-fg-3">Format</p>
           <Segmented
             label="Export format"
             value={format}
@@ -205,21 +205,21 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
               { value: 'image/webp', label: 'WebP' },
             ]}
           />
-          {format === 'image/jpeg' && <p className="mt-1.5 text-[11px] text-faint">Transparent areas are filled with white. Use PNG or WebP to keep transparency.</p>}
+          {format === 'image/jpeg' && <p className="mt-1.5 text-[11px] text-fg-4">Transparent areas are filled with white. Use PNG or WebP to keep transparency.</p>}
         </div>
         {format !== 'image/png' && (
           <Slider label="Quality" value={quality} range={{ min: 40, max: 100, default: 92, step: 1 }} onChange={setQuality} />
         )}
         <div>
-          <p className="mb-1.5 text-xs text-mute">Size</p>
+          <p className="mb-1.5 text-xs text-fg-3">Size</p>
           {ai ? (
-            <p className="flex h-8 items-center text-xs text-ivory-dim">Full size, then AI upscale</p>
+            <p className="flex h-8 items-center text-xs text-fg-2">Full size, then AI upscale</p>
           ) : (
             <Segmented label="Export size" value={scale} onChange={setScale} options={SCALES} />
           )}
         </div>
         <div>
-          <p className="mb-1.5 text-xs text-mute">AI upscale</p>
+          <p className="mb-1.5 text-xs text-fg-3">AI upscale</p>
           <Segmented
             label="AI upscale"
             value={upscale}
@@ -230,33 +230,33 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
             options={[...UPSCALES]}
           />
           {ai && (
-            <p className="mt-1.5 text-[11px] leading-relaxed text-faint" data-testid="upscale-note">
+            <p className="mt-1.5 text-[11px] leading-relaxed text-fg-4" data-testid="upscale-note">
               Recovers detail with Real-ESRGAN on this device ({upscaler.licence}, {(modelBytes(upscaler) / 1e6).toFixed(1)} MB model). Runs{' '}
               {tiles} tile{tiles === 1 ? '' : 's'} after rendering, so it takes longer than a normal export
               {format !== 'image/jpeg' ? '; transparency is kept' : ''}.
             </p>
           )}
         </div>
-        <ul className="tabular max-h-28 space-y-0.5 overflow-auto text-[11.5px] text-ivory-dim">
+        <ul className="tabular max-h-28 space-y-0.5 overflow-auto text-[11.5px] text-fg-2">
           {sizes.map((s, i) => (
             <li key={i} className="flex justify-between gap-3" data-testid="export-size">
               <span className="truncate">{s.name}</span>
-              <span className={s.problem ? 'text-safelight' : 'text-mute'}>
+              <span className={s.problem ? 'text-danger' : 'text-fg-3'}>
                 {s.w} × {s.h}px
               </span>
             </li>
           ))}
         </ul>
-        {problem && <p className="text-xs text-safelight" role="alert">{problem}</p>}
-        <p className="text-[11px] leading-relaxed text-faint">
+        {problem && <p className="text-xs text-danger" role="alert">{problem}</p>}
+        <p className="text-[11px] leading-relaxed text-fg-4">
           Exports are rendered from the original at full resolution, in sRGB. Camera metadata (EXIF, GPS) is not copied
           into exported files.
         </p>
         {progress && (
           <div role="status" aria-live="polite">
             {result ? (
-              <p className="flex items-center gap-2 text-sm text-ivory">
-                <CheckCircle2 size={16} className="text-verdigris" />
+              <p className="flex items-center gap-2 text-sm text-fg">
+                <CheckCircle2 size={16} className="text-success" />
                 {result.cancelled
                   ? `Cancelled. ${result.done} file${result.done === 1 ? '' : 's'} saved.`
                   : shareFiles.length
@@ -265,7 +265,7 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
               </p>
             ) : (
               <>
-                <p className="mb-1.5 truncate text-xs text-mute">
+                <p className="mb-1.5 truncate text-xs text-fg-3">
                   {many && `${progress.index + 1}/${progress.total} · `}
                   {progress.stage}
                 </p>

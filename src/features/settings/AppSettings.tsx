@@ -42,10 +42,10 @@ export function AppSettings() {
   const complete = !!status && status.saved === status.files.length && status.files.length > 0;
 
   return (
-    <div className="space-y-4 text-xs leading-relaxed text-mute">
+    <div className="space-y-4 text-xs leading-relaxed text-fg-3">
       <div className="flex flex-col items-start gap-3 rounded-sm border border-line-soft p-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="flex items-start gap-2">
-          <Smartphone size={14} className="mt-0.5 shrink-0 text-ivory-dim" />
+          <Smartphone size={14} className="mt-0.5 shrink-0 text-fg-2" />
           <span>
             {standalone
               ? 'Running as an installed app.'
@@ -54,15 +54,15 @@ export function AppSettings() {
                 : isIosSafari()
                   ? 'On iPhone and iPad, install from Safari: Share → Add to Home Screen.'
                   : 'Your browser can install this app from its menu (Install app / Add to Home screen). Installing needs a secure (https) address.'}
-            {!standalone && <span className="block text-faint">Photos stay in this browser's storage either way.</span>}
+            {!standalone && <span className="block text-fg-4">Photos stay in this browser's storage either way.</span>}
           </span>
         </p>
-        {!standalone && (installEvent ? <InstallButton className="flex border border-amber/40" /> : isIosSafari() && <Button size="sm" variant="secondary" onClick={() => setIosHelp(true)}>How to install</Button>)}
+        {!standalone && (installEvent ? <InstallButton className="flex border border-accent-fg/40" /> : isIosSafari() && <Button size="sm" variant="secondary" onClick={() => setIosHelp(true)}>How to install</Button>)}
       </div>
 
       <div className="rounded-sm border border-line-soft p-3">
         <p className="flex items-start gap-2">
-          {offlineReady ? <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-verdigris" /> : <CloudDownload size={14} className="mt-0.5 shrink-0 text-ivory-dim" />}
+          {offlineReady ? <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-success" /> : <CloudDownload size={14} className="mt-0.5 shrink-0 text-fg-2" />}
           <span>
             {offlineReady
               ? 'The editor is saved on this device and opens without a connection. Editing, presets, masks, reference matching from measurements and export all work offline.'
@@ -77,7 +77,7 @@ export function AppSettings() {
               On-device AI (Select object, Remove, Lens blur, AI upscale, portrait detection) downloads its models the first time each tool is used.
               Save them all now to use every tool offline.
             </p>
-            <p className="tabular mt-1.5 text-ivory-dim" data-testid="offline-models">
+            <p className="tabular mt-1.5 text-fg-2" data-testid="offline-models">
               {status.saved} of {status.files.length} files saved offline ({mb(status.savedBytes)} of {mb(status.totalBytes)})
             </p>
             {progress ? (
@@ -115,18 +115,18 @@ export function AppSettings() {
               </div>
             )}
             {error && (
-              <p role="alert" className="mt-2 text-safelight">
+              <p role="alert" className="mt-2 text-danger">
                 {error}
               </p>
             )}
           </div>
         )}
         {progress === null && persisted === false && (
-          <p className="mt-2 text-faint">
+          <p className="mt-2 text-fg-4">
             The browser may clear this site's storage (projects, photos, presets) when the device runs low on space.{' '}
             <button
               type="button"
-              className="text-amber underline-offset-2 hover:underline"
+              className="text-accent-fg underline-offset-2 hover:underline"
               onClick={async () => setPersisted((await navigator.storage?.persist?.()) ?? false)}
             >
               Ask to keep it

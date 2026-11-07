@@ -24,11 +24,11 @@ export function App() {
     else document.documentElement.setAttribute('data-motion', motion);
   }, [motion]);
 
-  if (!loaded) return <div className="h-full bg-ink-900" />;
+  if (!loaded) return <div className="h-full bg-ground" />;
 
   return (
     <MotionConfig reducedMotion={motion === 'reduced' ? 'always' : motion === 'full' ? 'never' : 'user'}>
-      <Suspense fallback={<div className="h-full bg-ink-900" />}>
+      <Suspense fallback={<div className="h-full bg-ground" />}>
         <Routes>
           <Route path="/" element={<GalleryScreen />} />
           <Route path="/project/:projectId" element={<EditorScreen />} />

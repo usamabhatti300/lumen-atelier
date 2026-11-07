@@ -4,11 +4,12 @@
  * and the photo stays big. Every control is still in the full panel (`onExpand`).
  */
 import { motion } from 'motion/react';
-import { ChevronsUp, Spline } from 'lucide-react';
+import { ChevronsUp } from 'lucide-react';
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Segmented } from '@/components/ui/misc';
 import { useEditor } from '@/state/editorStore';
-import { getPath, HSL_BANDS, HSL_BAND_HUES, rangeForPath, type GradeZone, type HslBandName as HslBand } from '@/lib/schema/adjustments';
+import { getPath, HSL_BANDS, HSL_BAND_HUES, rangeForPath, type CurveChannel, type GradeZone, type HslBandName as HslBand } from '@/lib/schema/adjustments';
+import { CurveEditor } from '../CurveEditor';
 import { AdjustmentSlider, TRACKS, fmtEv } from '../AdjustmentSlider';
 import { BAND_LABEL, bandColor, hslTrack } from './colorBands';
 import { WheelControl } from './ColorPanel';
@@ -40,11 +41,11 @@ const LIGHT_TOOLS: Tool[] = [
 ];
 
 // Remember the last tool while the app is open, like the phone editors do.
-const last = { light: LIGHT_TOOLS[0].path, colorMode: 'mix' as ColorMode, band: 'orange' as HslBand, hsl: 'saturation' as HslMode, zone: 'midtones' as GradeZone };
+const last = { light: LIGHT_TOOLS[0].path, colorMode: 'mix' as ColorMode, band: 'orange' as HslBand, hsl: 'saturation' as HslMode, zone: 'midtones' as GradeZone, curve: 'master' as CurveChannel };
 
 const remember = (patch: Partial<typeof last>) => Object.assign(last, patch);
 
-type ColorMode = 'mix' | 'grade';
+type ColorMode = 'mix' | 'grade' | 'curve';
 type HslMode = 'hue' | 'saturation' | 'luminance';
 
 export function FocusTools({ tab, onExpand }: { tab: 'adjust' | 'color'; onExpand: () => void }) {
@@ -81,6 +82,7 @@ function ColorFocus({ onExpand }: { onExpand: () => void }) {
   const [band, setBand] = useState<HslBand>(last.band);
   const [hsl, setHsl] = useState<HslMode>(last.hsl);
   const [zone, setZone] = useState<GradeZone>(last.zone);
+  const [curve, setCurve] = useState<CurveChannel>(last.curve);
   const pickMode = (m: ColorMode) => {
     remember({ colorMode: m });
     setMode(m);
@@ -94,13 +96,36 @@ function ColorFocus({ onExpand }: { onExpand: () => void }) {
         <ModeChip selected={mode === 'grade'} onSelect={() => pickMode('grade')}>
           Grade
         </ModeChip>
-        {/* The tone curve needs room: it opens the full panel, where it comes first. */}
-        <button type="button" onClick={onExpand} className={`${CHIP} border-line text-mute`}>
-          <Spline size={13} /> Curve
-        </button>
+        <ModeChip selected={mode === 'curve'} onSelect={() => pickMode('curve')}>
+          Curve
+        </ModeChip>
       </ToolRow>
 
-      {mode === 'mix' ? (
+      {mode === 'curve' ? (
+        // A compact curve that leaves the photo in view (the full panel has the larger one).
+        <>
+          <div className="mt-1 mb-2 flex justify-center">
+            <Segmented
+              label="Curve channel"
+              size="xs"
+              value={curve}
+              onChange={(v) => {
+                remember({ curve: v });
+                setCurve(v);
+              }}
+              options={[
+                { value: 'master', label: 'RGB' },
+                { value: 'red', label: 'Red' },
+                { value: 'green', label: 'Green' },
+                { value: 'blue', label: 'Blue' },
+              ]}
+            />
+          </div>
+          <div className="mx-auto w-full max-w-[min(180px,22dvh)] [&_p]:hidden">
+            <CurveEditor channel={curve} />
+          </div>
+        </>
+      ) : mode === 'mix' ? (
         <>
           <div className="mt-1 flex items-center justify-between gap-1" role="radiogroup" aria-label="Colour band">
             {HSL_BANDS.map((b) => (
@@ -168,7 +193,7 @@ function ColorFocus({ onExpand }: { onExpand: () => void }) {
 }
 
 const CHIP =
-  'flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs whitespace-nowrap transition-colors';
+  'carton-label flex h-9 shrink-0 items-center gap-1.5 rounded-sm border px-3 text-[13px] whitespace-nowrap transition-[background-color,color,transform] active:scale-95';
 
 /** The sideways tool row, ending with "All" (the full panel). Keeps the selected tool in view. */
 function ToolRow({ label, onExpand, children }: { label: string; onExpand: () => void; children: ReactNode }) {
@@ -181,7 +206,7 @@ function ToolRow({ label, onExpand, children }: { label: string; onExpand: () =>
   return (
     <div ref={row} role="tablist" aria-label={label} className="scroll-quiet -mx-3 flex gap-1.5 overflow-x-auto overscroll-x-contain px-3 pt-0.5 pb-2">
       {children}
-      <button type="button" onClick={onExpand} className={`${CHIP} border-line text-mute`}>
+      <button type="button" onClick={onExpand} className={`${CHIP} border-line text-fg-3`}>
         <ChevronsUp size={14} /> All
       </button>
     </div>
@@ -195,7 +220,7 @@ function ModeChip({ selected, onSelect, children }: { selected: boolean; onSelec
       role="tab"
       aria-selected={selected}
       onClick={onSelect}
-      className={`${CHIP} ${selected ? 'border-champagne bg-champagne font-medium text-ink-950' : 'border-line text-ivory-dim'}`}
+      className={`${CHIP} ${selected ? 'border-fg bg-fg text-ground' : 'border-line text-fg-2'}`}
     >
       {children}
     </button>
@@ -212,7 +237,7 @@ const ToolChip = memo(function ToolChip({ path, label, selected, onSelect }: { p
   return (
     <ModeChip selected={selected} onSelect={onSelect}>
       {label}
-      {changed && <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-ink-950' : 'bg-amber'}`} />}
+      {changed && <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-accent' : 'bg-accent-fg'}`} />}
       {changed && <span className="sr-only">(edited)</span>}
     </ModeChip>
   );
@@ -233,10 +258,10 @@ function BandSwatch({ band, selected, onSelect }: { band: HslBand; selected: boo
       className="relative flex h-10 w-10 items-center justify-center"
     >
       <span
-        className={`h-7 w-7 rounded-full transition-[box-shadow,transform] ${selected ? 'scale-110 ring-2 ring-ivory ring-offset-2 ring-offset-ink-850' : ''}`}
+        className={`h-7 w-7 rounded-full transition-[box-shadow,transform] ${selected ? 'scale-110 ring-2 ring-fg ring-offset-2 ring-offset-ground-2' : ''}`}
         style={{ background: bandColor(HSL_BAND_HUES[band]) }}
       />
-      {changed && <span aria-hidden className="absolute right-0.5 bottom-0.5 h-1.5 w-1.5 rounded-full bg-amber" />}
+      {changed && <span aria-hidden className="absolute right-0.5 bottom-0.5 h-1.5 w-1.5 rounded-full bg-accent" />}
     </button>
   );
 }

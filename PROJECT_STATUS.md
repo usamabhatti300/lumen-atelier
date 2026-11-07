@@ -9,6 +9,18 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
+**2026-11-08: full visual redesign, "Film Stock Box"** (owner chose it on the Impeccable decision
+page). Paper and ink chrome, a chrome-yellow carton bar with a red / yellow / blue band rule, every
+photo in a black frame with edge printing (`EdgePrint.tsx`), and looks as colour cartons with a stock
+code, numeral and preview window (`src/lib/presets/carton.ts`). Role tokens with scoped themes
+(`.theme-frame`, `.theme-carton`); Barlow / Barlow Condensed replace Inter, Instrument Serif,
+Unbounded and Plex Mono; new home (film-frame drop zone, category shelf, edits as prints), `CartonBar`
+on secondary screens, and new app icons. Spec: `DESIGN.md`, `PRODUCT.md`, `.impeccable/`. Tests run
+after the redesign: typecheck, lint (0 errors), 193 Vitest, e2e `editor` + `mobile` (11 passed),
+`test:e2e:pwa` (4 passed, including a production build). The critical-journey and AI-feature e2e
+specs were not re-run. Open from the design review: home category cartons have no photo window
+(declined: it needs a renderer or produced sample plates on the home screen).
+
 ## Stage checklist
 
 | Stage | Status | Notes |
@@ -73,6 +85,18 @@ e2e ran in parallel). `mobile.spec.ts` touch test extended (one slider only, ver
 changes it, edited mark, tool switch, Reset, Mix band / mode, Grade, *All* → full panel scroll + curve checks).
 Playwright `editor.spec.ts` + `mobile.spec.ts`: 9 passed, 2 failed in the full run (EXIF export download timeout,
 a known flake under load; and a test bug, fixed); both **passed when re-run alone** (2.0 min).
+
+**Phone visual redesign, "lit by your photo" (2026-11-08).** Owner feedback: the curve hid the photo and the UI
+did not feel like a premium iOS app for a young audience. Phone only (desktop unchanged apart from the ivory
+segmented highlight): true-black base; frosted `glass` / `glass-strong` utilities; `light-leak` gradient (drift
+animation off with reduced motion); `--color-glow` (#e8b26b, amber lifted for OLED) for primary actions;
+`--font-hero` = Unbounded (OFL, `@fontsource-variable/unbounded` 5.3.0) for a few big headlines. Home: the latest
+edit as a large photo card (full-resolution original on phones) whose blurred colours glow behind it, "Continue
+editing" glass pill, *Make it glow.*, pill buttons *Edit a photo* / *Match a look*; light-leak card before the first
+edit; glass install banner. Editor: the active photo glows behind the canvas, glass top bar with round buttons,
+floating glass tab-bar capsule, glass sheet (sentence-case titles, expanded height 64dvh), ivory selected chips and
+segmented pills. Colour → *Curve* is now a compact curve in the one-slider view, so the photo stays visible.
+Default project names are "Edit 8 Nov" (no middle dot).
 
 ## Technical decisions
 

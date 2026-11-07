@@ -69,7 +69,7 @@ export function LightPanel() {
             onClick={() => setAdj('basic.monochrome', mono ? 0 : 100, 'Black & white')}
             aria-pressed={mono}
             className={`mr-1 rounded-xs px-1.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase ${
-              mono ? 'bg-ivory text-ink-950' : 'text-faint hover:text-ivory'
+              mono ? 'bg-fg text-on-accent' : 'text-fg-4 hover:text-fg'
             }`}
           >
             B&amp;W

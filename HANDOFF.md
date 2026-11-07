@@ -32,6 +32,11 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
 
 ## State as of the last session
 
+- **2026-11-08: full visual redesign ("Film Stock Box"), uncommitted.** Read `DESIGN.md` before any UI work;
+  `PRODUCT.md` holds product truth. Skills (Impeccable, shadcn, UI UX Pro Max, Vercel React, Web Design
+  Guidelines) live in `.claude/skills`; MCP servers (Playwright, Context7, Chrome DevTools, shadcn) in
+  `.mcp.json`. shadcn is set up (`components.json`, `cn()` in `src/lib/utils.ts`) but `shadcn init` was not
+  run, so it doesn't overwrite the theme; restyle any added component to the role tokens.
 - All spec stages are implemented; see `PROJECT_STATUS.md` for the checklist and limitations.
 - Tests: 83 Vitest tests pass; 9 Playwright e2e tests (the critical journey passes, ~5 min under
   SwiftShader software GL in headless Chrome). Type-check, lint (0 errors) and production build are clean.
@@ -139,4 +144,4 @@ licence notes in README/Settings and must disclose download size.
 
 Read `AGENTS.md`. Key rules: change pixel maths in **both** `pixel.ts` and `shaders.ts` with tests;
 the AI returns only categorical descriptions (`shared/ai-schema.ts`); no fake progress; report only
-tests actually run; amber is the only accent colour.
+tests actually run; follow DESIGN.md (role tokens, photos in `.theme-frame`, one yellow action per screen).

@@ -117,31 +117,34 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
           if (f) void loadReference(f, f.name);
         }}
       >
-        <header className="flex h-14 shrink-0 items-center gap-4 border-b border-line-soft px-4 sm:px-6">
-          <Wand2 size={18} className="text-amber" />
-          <h2 id="ref-title" className="font-display text-2xl leading-none text-ivory">
-            Match a reference look
+        <header className="theme-carton flex h-14 shrink-0 items-center gap-3 px-4 sm:px-6">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-fg text-ground">
+            <Wand2 size={18} />
+          </span>
+          <h2 id="ref-title" className="carton-title text-[1.6rem] text-fg sm:text-[1.9rem]">
+            Match a look
           </h2>
           <ol className="ml-auto hidden items-center gap-1 text-[11px] md:flex" aria-label="Progress">
             {['Reference', 'Analyse', 'Apply & refine'].map((label, i) => (
               <li key={label} className="flex items-center gap-1">
                 <span
-                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
-                    step === i + 1 ? 'bg-champagne text-ink-950' : step > i + 1 ? 'text-ivory-dim' : 'text-faint'
+                  className={`carton-label flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs ${
+                    step === i + 1 ? 'bg-fg text-ground' : step > i + 1 ? 'text-fg' : 'text-fg-3'
                   }`}
                   aria-current={step === i + 1 ? 'step' : undefined}
                 >
                   <span className="tabular font-mono">{i + 1}</span>
                   {label}
                 </span>
-                {i < 2 && <ArrowRight size={11} className="text-faint" />}
+                {i < 2 && <ArrowRight size={12} className="text-fg-3" />}
               </li>
             ))}
           </ol>
-          <button type="button" onClick={onClose} aria-label="Close" className="ml-auto rounded-xs p-1.5 text-mute hover:bg-ink-700 hover:text-ivory md:ml-2">
+          <button type="button" onClick={onClose} aria-label="Close" className="ml-auto rounded-sm p-2 text-fg hover:bg-control md:ml-2">
             <X size={17} />
           </button>
         </header>
+        <div aria-hidden className="bands-rule shrink-0" />
 
         <input
           ref={fileInput}
@@ -161,19 +164,19 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
             {/* Explains the feature and gives explicit actions; the dashed area is still a drop zone. */}
             <div
               className={`flex w-full max-w-xl flex-col items-center rounded-md border border-dashed px-5 py-10 text-center transition-colors sm:px-8 sm:py-14 ${
-                dragOver ? 'border-amber bg-amber/5' : 'border-line'
+                dragOver ? 'border-accent-fg bg-accent/5' : 'border-line'
               }`}
             >
-              <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber/15 text-amber">
+              <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-sm bg-accent text-on-accent">
                 <Wand2 size={24} />
               </span>
-              <span className="font-display text-3xl text-ivory">Add a reference photo</span>
-              <span className="mt-2 max-w-md text-sm leading-relaxed text-mute">
+              <span className="carton-title text-[2.25rem] text-fg">Add a reference photo</span>
+              <span className="mt-2 max-w-md text-sm leading-relaxed text-fg-3">
                 Pick a photo whose look you love. The studio turns its colours and tones into an editable preset for your photo.
               </span>
               <ul className="mt-4 flex flex-wrap justify-center gap-1.5" aria-label="Good references">
                 {['Saved posts', 'Screenshots', 'Film stills', 'Your best shots'].map((t) => (
-                  <li key={t} className="rounded-full border border-line px-2.5 py-1 text-[11px] text-ivory-dim">
+                  <li key={t} className="rounded-sm border border-line px-2.5 py-1 text-xs text-fg-2">
                     {t}
                   </li>
                 ))}
@@ -188,14 +191,14 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
                   </Button>
                 )}
               </div>
-              <span className="mt-3 text-[11px] text-faint coarse:hidden">or drop it here, or press Ctrl+V. You can crop out app bars next.</span>
-              <span className="mt-6 max-w-md text-[11px] leading-relaxed text-faint">
+              <span className="mt-3 text-[11px] text-fg-4 coarse:hidden">or drop it here, or press Ctrl+V. You can crop out app bars next.</span>
+              <span className="mt-6 max-w-md text-[11px] leading-relaxed text-fg-4">
                 The preset approximates the look from the finished image. The original editing settings cannot be
                 recovered from a JPEG.
               </span>
             </div>
             {(loadError || pasteMessage) && (
-              <p role="alert" className="absolute bottom-8 mx-4 max-w-md rounded-sm border border-safelight/40 bg-ink-850 px-4 py-2 text-sm text-ivory">
+              <p role="alert" className="absolute bottom-8 mx-4 max-w-md rounded-sm border border-danger/40 bg-ground-2 px-4 py-2 text-sm text-fg">
                 {loadError ?? pasteMessage}
               </p>
             )}
@@ -244,7 +247,7 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
   return (
     // One column on phones: the pane keeps its full height (min-h-0 only in the two-column layout).
     <div className="flex flex-col p-4 sm:p-6 lg:min-h-0">
-      <div className="relative flex h-[min(44dvh,420px)] shrink-0 items-center justify-center overflow-hidden rounded-sm bg-ink-950 lg:h-auto lg:min-h-[260px] lg:flex-1 lg:shrink">
+      <div className="theme-frame relative flex h-[min(44dvh,420px)] shrink-0 items-center justify-center overflow-hidden rounded-sm bg-well lg:h-auto lg:min-h-[260px] lg:flex-1 lg:shrink">
         <div
           ref={box}
           className={`relative max-h-full ${cropping ? 'touch-none' : ''}`}
@@ -275,16 +278,16 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
           />
           {running && (
             <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-              <div className="absolute inset-0 bg-ink-950/25" />
-              <div className="animate-scan absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-transparent via-amber/15 to-transparent">
-                <div className="absolute inset-x-0 bottom-1/2 h-px bg-amber/70" />
+              <div className="absolute inset-0 bg-well/25" />
+              <div className="animate-scan absolute inset-x-0 top-0 h-1/4 bg-gradient-to-b from-transparent via-accent/15 to-transparent">
+                <div className="absolute inset-x-0 bottom-1/2 h-px bg-accent/70" />
               </div>
               <div className="absolute inset-0 [background-image:linear-gradient(rgba(236,230,218,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(236,230,218,0.05)_1px,transparent_1px)] [background-size:32px_32px]" />
             </div>
           )}
           {cropping && draft && draft.w > 0.01 && draft.h > 0.01 && (
             <div
-              className="pointer-events-none absolute shadow-[0_0_0_9999px_rgba(13,12,11,0.6)] outline outline-1 outline-ivory"
+              className="pointer-events-none absolute shadow-[0_0_0_9999px_rgba(13,12,11,0.6)] outline outline-1 outline-fg"
               style={{ left: `${draft.x * 100}%`, top: `${draft.y * 100}%`, width: `${draft.w * 100}%`, height: `${draft.h * 100}%` }}
             />
           )}
@@ -294,7 +297,7 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {cropping ? (
           <>
-            <span className="text-xs text-mute">Drag over the reference to select the part to use.</span>
+            <span className="text-xs text-fg-3">Drag over the reference to select the part to use.</span>
             <div className="ml-auto flex gap-2">
               <Button size="sm" variant="ghost" onClick={() => { setCropping(false); setDraft(null); }}>
                 Cancel
@@ -315,7 +318,7 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
           </>
         ) : (
           <>
-            <span className="max-w-[45%] truncate text-xs text-mute" title={original.name}>
+            <span className="max-w-[45%] truncate text-xs text-fg-3" title={original.name}>
               {original.name} · {working.width}×{working.height}
               {crop ? ' (cropped)' : ''}
             </span>
@@ -341,7 +344,7 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
         )}
       </div>
       {suggested && !cropping && stats?.flags.screenshotLikely && (
-        <p className="mt-2 flex items-start gap-1.5 text-xs text-amber">
+        <p className="mt-2 flex items-start gap-1.5 text-xs text-accent-fg">
           <Info size={13} className="mt-0.5 shrink-0" /> This looks like a screenshot. Trim the interface bars so they do not skew the colours.
         </p>
       )}
@@ -356,7 +359,7 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
                   <div key={c.hex} role="listitem" title={`${c.hex} · ${Math.round(c.weight * 100)}%`} aria-label={`${c.hex}, ${Math.round(c.weight * 100)} percent`} style={{ background: c.hex, flexGrow: Math.max(0.04, c.weight) }} />
                 ))}
               </div>
-              <div className="tabular mt-1.5 flex flex-wrap gap-x-3 font-mono text-[10px] text-faint">
+              <div className="tabular mt-1.5 flex flex-wrap gap-x-3 font-mono text-[10px] text-fg-4">
                 {stats.palette.slice(0, 5).map((c) => (
                   <span key={c.hex}>{c.hex}</span>
                 ))}
@@ -380,28 +383,28 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
 function StageRow({ label, stage, detail, action }: { label: string; stage: Stage; detail: string; action?: ReactNode }) {
   const icon =
     stage.state === 'running' ? (
-      <Loader2 size={14} className="animate-spin text-amber" />
+      <Loader2 size={14} className="animate-spin text-accent-fg" />
     ) : stage.state === 'done' ? (
-      <Check size={14} className="text-verdigris" />
+      <Check size={14} className="text-success" />
     ) : stage.state === 'skipped' ? (
-      <Minus size={14} className="text-faint" />
+      <Minus size={14} className="text-fg-4" />
     ) : stage.state === 'error' ? (
-      <AlertTriangle size={14} className="text-safelight" />
+      <AlertTriangle size={14} className="text-danger" />
     ) : (
-      <CircleDashed size={14} className="text-faint" />
+      <CircleDashed size={14} className="text-fg-4" />
     );
   return (
     <li className="py-2">
       <div className="flex items-center gap-2.5">
         {icon}
-        <span className={`text-[13px] ${stage.state === 'pending' ? 'text-faint' : 'text-ivory'}`}>{label}</span>
+        <span className={`text-[13px] ${stage.state === 'pending' ? 'text-fg-4' : 'text-fg'}`}>{label}</span>
         {action}
-        <span className={`${action ? '' : 'ml-auto '}text-[11px] text-faint`}>
+        <span className={`${action ? '' : 'ml-auto '}text-[11px] text-fg-4`}>
           {stage.state === 'running' ? 'in progress' : stage.state === 'done' ? 'done' : stage.state === 'skipped' ? 'skipped' : stage.state === 'error' ? 'failed' : ''}
         </span>
       </div>
       {stage.state === 'running' && <Indeterminate className="mt-2 ml-6 w-auto" />}
-      <p className="mt-0.5 ml-6 text-[11.5px] leading-relaxed text-mute">{stage.note ?? detail}</p>
+      <p className="mt-0.5 ml-6 text-[11.5px] leading-relaxed text-fg-3">{stage.note ?? detail}</p>
     </li>
   );
 }
@@ -419,7 +422,7 @@ function AnalysisPane() {
   return (
     <section className="p-4 sm:p-6" aria-labelledby="analysis-heading">
       <div className="flex items-center justify-between">
-        <h3 id="analysis-heading" className="text-[11px] font-semibold tracking-[0.14em] text-ivory-dim uppercase">
+        <h3 id="analysis-heading" className="text-[11px] font-semibold tracking-[0.14em] text-fg-2 uppercase">
           Analysis
         </h3>
         {running ? (
@@ -462,44 +465,44 @@ function AnalysisPane() {
       <AnimatePresence>
         {result && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} className="mt-5">
-            <blockquote className="border-l-2 border-amber/60 pl-4">
-              <p className="font-display text-[22px] leading-snug text-ivory italic" data-testid="style-description">
+            <blockquote className="border-l-2 border-accent-fg/60 pl-4">
+              <p className="text-[19px] leading-snug font-medium text-fg" data-testid="style-description">
                 {result.description}
               </p>
-              <footer className="mt-1.5 text-[11px] text-faint">
+              <footer className="mt-1.5 text-[11px] text-fg-4">
                 {result.descriptionSource === 'ai' ? `Interpreted by ${aiModel ?? 'the vision model'}, grounded in measurements` : 'Written from measurements (no AI)'}
               </footer>
             </blockquote>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <ConfidenceBadge level={result.confidence} />
-              <span className="text-[11px] text-faint">
+              <span className="text-[11px] text-fg-4">
                 {result.explanations.length} setting group{result.explanations.length === 1 ? '' : 's'} generated
               </span>
             </div>
             {result.warnings.length > 0 && (
               <ul className="mt-3 space-y-1.5">
                 {result.warnings.map((w) => (
-                  <li key={w} className="flex gap-2 text-xs leading-relaxed text-ivory-dim">
-                    <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber" />
+                  <li key={w} className="flex gap-2 text-xs leading-relaxed text-fg-2">
+                    <AlertTriangle size={13} className="mt-0.5 shrink-0 text-accent-fg" />
                     {w}
                   </li>
                 ))}
               </ul>
             )}
-            <button type="button" onClick={() => setShowWhy(!showWhy)} aria-expanded={showWhy} className="mt-4 text-xs text-amber hover:underline">
+            <button type="button" onClick={() => setShowWhy(!showWhy)} aria-expanded={showWhy} className="mt-4 text-xs text-accent-fg hover:underline">
               {showWhy ? 'Hide' : 'Show'} how the preset was built
             </button>
             <AnimatePresence initial={false}>
               {showWhy && (
                 <motion.ul initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 space-y-2 overflow-hidden">
                   {result.explanations.map((e, i) => (
-                    <li key={i} className="rounded-xs bg-ink-900 px-3 py-2">
-                      <p className="flex items-center gap-2 text-[11px] font-medium text-ivory-dim">
+                    <li key={i} className="rounded-xs bg-ground px-3 py-2">
+                      <p className="flex items-center gap-2 text-[11px] font-medium text-fg-2">
                         {e.area}
-                        <span className="rounded-full border border-line px-1.5 text-[9.5px] tracking-wide text-faint uppercase">{e.basis.replace('+', ' + ')}</span>
-                        {e.weak && <span className="text-[10px] text-amber">low confidence</span>}
+                        <span className="rounded-full border border-line px-1.5 text-[9.5px] tracking-wide text-fg-4 uppercase">{e.basis.replace('+', ' + ')}</span>
+                        {e.weak && <span className="text-[10px] text-accent-fg">low confidence</span>}
                       </p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-mute">{e.text}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-fg-3">{e.text}</p>
                     </li>
                   ))}
                 </motion.ul>
@@ -513,7 +516,7 @@ function AnalysisPane() {
 }
 
 function ConfidenceBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
-  const color = level === 'high' ? 'text-verdigris border-verdigris/40' : level === 'medium' ? 'text-amber border-amber/40' : 'text-safelight border-safelight/40';
+  const color = level === 'high' ? 'text-success border-success/40' : level === 'medium' ? 'text-accent-fg border-accent-fg/40' : 'text-danger border-danger/40';
   return (
     <span className={`rounded-full border px-2 py-0.5 text-[11px] ${color}`} title="How reliable this estimate is">
       {level === 'high' ? 'High' : level === 'medium' ? 'Medium' : 'Low'} confidence
@@ -721,7 +724,7 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
       aria-labelledby="apply-heading"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id="apply-heading" className="text-[11px] font-semibold tracking-[0.14em] text-ivory-dim uppercase">
+        <h3 id="apply-heading" className="text-[11px] font-semibold tracking-[0.14em] text-fg-2 uppercase">
           Apply to your photo
         </h3>
         {target && (
@@ -738,7 +741,7 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
         )}
       </div>
       {!target ? (
-        <div className="mt-3 rounded-sm border border-dashed border-line p-4 text-sm text-mute">
+        <div className="mt-3 rounded-sm border border-dashed border-line p-4 text-sm text-fg-3">
           Add the photo you want to apply this look to.
           <Button size="sm" variant="secondary" className="mt-3" icon={<ImagePlus size={14} />} onClick={onImportTarget}>
             Add target photo
@@ -746,7 +749,7 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
         </div>
       ) : (
         <>
-          <div className="relative mt-3 overflow-hidden rounded-sm bg-ink-950">
+          <div className="theme-frame relative mt-3 overflow-hidden rounded-sm bg-well">
             <canvas ref={canvas} className="block max-h-[340px] w-full object-contain" aria-label={`Preview of ${target.name}`} />
             {isApplied && (
               <button
@@ -758,27 +761,27 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
                 onContextMenu={(e) => e.preventDefault()}
                 onKeyDown={(e) => e.key === ' ' && setUi({ compare: 'before' })}
                 onKeyUp={() => setUi({ compare: 'off' })}
-                className="absolute right-2 bottom-2 touch-none rounded-xs bg-ink-950/80 px-2 py-1 text-[11px] text-ivory select-none [-webkit-touch-callout:none] coarse:px-3 coarse:py-2 coarse:text-xs"
+                className="absolute right-2 bottom-2 touch-none rounded-xs bg-well/80 px-2 py-1 text-[11px] text-fg select-none [-webkit-touch-callout:none] coarse:px-3 coarse:py-2 coarse:text-xs"
               >
                 Hold to see before
               </button>
             )}
           </div>
-          <p className="mt-1.5 truncate text-[11px] text-faint">
+          <p className="mt-1.5 truncate text-[11px] text-fg-4">
             Target: {target.name}
             {isApplied ? ` · look applied${applied?.name.includes('matched') ? ' (matched)' : ''}` : ready ? '' : ' · measuring photo…'}
           </p>
           {effectiveMode === 'matched' && matching && (
             <div className="mt-2" data-testid="match-progress">
-              <p className="text-[11px] text-mute">
+              <p className="text-[11px] text-fg-3">
                 {matching.pass === 0 ? 'Matching this photo to the reference…' : `Matching this photo to the reference · refinement pass ${matching.pass} of up to ${matching.max}`}
               </p>
               <Indeterminate className="mt-1.5" />
             </div>
           )}
           {mode === 'matched' && matchError && (
-            <p className="mt-2 flex gap-2 text-xs text-ivory-dim">
-              <AlertTriangle size={13} className="mt-0.5 shrink-0 text-safelight" /> Matching failed ({matchError}); showing the generic look instead.
+            <p className="mt-2 flex gap-2 text-xs text-fg-2">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0 text-danger" /> Matching failed ({matchError}); showing the generic look instead.
             </p>
           )}
           {!isApplied ? (
@@ -786,7 +789,7 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
               {ready ? 'Re-apply look to photo' : 'Measuring photo…'}
             </Button>
           ) : (
-            <div className="mt-3 rounded-sm border border-line bg-ink-900 px-3 py-2">
+            <div className="mt-3 rounded-sm border border-line bg-ground px-3 py-2">
               <Slider
                 label="Intensity"
                 value={applied!.amount}
@@ -800,7 +803,7 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
           )}
 
           <div className="mt-3">
-            <label htmlFor="ref-preset-name" className="mb-1 block text-xs text-mute">
+            <label htmlFor="ref-preset-name" className="mb-1 block text-xs text-fg-3">
               Save as preset
             </label>
             <div className="flex gap-2">
@@ -809,14 +812,14 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
                 value={name}
                 maxLength={80}
                 onChange={(e) => setName(e.target.value)}
-                className="h-9 min-w-0 flex-1 rounded-sm border border-line bg-ink-950 px-3 text-sm text-ivory outline-none focus:border-amber/60"
+                className="h-9 min-w-0 flex-1 rounded-sm border border-line bg-well px-3 text-sm text-fg outline-none focus:border-accent-fg/60"
               />
               <Button variant="secondary" icon={<Save size={14} />} disabled={!name.trim()} onClick={() => void save()} data-testid="save-reference-preset">
                 Save
               </Button>
             </div>
-            {saved && <p className="mt-1.5 text-[11px] text-verdigris">Saved as “{saved}”.</p>}
-            <p className="mt-1.5 text-[10.5px] leading-relaxed text-faint">
+            {saved && <p className="mt-1.5 text-[11px] text-success">Saved as “{saved}”.</p>}
+            <p className="mt-1.5 text-[10.5px] leading-relaxed text-fg-4">
               Saves the reusable look at the current intensity, plus the reference's colour statistics so it can be matched
               to any other photo later (“Match to this photo” in the Presets panel). This photo's matched settings are not
               saved; to keep hand-refined settings, use “Save look” in the Presets panel.
@@ -829,14 +832,14 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
           {(warnings.length > 0 || notes.length > 0) && (
             <ul className="mt-3 space-y-1">
               {warnings.map((m) => (
-                <li key={m} className="flex gap-2 text-xs text-ivory-dim">
-                  <AlertTriangle size={13} className="mt-0.5 shrink-0 text-amber" />
+                <li key={m} className="flex gap-2 text-xs text-fg-2">
+                  <AlertTriangle size={13} className="mt-0.5 shrink-0 text-accent-fg" />
                   {m}
                 </li>
               ))}
               {notes.map((m) => (
-                <li key={m} className="flex gap-2 text-xs text-mute">
-                  <Info size={13} className="mt-0.5 shrink-0 text-faint" />
+                <li key={m} className="flex gap-2 text-xs text-fg-3">
+                  <Info size={13} className="mt-0.5 shrink-0 text-fg-4" />
                   {m}
                 </li>
               ))}
@@ -845,19 +848,19 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
 
           {effectiveMode === 'matched' && match && (
             <>
-              <button type="button" onClick={() => setShowHow(!showHow)} aria-expanded={showHow} className="mt-3 text-xs text-amber hover:underline">
+              <button type="button" onClick={() => setShowHow(!showHow)} aria-expanded={showHow} className="mt-3 text-xs text-accent-fg hover:underline">
                 {showHow ? 'Hide' : 'Show'} how it was matched to this photo
               </button>
               <AnimatePresence initial={false}>
                 {showHow && (
                   <motion.ul initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mt-2 space-y-2 overflow-hidden">
                     {match.explanations.map((e, i) => (
-                      <li key={i} className="rounded-xs bg-ink-900 px-3 py-2">
-                        <p className="flex items-center gap-2 text-[11px] font-medium text-ivory-dim">
+                      <li key={i} className="rounded-xs bg-ground px-3 py-2">
+                        <p className="flex items-center gap-2 text-[11px] font-medium text-fg-2">
                           {e.area}
-                          {e.weak && <span className="text-[10px] text-amber">low confidence</span>}
+                          {e.weak && <span className="text-[10px] text-accent-fg">low confidence</span>}
                         </p>
-                        <p className="mt-0.5 text-xs leading-relaxed text-mute">{e.text}</p>
+                        <p className="mt-0.5 text-xs leading-relaxed text-fg-3">{e.text}</p>
                       </li>
                     ))}
                   </motion.ul>
@@ -884,13 +887,13 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
 
           {isApplied && suggestions.length > 0 && (
             <div className="mt-4">
-              <p className="mb-1.5 text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase">Compared with the reference</p>
+              <p className="mb-1.5 text-[11px] font-semibold tracking-[0.12em] text-fg-2 uppercase">Compared with the reference</p>
               <ul className="space-y-1.5">
                 {suggestions.map((s) => (
-                  <li key={s.id} className="flex items-start gap-3 rounded-xs bg-ink-900 px-3 py-2">
+                  <li key={s.id} className="flex items-start gap-3 rounded-xs bg-ground px-3 py-2">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs text-ivory">{s.title}</p>
-                      <p className="text-[11px] leading-relaxed text-mute">{s.detail}</p>
+                      <p className="text-xs text-fg">{s.title}</p>
+                      <p className="text-[11px] leading-relaxed text-fg-3">{s.detail}</p>
                     </div>
                     <Button
                       size="sm"
@@ -911,7 +914,7 @@ function ApplyPane({ result, refStats, working, onClose, onImportTarget }: Apply
                   </li>
                 ))}
               </ul>
-              <p className="mt-1.5 text-[10.5px] text-faint">Suggestions close part of the gap and leave the photo's own lighting alone.</p>
+              <p className="mt-1.5 text-[10.5px] text-fg-4">Suggestions close part of the gap and leave the photo's own lighting alone.</p>
             </div>
           )}
         </>
@@ -966,9 +969,9 @@ function ConsentDialog() {
         </>
       }
     >
-      <div className="space-y-3 p-4 text-sm leading-relaxed text-mute">
+      <div className="space-y-3 p-4 text-sm leading-relaxed text-fg-3">
         <p>
-          To describe the style, a <span className="text-ivory">downscaled copy (max 1024 px) of the reference image</span> is sent
+          To describe the style, a <span className="text-fg">downscaled copy (max 1024 px) of the reference image</span> is sent
           through this app's server to Anthropic's API ({health?.model ?? 'Claude'}). Your photos being edited are
           never sent.
         </p>
@@ -976,7 +979,7 @@ function ConsentDialog() {
           This app does not store the image on the server. Anthropic processes it under its API data policies. Only use
           references you are allowed to share.
         </p>
-        <p className="text-xs text-faint">You can change this any time in Settings → Privacy. Choosing “Measurements only” builds the preset from pixel statistics alone.</p>
+        <p className="text-xs text-fg-4">You can change this any time in Settings → Privacy. Choosing “Measurements only” builds the preset from pixel statistics alone.</p>
       </div>
     </Dialog>
   );

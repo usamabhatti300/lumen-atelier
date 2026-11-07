@@ -45,7 +45,7 @@ export function LensBlurSection() {
   return (
     <Section title="Lens blur" modified={modified} onReset={() => setLensBlur(defaultLensBlur(), 'Reset lens blur')}>
       {!on && depth.status === 'idle' && !depth.message && (
-        <p className="mb-2 text-xs leading-relaxed text-mute">
+        <p className="mb-2 text-xs leading-relaxed text-fg-3">
           Blurs the scene by distance, like a fast lens. Depth is estimated on this device; nothing is uploaded.
         </p>
       )}
@@ -91,7 +91,7 @@ export function LensBlurSection() {
               : 'Keeps a detected person on one focal plane with clean edges.'
         }
       />
-      {mode === 'cpu' && on && <p className="mt-1 text-[11px] leading-relaxed text-faint">Rendering on the CPU here, so the preview updates slowly.</p>}
+      {mode === 'cpu' && on && <p className="mt-1 text-[11px] leading-relaxed text-fg-4">Rendering on the CPU here, so the preview updates slowly.</p>}
     </Section>
   );
 }
@@ -102,7 +102,7 @@ function DepthStatusLine() {
   if (d.status === 'running') {
     return (
       <div className="my-2" role="status" aria-live="polite" data-testid="depth-status">
-        <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-mute">
+        <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-fg-3">
           <span className="flex items-center gap-1.5">
             <Loader2 size={12} className="animate-spin" />
             {d.progress ? `Downloading depth model… ${mb(d.progress.loaded)} of ${mb(d.progress.total)}` : 'Estimating depth…'}
@@ -117,7 +117,7 @@ function DepthStatusLine() {
   }
   if (d.status === 'missing-model' || d.status === 'error') {
     return (
-      <div role="alert" className="my-2 rounded-xs border border-safelight/40 p-2.5 text-xs leading-relaxed text-ivory-dim" data-testid="depth-status">
+      <div role="alert" className="my-2 rounded-xs border border-danger/40 p-2.5 text-xs leading-relaxed text-fg-2" data-testid="depth-status">
         {d.message}
         <Button
           variant="ghost"
@@ -135,7 +135,7 @@ function DepthStatusLine() {
   }
   if (d.status === 'idle' && on) {
     return (
-      <div className="my-2 flex items-center justify-between gap-2 text-xs text-mute" data-testid="depth-status">
+      <div className="my-2 flex items-center justify-between gap-2 text-xs text-fg-3" data-testid="depth-status">
         <span>{d.message || 'Depth has not been estimated for this photo.'}</span>
         <Button size="sm" variant="secondary" icon={<ScanEye size={13} />} onClick={() => void prepareLensBlur({ autoFocus: false })}>
           Estimate depth
@@ -145,7 +145,7 @@ function DepthStatusLine() {
   }
   if (d.status === 'ready' && on && d.message) {
     return (
-      <p className="my-1.5 text-[11px] leading-relaxed text-faint" role="status" data-testid="depth-status">
+      <p className="my-1.5 text-[11px] leading-relaxed text-fg-4" role="status" data-testid="depth-status">
         {d.message}
       </p>
     );

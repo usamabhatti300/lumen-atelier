@@ -1,9 +1,12 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/inter';
-@import '@fontsource/instrument-serif/400.css';
-@import '@fontsource/instrument-serif/400-italic.css';
-@import '@fontsource/ibm-plex-mono/400.css';
-@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/barlow-condensed/500.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/barlow-condensed/800.css';
 
 /* Touch screens (phones, tablets): `coarse:` enlarges hit targets. */
 @custom-variant coarse (@media (pointer: coarse));
@@ -11,44 +14,56 @@
 @custom-variant fine (@media (hover: hover) and (pointer: fine));
 
 /*
- * Lumen Atelier design tokens.
- * Darkroom palette: warm near-black inks, graphite panels, warm-grey hairlines,
- * ivory type, a single muted amber accent. Safelight red is reserved for errors.
+ * Lumen Atelier design tokens: "film stock box".
+ * Chrome is printed carton paper with ink type; the shell bar is chrome yellow; a red / yellow /
+ * blue band strip runs under bars. The photo always sits in a black frame (`.theme-frame`, which
+ * re-points the same role tokens to their dark values, so every component works in both).
+ * Roles: well (inset fields) < ground (page) < raised (menus, sheets); fg..fg-4 text; accent
+ * (carton yellow fill) with accent-fg (accent as text / rings) and on-accent (text on yellow).
  */
 @theme {
-  --color-ink-950: #0d0c0b;
-  --color-ink-900: #121110;
-  --color-ink-850: #171614;
-  --color-ink-800: #1b1a18;
-  --color-ink-750: #211f1d;
-  --color-ink-700: #272522;
-  --color-ink-600: #322f2b;
-  --color-line: #38342e;
-  --color-line-soft: #2a2724;
-  --color-line-strong: #4a453d;
-  --color-ivory: #ece6da;
-  --color-ivory-dim: #c9c2b5;
-  --color-mute: #9c958a;
-  --color-faint: #8a8378; /* 5:1 on ink-900, 4.6:1 on ink-800 (WCAG AA for small text) */
-  --color-amber: #c9a26b;
-  --color-amber-bright: #dcbb88;
-  --color-amber-deep: #8f7046;
-  --color-champagne: #e3cfa6;
-  --color-safelight: #d0584a;
-  --color-verdigris: #7fa391;
+  --color-well: #fffdf9;
+  --color-ground: #f4f1ea;
+  --color-ground-2: #ece8df;
+  --color-raised: #fbf9f4;
+  --color-raised-2: #f1ede5;
+  --color-control: #e6e1d6;
+  --color-control-2: #d9d3c6;
+  --color-line-soft: #e3ded3;
+  --color-line: #cdc6b8;
+  --color-line-strong: #9f978a;
+  --color-fg: #121212;
+  --color-fg-2: #36332e;
+  --color-fg-3: #59544c; /* 6.6:1 on ground */
+  --color-fg-4: #6e685f; /* 4.9:1 on ground */
+  --color-accent: #e4a11b;
+  --color-accent-hi: #eeb53f;
+  --color-accent-lo: #cf8d0c;
+  --color-accent-fg: #845500; /* 5.6:1 on ground */
+  --color-on-accent: #121212;
+  --color-selected: #e4a11b;
+  --color-danger: #b8291f;
+  --color-success: #2b7148;
+  --color-band-red: #c8322b;
+  --color-band-yellow: #e4a11b;
+  --color-band-blue: #2f6db5;
+  --color-frame: #0b0b0b;
 
-  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Barlow', ui-sans-serif, sans-serif;
+  --font-hero: 'Barlow Condensed', 'Barlow', ui-sans-serif, sans-serif;
+  /* Edge printing and readouts: condensed caps with tabular figures (not a code font). */
+  --font-mono: 'Barlow Condensed', 'Barlow', ui-sans-serif, sans-serif;
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
 
-  --radius-xs: 3px;
-  --radius-sm: 5px;
-  --radius-md: 8px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
 
-  --shadow-float: 0 18px 50px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 245 230 / 0.05);
+  --shadow-float: 0 18px 40px -14px rgb(18 18 18 / 0.35), 0 2px 6px -2px rgb(18 18 18 / 0.18);
+  --shadow-lift: 0 10px 22px -10px rgb(18 18 18 / 0.45);
 
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
@@ -57,12 +72,66 @@
   --animate-shimmer: shimmer 1.6s linear infinite;
 }
 
+@layer base {
+/* The black frame around the photo (viewport, filmstrip, on-photo labels, full-screen views). */
+.theme-frame {
+  --color-well: #000000;
+  --color-ground: #0b0b0b;
+  --color-ground-2: #121212;
+  --color-raised: #1a1a1a;
+  --color-raised-2: #202020;
+  --color-control: #262626;
+  --color-control-2: #303030;
+  --color-line-soft: #1f1f1f;
+  --color-line: #2e2e2e;
+  --color-line-strong: #4a4a4a;
+  --color-fg: #f4f1ea;
+  --color-fg-2: #d4cfc5;
+  --color-fg-3: #aaa59c;
+  --color-fg-4: #8f8a81;
+  --color-accent-fg: #f0b941;
+  --color-danger: #ef6a5f;
+  --color-success: #6cc08f;
+  color: var(--color-fg);
+  background-color: var(--color-ground);
+}
+
+
+/* The chrome-yellow carton bar: ink type, and the 'accent' role becomes ink so primary
+   buttons print as black pills on yellow. */
+.theme-carton {
+  --color-ground: #e4a11b;
+  --color-ground-2: #d99812;
+  --color-well: #f0b94a;
+  --color-raised: #f4f1ea;
+  --color-control: rgb(18 18 18 / 0.1);
+  --color-control-2: rgb(18 18 18 / 0.18);
+  --color-line-soft: rgb(18 18 18 / 0.14);
+  --color-line: rgb(18 18 18 / 0.28);
+  --color-line-strong: rgb(18 18 18 / 0.5);
+  --color-fg: #121212;
+  --color-fg-2: #1d1a14;
+  --color-fg-3: #2e2614;
+  --color-fg-4: #3d3218;
+  --color-accent: #121212;
+  --color-accent-hi: #2a2a2a;
+  --color-accent-lo: #000000;
+  --color-accent-fg: #121212;
+  --color-on-accent: #f4f1ea;
+  color: var(--color-fg);
+  background-color: var(--color-ground);
+}
+}
+
 /* Motion durations (documented in docs/DESIGN_SYSTEM.md). */
 :root {
   --dur-instant: 80ms;
   --dur-fast: 140ms;
   --dur-base: 220ms;
   --dur-slow: 380ms;
+  color-scheme: light;
+}
+.theme-frame {
   color-scheme: dark;
 }
 
@@ -116,39 +185,45 @@ html {
 
 body {
   margin: 0;
-  background: var(--color-ink-900);
-  color: var(--color-ivory);
+  background: var(--color-ground);
+  color: var(--color-fg);
   font-family: var(--font-sans);
-  font-feature-settings: 'cv11', 'ss01';
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
+  caret-color: var(--color-accent-fg);
 }
 
 ::selection {
-  background: rgb(201 162 107 / 0.35);
+  background: rgb(228 161 27 / 0.45);
+  color: inherit;
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
 
 :focus-visible {
-  outline: 1.5px solid var(--color-amber);
+  outline: 2px solid var(--color-accent-fg);
   outline-offset: 2px;
 }
 
 /* Quiet scrollbars for dense panels. */
 .scroll-quiet {
   scrollbar-width: thin;
-  scrollbar-color: #3a3631 transparent;
+  scrollbar-color: var(--color-control-2) transparent;
 }
 .scroll-quiet::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 .scroll-quiet::-webkit-scrollbar-thumb {
-  background: #3a3631;
+  background: var(--color-control-2);
   border-radius: 8px;
   border: 2px solid transparent;
   background-clip: content-box;
@@ -160,13 +235,54 @@ body {
   max-width: none;
 }
 
-/* Film rebate edge printing used on the filmstrip and gallery. */
+@layer components {
+/* Edge printing: the line of film-rebate text along the frame and on cartons. */
 .edge-code {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: #a8865a; /* amber-deep failed AA for this small text; this is 5.6:1 on ink-900 */
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-fg);
   text-transform: uppercase;
+}
+
+/* Carton type: condensed caps for titles, labels on bars and section heads. */
+.carton-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.92;
+}
+.carton-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* The red / yellow / blue band strip printed under every bar and on every carton. */
+.bands {
+  background: linear-gradient(
+    90deg,
+    var(--color-band-red) 0 33.333%,
+    var(--color-band-yellow) 33.333% 66.666%,
+    var(--color-band-blue) 66.666%
+  );
+}
+
+}
+
+/* Under a bar: the same three inks as stacked rules (the yellow one continues the bar). */
+.bands-rule {
+  height: 7px;
+  background: linear-gradient(
+    180deg,
+    var(--color-band-yellow) 0 1px,
+    var(--color-band-red) 1px 4px,
+    var(--color-band-blue) 4px 7px
+  );
 }
 
 /* Range input reset for the custom slider (the visual track is drawn separately). */
@@ -189,27 +305,27 @@ body {
 }
 .slider-input::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 11px;
-  height: 11px;
-  margin-top: 5.5px;
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
   border-radius: 999px;
-  background: var(--color-ivory);
-  border: 2px solid var(--color-ink-800);
-  box-shadow: 0 0 0 1px var(--color-line-strong);
+  background: var(--color-fg);
+  border: 3px solid var(--color-ground);
+  box-shadow: 0 0 0 1px var(--color-fg);
   transition: transform var(--dur-fast) var(--ease-out-quint), background var(--dur-fast);
 }
 .slider-input::-moz-range-thumb {
-  width: 11px;
-  height: 11px;
+  width: 14px;
+  height: 14px;
   border-radius: 999px;
-  background: var(--color-ivory);
-  border: 2px solid var(--color-ink-800);
-  box-shadow: 0 0 0 1px var(--color-line-strong);
+  background: var(--color-fg);
+  border: 3px solid var(--color-ground);
+  box-shadow: 0 0 0 1px var(--color-fg);
 }
 .slider-input:hover::-webkit-slider-thumb,
 .slider-input:active::-webkit-slider-thumb {
-  transform: scale(1.25);
-  background: var(--color-champagne);
+  transform: scale(1.2);
+  background: var(--color-accent);
 }
 .slider-input:focus-visible {
   outline: none;
@@ -225,29 +341,56 @@ body {
     height: 32px;
   }
   .slider-input::-webkit-slider-thumb {
-    width: 20px;
-    height: 20px;
-    margin-top: 6px;
+    width: 22px;
+    height: 22px;
+    margin-top: 5px;
   }
   .slider-input::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
   }
 }
 .slider-input:focus-visible::-webkit-slider-thumb {
-  box-shadow: 0 0 0 2px var(--color-amber);
+  box-shadow: 0 0 0 1px var(--color-fg), 0 0 0 4px var(--color-accent);
 }
 .slider-input:focus-visible::-moz-range-thumb {
-  box-shadow: 0 0 0 2px var(--color-amber);
+  box-shadow: 0 0 0 1px var(--color-fg), 0 0 0 4px var(--color-accent);
 }
 
 .checker {
-  background-color: #2a2826;
+  background-color: #2a2a2a;
   background-image:
-    linear-gradient(45deg, #34312d 25%, transparent 25%),
-    linear-gradient(-45deg, #34312d 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #34312d 75%),
-    linear-gradient(-45deg, transparent 75%, #34312d 75%);
+    linear-gradient(45deg, #353535 25%, transparent 25%),
+    linear-gradient(-45deg, #353535 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #353535 75%),
+    linear-gradient(-45deg, transparent 75%, #353535 75%);
   background-size: 12px 12px;
   background-position: 0 0, 0 6px, 6px -6px, -6px 0;
+}
+
+/* Solid printed surfaces (formerly frosted glass): they follow the theme they sit in. */
+@utility glass {
+  background-color: var(--color-raised);
+  border: 1px solid var(--color-line);
+}
+@utility glass-strong {
+  background-color: var(--color-raised);
+  border: 1px solid var(--color-line);
+}
+@utility glow-amber {
+  box-shadow: var(--shadow-lift);
+}
+/* A carton face: the yellow field used where there is no photo yet. */
+@utility light-leak {
+  background-color: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+/* The signature: the edge print advances when a new look is loaded. */
+@keyframes edge-advance {
+  from { transform: translateX(14px); opacity: 0; filter: blur(2px); }
+  to { transform: none; opacity: 1; filter: none; }
+}
+.edge-advance {
+  animation: edge-advance 420ms var(--ease-out-quint) both;
 }

@@ -25,14 +25,14 @@ export function Section({
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="flex flex-1 items-center gap-1.5 text-left text-[11px] font-semibold tracking-[0.12em] text-ivory-dim uppercase hover:text-ivory"
+          className="flex flex-1 items-center gap-1.5 text-left text-[11px] font-semibold tracking-[0.12em] text-fg-2 uppercase hover:text-fg"
         >
           <ChevronRight
             size={12}
-            className={`text-faint transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
+            className={`text-fg-4 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
           />
           {title}
-          {modified && <span className="ml-1 h-1 w-1 rounded-full bg-amber" aria-label="modified" />}
+          {modified && <span className="ml-1 h-1 w-1 rounded-full bg-accent" aria-label="modified" />}
         </button>
         {aside}
         {onReset && modified && (
@@ -41,7 +41,7 @@ export function Section({
             onClick={onReset}
             aria-label={`Reset ${title}`}
             title={`Reset ${title}`}
-            className="rounded-xs p-1 text-faint hover:bg-ink-700 hover:text-ivory"
+            className="rounded-xs p-1 text-fg-4 hover:bg-control hover:text-fg"
           >
             <RotateCcw size={12} />
           </button>

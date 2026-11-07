@@ -22,7 +22,7 @@ export function DetailPanel() {
         <AdjustmentSlider path="detail.noiseReduction" label="Noise reduction" />
         <AdjustmentSlider path="detail.colorNoiseReduction" label="Colour noise" />
         {downscaled && (
-          <p className="mt-2 text-[11px] leading-relaxed text-faint">
+          <p className="mt-2 text-[11px] leading-relaxed text-fg-4">
             The preview is downscaled ({preview.width}px wide), so fine detail is approximate. Export renders detail at
             full resolution.
           </p>

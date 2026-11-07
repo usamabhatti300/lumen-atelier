@@ -1,4 +1,5 @@
 /** RGB histogram with clipping readouts and a zone-system strip beneath. */
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useEngine } from '@/engine/engineStore';
 import { zoneGrey } from '@/components/ZoneScale';
@@ -27,14 +28,14 @@ export const Histogram = memo(function Histogram({ slim = false }: { slim?: bool
   }, [hist]);
 
   return (
-    <div className={`border-b border-line-soft px-3 ${slim ? 'pt-1 pb-2' : 'pt-2.5 pb-2'}`}>
+    <div className={`theme-frame border-b border-line-soft px-3 ${slim ? 'pt-1 pb-2' : 'pt-2.5 pb-2'}`}>
       <button
         type="button"
         onClick={() => setMode(mode === 'rgb' ? 'luma' : 'rgb')}
         className="block w-full"
         aria-label={`Histogram (${mode === 'rgb' ? 'RGB channels' : 'luminance'}). Click to switch.`}
       >
-        <svg viewBox="0 0 256 72" preserveAspectRatio="none" className={`w-full rounded-xs bg-ink-950 ${slim ? 'h-8' : 'h-[72px]'}`}>
+        <svg viewBox="0 0 256 72" preserveAspectRatio="none" className={`w-full rounded-xs bg-well ${slim ? 'h-8' : 'h-[72px]'}`}>
           {paths &&
             (mode === 'rgb' ? (
               <g style={{ mixBlendMode: 'screen' }}>
@@ -62,14 +63,14 @@ function HistogramFooter({ hist, out }: { hist: EngineState['histogram']; out: E
           <div key={i} className="flex-1" style={{ background: zoneGrey(i) }} />
         ))}
       </div>
-      <div className="tabular mt-1.5 flex justify-between font-mono text-[10px] text-faint">
+      <div className="tabular mt-1.5 flex justify-between font-mono text-[10px] text-fg-4">
         <span title="Share of pixels clipped to black">
-          ◂ {hist ? (hist.clippedShadows * 100).toFixed(1) : '–'}%
+          <ChevronLeft size={10} className="-mr-0.5 inline align-[-1px]" aria-hidden /> {hist ? (hist.clippedShadows * 100).toFixed(1) : '–'}%
         </span>
         <span>
           {out ? `preview ${out.width}×${out.height}` : ''}
         </span>
-        <span title="Share of pixels clipped to white">{hist ? (hist.clippedHighlights * 100).toFixed(1) : '–'}% ▸</span>
+        <span title="Share of pixels clipped to white">{hist ? (hist.clippedHighlights * 100).toFixed(1) : '–'}% <ChevronRight size={10} className="-ml-0.5 inline align-[-1px]" aria-hidden /></span>
       </div>
     </>
   );

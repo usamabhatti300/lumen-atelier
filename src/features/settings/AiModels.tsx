@@ -27,7 +27,7 @@ export function AiModels() {
   const readyMissing = states && MODELS.some((m) => m.status === 'ready' && (states[m.id] === 'missing' || states[m.id] === 'partial'));
 
   return (
-    <div className="text-xs leading-relaxed text-mute">
+    <div className="text-xs leading-relaxed text-fg-3">
       <p className="mb-3">
         These models run on this device; photos are never uploaded. Model files are served by this app, not fetched from third parties while you
         edit, and each file is checked against its SHA-256 checksum before use.
@@ -37,21 +37,21 @@ export function AiModels() {
           const state = states?.[m.id];
           return (
             <li key={m.id} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 px-3 py-2.5" data-testid={`ai-model-${m.id}`}>
-              <span className="text-ivory">{m.name}</span>
-              <span className="tabular text-right text-ivory-dim">{mb(modelBytes(m))}</span>
+              <span className="text-fg">{m.name}</span>
+              <span className="tabular text-right text-fg-2">{mb(modelBytes(m))}</span>
               <span>
                 {m.feature}
-                {m.status === 'planned' && <span className="text-mute"> · not used by any tool yet</span>}
+                {m.status === 'planned' && <span className="text-fg-3"> · not used by any tool yet</span>}
               </span>
               <span
-                className={`text-right ${state === 'installed' ? 'text-verdigris' : m.status === 'ready' && state ? 'text-amber' : 'text-mute'}`}
+                className={`text-right ${state === 'installed' ? 'text-success' : m.status === 'ready' && state ? 'text-accent-fg' : 'text-fg-3'}`}
                 data-testid="ai-model-state"
               >
                 {state ? STATE_LABEL[state] : 'Checking…'}
               </span>
               <span className="col-span-2">
                 Licence:{' '}
-                <a href={m.licenceUrl} target="_blank" rel="noreferrer noopener" className="text-ivory-dim underline decoration-line-soft underline-offset-2 hover:text-ivory">
+                <a href={m.licenceUrl} target="_blank" rel="noreferrer noopener" className="text-fg-2 underline decoration-line-soft underline-offset-2 hover:text-fg">
                   {m.licence}
                 </a>{' '}
                 · {m.source}
@@ -61,8 +61,8 @@ export function AiModels() {
         })}
       </ul>
       {readyMissing && (
-        <p className="mt-2 text-amber">
-          Some models the editor uses are missing. Run <code className="text-ivory">npm run setup:models</code> in the project folder, then reload.
+        <p className="mt-2 text-accent-fg">
+          Some models the editor uses are missing. Run <code className="text-fg">npm run setup:models</code> in the project folder, then reload.
         </p>
       )}
 
@@ -90,8 +90,8 @@ export function AiModels() {
           </Button>
         </div>
         {check && check !== 'running' && (
-          <div className="mt-2 text-ivory" role="status" data-testid="ai-runtime-status">
-            {typeof check === 'string' ? <p className="text-safelight">{check}</p> : <RuntimeReport r={check} />}
+          <div className="mt-2 text-fg" role="status" data-testid="ai-runtime-status">
+            {typeof check === 'string' ? <p className="text-danger">{check}</p> : <RuntimeReport r={check} />}
           </div>
         )}
       </div>
@@ -104,19 +104,19 @@ function RuntimeReport({ r }: { r: SelfTestResult }) {
   const cpu = r.backends.find((b) => b.backend === 'wasm');
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
-      <dt className="text-mute">GPU (WebGPU)</dt>
+      <dt className="text-fg-3">GPU (WebGPU)</dt>
       <dd>{gpu?.ok ? 'Working' : `Unavailable${gpu?.error?.includes('not available') ? ' in this browser' : ''}; the CPU is used instead`}</dd>
-      <dt className="text-mute">CPU (WebAssembly)</dt>
-      <dd className={cpu?.ok ? '' : 'text-safelight'}>
+      <dt className="text-fg-3">CPU (WebAssembly)</dt>
+      <dd className={cpu?.ok ? '' : 'text-danger'}>
         {cpu?.ok ? `Working, ${r.threads} thread${r.threads === 1 ? '' : 's'}${r.crossOriginIsolated ? '' : ' (multi-threading needs cross-origin isolation)'}` : `Failed: ${cpu?.error}`}
       </dd>
-      <dt className="text-mute">Versions</dt>
+      <dt className="text-fg-3">Versions</dt>
       <dd className="tabular">
         ONNX Runtime {r.ortVersion}
         {'version' in r.transformers ? ` · Transformers.js ${r.transformers.version}` : ''}
       </dd>
-      <dt className="text-mute">Remote models</dt>
-      <dd className={'error' in r.transformers ? 'text-safelight' : ''}>
+      <dt className="text-fg-3">Remote models</dt>
+      <dd className={'error' in r.transformers ? 'text-danger' : ''}>
         {'error' in r.transformers ? `Transformers.js failed to start: ${r.transformers.error}` : r.transformers.remoteModelsDisabled ? 'Blocked (local files only)' : 'Allowed'}
       </dd>
     </dl>

@@ -31,14 +31,14 @@ export function PasteDialog({ open, onClose }: { open: boolean; onClose: () => v
       }
     >
       <div className="p-4">
-        <p className="mb-3 text-xs text-mute">From “{clip?.sourceName}”. Crop, masks and retouching are never pasted.</p>
+        <p className="mb-3 text-xs text-fg-3">From “{clip?.sourceName}”. Crop, masks and retouching are never pasted.</p>
         <ul className="grid grid-cols-2 gap-1.5">
           {PASTE_GROUPS.map((g) => (
             <li key={g.id}>
-              <label className="flex cursor-pointer items-center gap-2 text-[13px] text-ivory-dim">
+              <label className="flex cursor-pointer items-center gap-2 text-[13px] text-fg-2">
                 <input
                   type="checkbox"
-                  className="accent-[var(--color-amber)]"
+                  className="accent-[var(--color-accent)]"
                   checked={groups.includes(g.id)}
                   onChange={(e) => setGroups(e.target.checked ? [...groups, g.id] : groups.filter((x) => x !== g.id))}
                 />

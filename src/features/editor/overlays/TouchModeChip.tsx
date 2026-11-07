@@ -35,7 +35,7 @@ export function TouchModeChip() {
     <div
       role="radiogroup"
       aria-label="Touch mode"
-      className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 rounded-sm border border-line bg-ink-950/90 p-0.5 shadow-float backdrop-blur-sm"
+      className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 rounded-sm border border-line bg-well/90 p-0.5 shadow-float backdrop-blur-sm"
       data-testid="touch-mode"
     >
       {options.map((o) => (
@@ -45,13 +45,13 @@ export function TouchModeChip() {
           role="radio"
           aria-checked={mode === o.value}
           onClick={() => useTouchMode.setState({ mode: o.value })}
-          className={`h-9 rounded-xs px-3 text-xs font-medium whitespace-nowrap ${mode === o.value ? 'bg-champagne text-ink-950' : 'text-ivory-dim'}`}
+          className={`h-9 rounded-xs px-3 text-xs font-medium whitespace-nowrap ${mode === o.value ? 'bg-selected text-on-accent' : 'text-fg-2'}`}
         >
           {o.label}
         </button>
       ))}
       <span className="mx-0.5 my-1.5 w-px bg-line" aria-hidden />
-      <button type="button" onClick={() => setUi({ tool: 'none' })} className="h-9 rounded-xs px-3 text-xs font-medium text-amber">
+      <button type="button" onClick={() => setUi({ tool: 'none' })} className="h-9 rounded-xs px-3 text-xs font-medium text-accent-fg">
         Done
       </button>
     </div>
