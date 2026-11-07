@@ -8,6 +8,7 @@
  * starts). A horizontal drag on the row moves the value relative to where the
  * finger landed; a vertical swipe scrolls the panel; a tap changes nothing.
  */
+import { RotateCcw } from 'lucide-react';
 import { memo, useId, useRef, useState, type CSSProperties } from 'react';
 import type { Range } from '@/lib/schema/adjustments';
 
@@ -24,6 +25,11 @@ export interface SliderProps {
   disabled?: boolean;
   /** Visually de-emphasised when at default. */
   hint?: string;
+  /**
+   * `lg`: the phone "one slider at a time" view. Larger label and value, a reset button, and a
+   * taller track with a tick ruler (the Halide / Lightroom mobile pattern).
+   */
+  size?: 'md' | 'lg';
 }
 
 const decimals = (step: number) => (step >= 1 ? 0 : Math.min(3, Math.ceil(-Math.log10(step))));
@@ -39,7 +45,9 @@ export const Slider = memo(function Slider({
   format,
   disabled,
   hint,
+  size = 'md',
 }: SliderProps) {
+  const lg = size === 'lg';
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -112,12 +120,14 @@ export const Slider = memo(function Slider({
   };
 
   return (
-    <div className={`group/slider grid grid-cols-[1fr_auto] items-center gap-x-2 py-[3px] ${disabled ? 'opacity-40' : ''}`}>
+    <div
+      className={`group/slider grid items-center gap-x-2 ${lg ? 'grid-cols-[1fr_auto_auto] py-1' : 'grid-cols-[1fr_auto] py-[3px]'} ${disabled ? 'opacity-40' : ''}`}
+    >
       <label
         htmlFor={id}
         onDoubleClick={reset}
         title={hint ?? 'Double-click to reset'}
-        className={`cursor-default select-none truncate text-xs ${changed ? 'text-ivory' : 'text-mute'}`}
+        className={`cursor-default select-none truncate ${lg ? `text-sm font-medium ${changed ? 'text-ivory' : 'text-ivory-dim'}` : `text-xs ${changed ? 'text-ivory' : 'text-mute'}`}`}
       >
         {label}
       </label>
@@ -125,7 +135,7 @@ export const Slider = memo(function Slider({
         <input
           autoFocus
           aria-label={`${label} value`}
-          className="tabular h-5 w-14 rounded-xs border border-amber/60 bg-ink-950 px-1 text-right text-xs text-ivory outline-none"
+          className={`tabular rounded-xs border border-amber/60 bg-ink-950 px-1 text-right text-ivory outline-none ${lg ? 'h-8 w-20 text-base' : 'h-5 w-14 text-xs'}`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commitDraft}
@@ -143,15 +153,26 @@ export const Slider = memo(function Slider({
             setDraft(value.toFixed(d));
             setEditing(true);
           }}
-          className={`tabular h-5 min-w-10 rounded-xs px-1 text-right text-xs transition-colors hover:bg-ink-700 ${
+          className={`tabular rounded-xs px-1 text-right transition-colors hover:bg-ink-700 ${lg ? 'h-8 min-w-14 text-base font-medium' : 'h-5 min-w-10 text-xs'} ${
             changed ? 'text-amber' : 'text-faint'
           }`}
         >
           {display}
         </button>
       )}
+      {lg && (
+        <button
+          type="button"
+          aria-label={`Reset ${label}`}
+          disabled={!changed || disabled}
+          onClick={reset}
+          className="flex h-8 w-8 items-center justify-center rounded-sm text-mute transition-opacity hover:text-ivory disabled:opacity-25"
+        >
+          <RotateCcw size={15} />
+        </button>
+      )}
       <div
-        className="relative col-span-2 h-[22px] touch-pan-y coarse:h-8"
+        className={`relative touch-pan-y ${lg ? 'col-span-3 flex h-12 items-center' : 'col-span-2 h-[22px] coarse:h-8'}`}
         onDoubleClick={reset}
         onPointerDown={onTouchDown}
         onPointerMove={onTouchMove}
@@ -159,6 +180,13 @@ export const Slider = memo(function Slider({
         onPointerCancel={onTouchEnd}
         data-testid="slider-track"
       >
+        {lg && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-1/2 h-4 -translate-y-1/2 opacity-70"
+            style={{ background: 'repeating-linear-gradient(90deg, var(--color-line-strong) 0 1px, transparent 1px 9px)' }}
+          />
+        )}
         <div
           className="pointer-events-none absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-line"
           style={track ? { background: track, height: 3, opacity: 0.85 } : undefined}

@@ -1,4 +1,5 @@
 import {
+  ChevronLeft,
   ClipboardCopy,
   ClipboardPaste,
   Columns2,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Link } from 'react-router';
 import { IconButton, Button } from '@/components/ui/Button';
 import { Wordmark } from '@/screens/GalleryScreen';
 import { useEditor, type CompareMode } from '@/state/editorStore';
@@ -58,7 +60,13 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-1 border-b border-line-soft bg-ink-900 px-2 sm:px-3">
-      <Wordmark compact />
+      <span className="hidden lg:contents">
+        <Wordmark compact />
+      </span>
+      {/* Phones and tablets: a plain back arrow says "leave the editor" better than the logo. */}
+      <Link to="/" aria-label="Back to all edits" className="-ml-1 flex h-10 w-10 items-center justify-center rounded-sm text-ivory-dim hover:bg-ink-700 hover:text-ivory lg:hidden">
+        <ChevronLeft size={22} />
+      </Link>
       <input
         aria-label="Project name"
         value={name ?? projectName}

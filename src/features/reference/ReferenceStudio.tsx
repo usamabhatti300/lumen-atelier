@@ -8,6 +8,7 @@ import {
   ArrowRight,
   Check,
   CircleDashed,
+  ClipboardPaste,
   Crop,
   ImagePlus,
   Info,
@@ -63,6 +64,25 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
   const loadError = useReference((s) => s.loadError);
   const fileInput = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [pasteMessage, setPasteMessage] = useState<string | null>(null);
+  const canReadClipboard = typeof navigator !== 'undefined' && typeof navigator.clipboard?.read === 'function';
+
+  // The Paste button: phones have no Ctrl+V, so read the clipboard on request (the browser asks for permission).
+  const pasteFromClipboard = async () => {
+    setPasteMessage(null);
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find((t) => t.startsWith('image/'));
+        if (type) {
+          void loadReference(await item.getType(type), 'pasted-image');
+          return;
+        }
+      }
+      setPasteMessage('There is no image on the clipboard. Copy a photo first, then tap Paste.');
+    } catch {
+      setPasteMessage('The clipboard could not be read. Copy the photo again, or choose it from your files.');
+    }
+  };
 
   // Paste an image from the clipboard (e.g. a screenshot).
   useEffect(() => {
@@ -137,29 +157,46 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
         />
 
         {!original ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-            <button
-              type="button"
-              onClick={() => fileInput.current?.click()}
-              className={`group flex w-full max-w-xl flex-col items-center rounded-md border border-dashed px-8 py-14 text-center transition-colors ${
-                dragOver ? 'border-amber bg-amber/5' : 'border-line hover:border-line-strong'
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-4 sm:p-6">
+            {/* Explains the feature and gives explicit actions; the dashed area is still a drop zone. */}
+            <div
+              className={`flex w-full max-w-xl flex-col items-center rounded-md border border-dashed px-5 py-10 text-center transition-colors sm:px-8 sm:py-14 ${
+                dragOver ? 'border-amber bg-amber/5' : 'border-line'
               }`}
             >
-              <ImagePlus size={28} className="mb-4 text-faint group-hover:text-amber" />
+              <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber/15 text-amber">
+                <Wand2 size={24} />
+              </span>
               <span className="font-display text-3xl text-ivory">Add a reference photo</span>
               <span className="mt-2 max-w-md text-sm leading-relaxed text-mute">
-                <span className="coarse:hidden">Drop, choose or paste (Ctrl+V)</span>
-                <span className="hidden coarse:inline">Choose</span> a photo whose look you love: a saved post, a screenshot, a film still. You
-                can crop out interface elements next.
+                Pick a photo whose look you love. The studio turns its colours and tones into an editable preset for your photo.
               </span>
-              <span className="mt-6 text-[11px] text-faint">
+              <ul className="mt-4 flex flex-wrap justify-center gap-1.5" aria-label="Good references">
+                {['Saved posts', 'Screenshots', 'Film stills', 'Your best shots'].map((t) => (
+                  <li key={t} className="rounded-full border border-line px-2.5 py-1 text-[11px] text-ivory-dim">
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                <Button variant="primary" icon={<ImagePlus size={16} />} onClick={() => fileInput.current?.click()}>
+                  Choose photo
+                </Button>
+                {canReadClipboard && (
+                  <Button variant="secondary" icon={<ClipboardPaste size={16} />} onClick={() => void pasteFromClipboard()}>
+                    Paste
+                  </Button>
+                )}
+              </div>
+              <span className="mt-3 text-[11px] text-faint coarse:hidden">or drop it here, or press Ctrl+V. You can crop out app bars next.</span>
+              <span className="mt-6 max-w-md text-[11px] leading-relaxed text-faint">
                 The preset approximates the look from the finished image. The original editing settings cannot be
                 recovered from a JPEG.
               </span>
-            </button>
-            {loadError && (
-              <p role="alert" className="absolute bottom-8 max-w-md rounded-sm border border-safelight/40 bg-ink-850 px-4 py-2 text-sm text-ivory">
-                {loadError}
+            </div>
+            {(loadError || pasteMessage) && (
+              <p role="alert" className="absolute bottom-8 mx-4 max-w-md rounded-sm border border-safelight/40 bg-ink-850 px-4 py-2 text-sm text-ivory">
+                {loadError ?? pasteMessage}
               </p>
             )}
           </div>

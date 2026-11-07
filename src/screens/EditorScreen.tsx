@@ -15,6 +15,7 @@ import type { EditState } from '@/lib/schema/adjustments';
 import { TopBar } from '@/features/editor/TopBar';
 import { LeftPanel } from '@/features/editor/LeftPanel';
 import { RightPanel, PanelContent } from '@/features/editor/RightPanel';
+import { FocusTools } from '@/features/editor/panels/FocusTools';
 import { selectRightTab } from '@/features/editor/rightTabs';
 import { Histogram } from '@/features/editor/Histogram';
 import { Viewport } from '@/features/editor/Viewport';
@@ -208,7 +209,7 @@ export default function EditorScreen() {
       ) : (
         <>
           {!landscape && <CompactSheet sheet={sheet} setSheet={setSheet} />}
-          {!sheet && <Filmstrip onImport={openImport} />}
+          {!sheet && <Filmstrip onImport={openImport} compact />}
           <CompactNav sheet={sheet} setSheet={setSheet} onOpenReference={() => setReference(true)} />
         </>
       )}
@@ -252,8 +253,9 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
     <nav className="flex shrink-0 items-stretch border-t border-line-soft bg-ink-900 pb-[env(safe-area-inset-bottom)]" aria-label="Editing tools">
       <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={SwatchBook} label="Presets" />
       <CompactTab active={sheet === 'adjust'} onClick={() => open('adjust')} icon={SlidersHorizontal} label="Light" />
-      <button type="button" onClick={onOpenReference} className="flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] text-amber">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber/15">
+      {/* A featured action, not a tab: filled icon, neutral label, so it never reads as the selected tab. */}
+      <button type="button" onClick={onOpenReference} className="flex h-14 flex-1 flex-col items-center justify-center gap-1 text-[10.5px] text-ivory-dim">
+        <span className="flex h-7 w-9 items-center justify-center rounded-full bg-amber text-ink-950 shadow-[0_0_14px_-2px_rgba(201,162,107,0.55)]">
           <Wand2 size={15} />
         </span>
         Match look
@@ -263,6 +265,9 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
     </nav>
   );
 }
+
+/** Sheets with a compact view that sizes itself: the preset strip and the one-slider tools. */
+const focusable = (s: Sheet) => s === 'presets' || s === 'adjust' || s === 'color';
 
 const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Presets', adjust: 'Light', color: 'Colour' };
 
@@ -285,7 +290,9 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
       {sheet && (
         <motion.div
           initial={side ? { width: 0 } : { height: 0 }}
-          animate={side ? { width: 'min(320px, 46vw)' } : { height: tall ? '78dvh' : '46dvh' }}
+          // Keep the photo the hero: presets, Light and Colour get compact content-sized views (a
+          // strip, or one slider at a time); other tools a short sheet. Drag the handle up for everything.
+          animate={side ? { width: 'min(320px, 46vw)' } : { height: tall ? '78dvh' : focusable(sheet) ? 'auto' : '40dvh' }}
           exit={side ? { width: 0 } : { height: 0 }}
           transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
           className={`flex shrink-0 flex-col overflow-hidden bg-ink-850 ${side ? 'border-l border-line-soft' : 'rounded-t-md border-t border-line shadow-[0_-12px_30px_-12px_rgba(0,0,0,0.6)]'}`}
@@ -354,8 +361,13 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
               <LeftPanel compact expanded={expanded} onClose={close} onOpenReference={() => undefined} />
             ) : (
               <>
-                {sheet === 'adjust' && <Histogram />}
-                <PanelContent tab={sheet} />
+                {/* Full histogram costs ~110 px; the short sheet gets a slim one. */}
+                {sheet === 'adjust' && <Histogram slim={!expanded} />}
+                {!expanded && (sheet === 'adjust' || sheet === 'color') ? (
+                  <FocusTools tab={sheet} onExpand={() => setTall(true)} />
+                ) : (
+                  <PanelContent tab={sheet} />
+                )}
               </>
             )}
           </div>
@@ -386,8 +398,14 @@ function MoreTabs({ value, onChange }: { value: RightTab; onChange: (t: RightTab
 
 function CompactTab({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: typeof SwatchBook; label: string }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className={`flex h-14 flex-1 flex-col items-center justify-center gap-0.5 text-[10px] ${active ? 'text-ivory' : 'text-faint'}`}>
-      <Icon size={17} strokeWidth={1.6} />
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`relative flex h-14 flex-1 flex-col items-center justify-center gap-1 text-[10.5px] transition-colors ${active ? 'text-amber' : 'text-mute'}`}
+    >
+      {active && <motion.span layoutId="compact-tab-indicator" className="absolute top-0 h-0.5 w-8 rounded-full bg-amber" />}
+      <Icon size={18} strokeWidth={active ? 2 : 1.6} />
       {label}
     </button>
   );

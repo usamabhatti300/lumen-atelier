@@ -183,9 +183,44 @@ test('mobile touch: scrolling panels never changes edits; strip, curve and slide
   await expect(card).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Close panel' }).click();
 
-  // Light: a vertical swipe over a slider scrolls and leaves it alone; a sideways drag changes it.
+  // Light opens as one slider at a time: a tool row picks what the large slider controls.
   await nav.getByRole('button', { name: 'Light' }).click();
+  const sheet = page.getByTestId('compact-sheet');
+  await expect(page.getByTestId('focus-tools')).toBeVisible();
+  await expect(sheet.getByRole('slider')).toHaveCount(1);
   const exposure = page.getByRole('slider', { name: 'Exposure', exact: true });
+  const focusStart = await exposure.inputValue();
+  let fb = (await exposure.boundingBox())!;
+  await t.swipe(fb.x + fb.width * 0.3, fb.y + fb.height / 2, 0, -120); // vertical: no change
+  expect(await exposure.inputValue()).toBe(focusStart);
+  fb = (await exposure.boundingBox())!;
+  await t.swipe(fb.x + fb.width * 0.5, fb.y + fb.height / 2, fb.width * 0.25, 0); // sideways: changes it
+  expect(Number(await exposure.inputValue())).toBeGreaterThan(Number(focusStart));
+  // The edited tool is marked in the row; picking another tool swaps the slider.
+  await expect(sheet.getByRole('tab', { name: /Exposure.*edited/ })).toBeVisible();
+  // (The preset applied above changed Contrast, so its chip is marked too.)
+  await sheet.getByRole('tab', { name: /^Contrast/ }).click();
+  await expect(page.getByRole('slider', { name: 'Contrast', exact: true })).toBeVisible();
+  await expect(exposure).toHaveCount(0);
+  // Reset puts the tool back to its default and clears the mark.
+  await sheet.getByRole('button', { name: 'Reset Contrast' }).click();
+  await expect(sheet.getByRole('button', { name: 'Reset Contrast' })).toBeDisabled();
+  await expect(sheet.getByRole('tab', { name: 'Contrast', exact: true })).toBeVisible();
+
+  // Colour opens on Mix: a band swatch and Hue / Saturation / Luminance choose the slider.
+  await nav.getByRole('button', { name: 'Colour' }).click();
+  await sheet.getByRole('radio', { name: 'Blue', exact: true }).click();
+  await expect(page.getByRole('slider', { name: 'Blue saturation', exact: true })).toBeVisible();
+  await sheet.getByRole('radio', { name: 'Hue', exact: true }).click();
+  await expect(page.getByRole('slider', { name: 'Blue hue', exact: true })).toBeVisible();
+  await sheet.getByRole('tab', { name: 'Grade', exact: true }).click();
+  await expect(sheet.getByRole('slider', { name: 'Luminance', exact: true })).toBeVisible();
+
+  // "All" opens the full panel; there a vertical swipe over a slider scrolls and leaves it alone.
+  await nav.getByRole('button', { name: 'Light' }).click();
+  await sheet.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(page.getByTestId('focus-tools')).toHaveCount(0);
+  await expect(sheet).toHaveAttribute('data-expanded', 'true');
   await exposure.evaluate((e) => e.scrollIntoView({ block: 'center' }));
   const before = await exposure.inputValue();
   const top0 = await scroller.evaluate((e) => e.scrollTop);

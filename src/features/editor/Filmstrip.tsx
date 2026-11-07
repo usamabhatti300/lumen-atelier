@@ -2,22 +2,28 @@ import { motion } from 'motion/react';
 import { Plus } from 'lucide-react';
 import { useEditor } from '@/state/editorStore';
 
-/** Bottom filmstrip styled like a negative strip, with frame numbers in the rebate. */
-export function Filmstrip({ onImport }: { onImport: () => void }) {
+/**
+ * Bottom filmstrip styled like a negative strip, with frame numbers in the rebate.
+ * `compact` (phones): no rebate, a shorter strip, and hidden for a single photo, where it only
+ * took space from the photo (Add photos is in the top bar).
+ */
+export function Filmstrip({ onImport, compact = false }: { onImport: () => void; compact?: boolean }) {
   const photos = useEditor((s) => s.photos);
   const activeId = useEditor((s) => s.activePhotoId);
   const setActive = useEditor((s) => s.setActivePhoto);
-  if (photos.length === 0) return null;
+  if (photos.length === 0 || (compact && photos.length === 1)) return null;
   return (
     <nav aria-label="Filmstrip" className="shrink-0 border-t border-line-soft bg-ink-950">
-      <div className="edge-code flex h-3.5 items-center gap-6 overflow-hidden px-3 opacity-70" aria-hidden>
-        {photos.map((p, i) => (
-          <span key={p.id} className="shrink-0">
-            ▸ {String(i + 1).padStart(2, '0')}A
-          </span>
-        ))}
-      </div>
-      <ul className="scroll-quiet flex h-[68px] items-center gap-1.5 overflow-x-auto px-3 pb-2">
+      {!compact && (
+        <div className="edge-code flex h-3.5 items-center gap-6 overflow-hidden px-3 opacity-70" aria-hidden>
+          {photos.map((p, i) => (
+            <span key={p.id} className="shrink-0">
+              ▸ {String(i + 1).padStart(2, '0')}A
+            </span>
+          ))}
+        </div>
+      )}
+      <ul className={`scroll-quiet flex items-center gap-1.5 overflow-x-auto px-3 ${compact ? 'h-[60px] py-1' : 'h-[68px] pb-2'}`}>
         {photos.map((p, i) => (
           <motion.li key={p.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: Math.min(i, 10) * 0.02 }} className="shrink-0">
             <button

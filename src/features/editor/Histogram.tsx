@@ -5,7 +5,8 @@ import { zoneGrey } from '@/components/ZoneScale';
 
 type Mode = 'rgb' | 'luma';
 
-export const Histogram = memo(function Histogram() {
+/** `slim`: phones' short sheet. A 32 px graph without the zone strip and readouts. */
+export const Histogram = memo(function Histogram({ slim = false }: { slim?: boolean }) {
   const hist = useEngine((s) => s.histogram);
   const out = useEngine((s) => s.outputSize);
   const [mode, setMode] = useState<Mode>('rgb');
@@ -26,14 +27,14 @@ export const Histogram = memo(function Histogram() {
   }, [hist]);
 
   return (
-    <div className="border-b border-line-soft px-3 pt-2.5 pb-2">
+    <div className={`border-b border-line-soft px-3 ${slim ? 'pt-1 pb-2' : 'pt-2.5 pb-2'}`}>
       <button
         type="button"
         onClick={() => setMode(mode === 'rgb' ? 'luma' : 'rgb')}
         className="block w-full"
         aria-label={`Histogram (${mode === 'rgb' ? 'RGB channels' : 'luminance'}). Click to switch.`}
       >
-        <svg viewBox="0 0 256 72" preserveAspectRatio="none" className="h-[72px] w-full rounded-xs bg-ink-950">
+        <svg viewBox="0 0 256 72" preserveAspectRatio="none" className={`w-full rounded-xs bg-ink-950 ${slim ? 'h-8' : 'h-[72px]'}`}>
           {paths &&
             (mode === 'rgb' ? (
               <g style={{ mixBlendMode: 'screen' }}>
@@ -46,6 +47,16 @@ export const Histogram = memo(function Histogram() {
             ))}
         </svg>
       </button>
+      {!slim && <HistogramFooter hist={hist} out={out} />}
+    </div>
+  );
+});
+
+type EngineState = ReturnType<typeof useEngine.getState>;
+
+function HistogramFooter({ hist, out }: { hist: EngineState['histogram']; out: EngineState['outputSize'] }) {
+  return (
+    <>
       <div className="mt-[3px] flex h-[3px] gap-px" aria-hidden>
         {Array.from({ length: 11 }, (_, i) => (
           <div key={i} className="flex-1" style={{ background: zoneGrey(i) }} />
@@ -60,6 +71,6 @@ export const Histogram = memo(function Histogram() {
         </span>
         <span title="Share of pixels clipped to white">{hist ? (hist.clippedHighlights * 100).toFixed(1) : '–'}% ▸</span>
       </div>
-    </div>
+    </>
   );
-});
+}

@@ -29,7 +29,7 @@
   --color-ivory: #ece6da;
   --color-ivory-dim: #c9c2b5;
   --color-mute: #9c958a;
-  --color-faint: #6f695f;
+  --color-faint: #8a8378; /* 5:1 on ink-900, 4.6:1 on ink-800 (WCAG AA for small text) */
   --color-amber: #c9a26b;
   --color-amber-bright: #dcbb88;
   --color-amber-deep: #8f7046;
@@ -163,9 +163,9 @@ body {
 /* Film rebate edge printing used on the filmstrip and gallery. */
 .edge-code {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.14em;
-  color: var(--color-amber-deep);
+  color: #a8865a; /* amber-deep failed AA for this small text; this is 5.6:1 on ink-900 */
   text-transform: uppercase;
 }
 

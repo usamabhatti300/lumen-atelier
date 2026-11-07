@@ -8,23 +8,8 @@ import { CurveEditor } from '../CurveEditor';
 import { useResetKeys, useSectionModified } from './LightPanel';
 import { LookInterop } from './LookInterop';
 import { useEditor } from '@/state/editorStore';
-import { HSL_BANDS, HSL_BAND_HUES, RANGES, type CurveChannel, type GradeZone } from '@/lib/schema/adjustments';
-import { oklchHueSwatch } from '@/lib/color/oklab';
-import { linearToSrgb } from '@/lib/color/srgb';
-
-const css = (rgb: number[]) => `rgb(${rgb.map((v) => Math.round(linearToSrgb(Math.min(1, Math.max(0, v))) * 255)).join(',')})`;
-const bandColor = (h: number, L = 0.7, C = 0.13) => css(oklchHueSwatch(h, L, C));
-
-const BAND_LABEL: Record<string, string> = {
-  red: 'Red', orange: 'Orange', yellow: 'Yellow', green: 'Green', aqua: 'Aqua', blue: 'Blue', purple: 'Purple', magenta: 'Magenta',
-};
-
-function hslTrack(band: (typeof HSL_BANDS)[number], mode: 'hue' | 'saturation' | 'luminance') {
-  const h = HSL_BAND_HUES[band];
-  if (mode === 'hue') return `linear-gradient(90deg, ${bandColor(h - 30)}, ${bandColor(h)}, ${bandColor(h + 30)})`;
-  if (mode === 'saturation') return `linear-gradient(90deg, ${bandColor(h, 0.7, 0)}, ${bandColor(h, 0.7, 0.16)})`;
-  return `linear-gradient(90deg, ${bandColor(h, 0.35, 0.08)}, ${bandColor(h, 0.92, 0.06)})`;
-}
+import { HSL_BANDS, RANGES, type CurveChannel, type GradeZone } from '@/lib/schema/adjustments';
+import { BAND_LABEL, hslTrack } from './colorBands';
 
 export function ColorPanel() {
   const [hslMode, setHslMode] = useState<'hue' | 'saturation' | 'luminance'>('saturation');
@@ -151,7 +136,7 @@ function GradingWheels() {
 
 const ZONE_LABEL: Record<GradeZone, string> = { shadows: 'Shadows', midtones: 'Midtones', highlights: 'Highlights', global: 'Global' };
 
-function WheelControl({ zone, size }: { zone: GradeZone; size: number }) {
+export function WheelControl({ zone, size }: { zone: GradeZone; size: number }) {
   const wheel = useEditor((s) => s.edit.adjustments.grading[zone]);
   const commit = useEditor((s) => s.commitEdit);
   const begin = useEditor((s) => s.beginGesture);

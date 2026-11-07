@@ -10,7 +10,9 @@ export const AdjustmentSlider = memo(function AdjustmentSlider({
   track,
   format,
   range,
+  size,
 }: {
+  size?: 'md' | 'lg';
   path: string;
   label: string;
   track?: string;
@@ -34,6 +36,7 @@ export const AdjustmentSlider = memo(function AdjustmentSlider({
       onGestureEnd={end}
       track={track}
       format={format}
+      size={size}
     />
   );
 });

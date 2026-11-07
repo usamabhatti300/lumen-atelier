@@ -48,6 +48,32 @@ there is presented as finished in the UI.
 | Owner's phone feedback (2026-10-11) | Fixed | Presets panel too small (now a strip of large cards + expandable panel); faces not found on a full-length portrait (second detection pass on face-skin crops for small faces, plus a CPU retry when a phone GPU returns nothing); tone curve hijacked scrolling and added points (fixed for curve, wheels and sliders: scrolling never changes edits); Install button wrapping (install banner on phones). Audit with real touch input also fixed: reference studio overlap on phones, crop box not touch-locked, small icon buttons, mouse-only wording |
 | Real phones | Partly verified | Only Chromium mobile emulation (Pixel 7, 320–1023 px, landscape). iOS Safari, WebGPU on phones and phone performance are untested. Install needs an HTTPS host (not chosen yet) |
 
+### UI/UX pass (2026-11-08)
+
+Based on a design critique plus phone-editor patterns researched on Mobbin (Halide, LinkedIn, X, CapCut, Telegram):
+phone home is now an app home (two big actions *Edit photos* / *Match a look*, *Continue editing*, *Your edits*),
+with the landing-page hero kept for `sm`+; the phone editor keeps the photo large (preset strip of 88 px square
+thumbnails with names below and a content-sized sheet, tool sheet 40dvh with a slim histogram, no filmstrip for a
+single photo, back arrow instead of the logo); bottom nav shows the active tab in amber with an indicator and
+*Match look* as a filled featured action; Match look empty state has *Choose photo* and *Paste* (clipboard read)
+buttons and example chips; desktop preset names wrap to two lines; jargon removed ("Session", "01A / FR",
+"Projects"); `--color-faint` lightened to #8a8378 and `.edge-code` to #a8865a / 10 px for WCAG AA.
+Tests: type-check clean; ESLint 0 errors (same 10 warnings); Vitest 193 passed, 1 skipped; Playwright
+`editor.spec.ts` + `mobile.spec.ts` **11/11 passed** (3.5 min). `e2e/pwa.spec.ts` heading updated to "Your edits"
+but not re-run. Screens reviewed at Pixel 7 and 1440×900. Not tried on a real phone.
+
+**One slider at a time on phones (2026-11-08).** The Light and Colour sheets open in a compact, content-sized
+view (`src/features/editor/panels/FocusTools.tsx`): a sideways tool row (amber dot = edited) chooses what one large
+slider controls (`Slider size="lg"`: tick ruler, bigger value, Reset button). Light has 15 tools. Colour has *Mix*
+(8 band swatches + Hue / Saturation / Luminance), *Grade* (zone picker + one wheel) and *Curve* (opens the full panel).
+*All*, or dragging the handle, shows the full panels as before; landscape and desktop are unchanged. The last tool is
+remembered while the app is open. HSL swatch helpers moved to `panels/colorBands.ts`. Tests: type-check clean; ESLint
+0 errors (same 10 warnings); Vitest 193 passed, 1 skipped (on an idle machine; 8 slow maths tests timed out while
+e2e ran in parallel). `mobile.spec.ts` touch test extended (one slider only, vertical swipe ignored, sideways drag
+changes it, edited mark, tool switch, Reset, Mix band / mode, Grade, *All* → full panel scroll + curve checks).
+Playwright `editor.spec.ts` + `mobile.spec.ts`: 9 passed, 2 failed in the full run (EXIF export download timeout,
+a known flake under load; and a test bug, fixed); both **passed when re-run alone** (2.0 min).
+
 ## Technical decisions
 
 - **TypeScript backend instead of Python/FastAPI** (spec allows it): the server only proxies one

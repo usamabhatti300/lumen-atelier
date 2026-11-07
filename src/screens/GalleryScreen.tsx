@@ -1,6 +1,6 @@
 /** Welcome screen and project gallery (contact sheet). */
 import { AnimatePresence, motion } from 'motion/react';
-import { Aperture, ImagePlus, Pencil, Settings, SwatchBook, Trash2, Wand2 } from 'lucide-react';
+import { Aperture, ChevronRight, ImagePlus, Pencil, Settings, SwatchBook, Trash2, Wand2, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { InstallBanner, InstallButton } from '@/pwa/PwaUi';
@@ -28,7 +28,7 @@ interface ProjectCard extends ProjectRecord {
 const ACCEPT = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
 
 function defaultProjectName() {
-  return `Session ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  return `Photos · ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
 }
 
 async function loadProjectCards(): Promise<ProjectCard[]> {
@@ -148,6 +148,22 @@ export function GalleryScreen() {
   }, [search, setSearch, startProject, showToast]);
 
   const resume = projects?.find((p) => p.id === lastProjectId);
+  const pickPhotos = () => {
+    intent.current = 'edit';
+    fileInput.current?.click();
+  };
+  const matchLook = () => {
+    intent.current = 'reference';
+    void startProject([], 'reference');
+  };
+  const importProgress = importing && (
+    <div className="mt-6 max-w-sm">
+      <p className="mb-2 text-xs text-mute tabular">
+        Importing {importing.done} of {importing.total}…
+      </p>
+      <Progress value={importing.done / importing.total} label="Import progress" />
+    </div>
+  );
 
   return (
     <div className="scroll-quiet h-full overflow-y-auto bg-ink-900">
@@ -166,7 +182,45 @@ export function GalleryScreen() {
       <InstallBanner />
 
       <main className="mx-auto max-w-7xl px-4 pb-20 sm:px-8">
-        <section className="grid gap-10 border-b border-line-soft pt-10 pb-14 lg:grid-cols-[1.15fr_1fr] lg:pt-16">
+        <input
+          ref={fileInput}
+          type="file"
+          accept={ACCEPT}
+          multiple
+          hidden
+          data-testid="gallery-file-input"
+          onChange={(e) => {
+            onFiles(e.target.files);
+            e.target.value = '';
+          }}
+        />
+
+        {/* Phones: an app home, not a landing page. Two big actions, then "continue" and recent edits. */}
+        <section className="border-b border-line-soft pt-3 pb-8 sm:hidden">
+          <p className="edge-code mb-3">Photos stay on this device</p>
+          <h1 className="font-display text-[34px] leading-[1.04] tracking-[-0.01em] text-ivory">
+            Develop your photos.
+            <br />
+            <em className="text-champagne">Borrow any look.</em>
+          </h1>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <HomeAction primary icon={ImagePlus} title="Edit photos" text="From your gallery or camera" onClick={pickPhotos} />
+            <HomeAction icon={Wand2} title="Match a look" text="Copy the style of any photo you love" onClick={matchLook} />
+          </div>
+          {resume && (
+            <Link to={`/project/${resume.id}`} className="mt-3 flex items-center gap-3 rounded-md border border-line-soft bg-ink-850 p-2.5 active:bg-ink-800">
+              {resume.cover ? <img src={resume.cover} alt="" className="h-12 w-12 shrink-0 rounded-sm object-cover" /> : <span className="h-12 w-12 shrink-0 rounded-sm bg-ink-800" />}
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs text-mute">Continue editing</span>
+                <span className="block truncate text-sm text-ivory">{resume.name}</span>
+              </span>
+              <ChevronRight size={18} className="shrink-0 text-mute" />
+            </Link>
+          )}
+          {importProgress}
+        </section>
+
+        <section className="hidden gap-10 border-b border-line-soft pt-10 pb-14 sm:grid lg:grid-cols-[1.15fr_1fr] lg:pt-16">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
             <p className="edge-code mb-5">Local darkroom · photos stay on this device</p>
             <h1 className="font-display text-[38px] leading-[1.02] tracking-[-0.01em] text-ivory min-[400px]:text-[44px] sm:text-[64px]">
@@ -180,55 +234,19 @@ export function GalleryScreen() {
               any photo.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button
-                variant="primary"
-                icon={<ImagePlus size={16} />}
-                onClick={() => {
-                  intent.current = 'edit';
-                  fileInput.current?.click();
-                }}
-              >
+              <Button variant="primary" icon={<ImagePlus size={16} />} onClick={pickPhotos}>
                 Open photos
               </Button>
-              <Button
-                variant="accent-outline"
-                icon={<Wand2 size={16} />}
-                onClick={() => {
-                  intent.current = 'reference';
-                  void startProject([], 'reference');
-                }}
-              >
+              <Button variant="accent-outline" icon={<Wand2 size={16} />} onClick={matchLook}>
                 Match a reference look
               </Button>
             </div>
-            <input
-              ref={fileInput}
-              type="file"
-              accept={ACCEPT}
-              multiple
-              hidden
-              data-testid="gallery-file-input"
-              onChange={(e) => {
-                onFiles(e.target.files);
-                e.target.value = '';
-              }}
-            />
-            {importing && (
-              <div className="mt-6 max-w-sm">
-                <p className="mb-2 text-xs text-mute tabular">
-                  Importing {importing.done} of {importing.total}…
-                </p>
-                <Progress value={importing.done / importing.total} label="Import progress" />
-              </div>
-            )}
+            {importProgress}
           </motion.div>
 
           <motion.button
             type="button"
-            onClick={() => {
-              intent.current = 'edit';
-              fileInput.current?.click();
-            }}
+            onClick={pickPhotos}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.15 }}
@@ -254,23 +272,25 @@ export function GalleryScreen() {
           </motion.button>
         </section>
 
-        <section className="pt-10">
-          <div className="mb-6 flex items-end justify-between">
-            <h2 className="font-display text-3xl text-ivory">Projects</h2>
+        <section className="pt-8 sm:pt-10">
+          <div className="mb-5 flex items-end justify-between sm:mb-6">
+            <h2 className="font-display text-[26px] text-ivory sm:text-3xl">Your edits</h2>
             {resume && (
-              <Button variant="secondary" size="sm" onClick={() => navigate(`/project/${resume.id}`)}>
-                Resume “{resume.name}”
-              </Button>
+              <span className="hidden sm:block">
+                <Button variant="secondary" size="sm" onClick={() => navigate(`/project/${resume.id}`)}>
+                  Resume “{resume.name}”
+                </Button>
+              </span>
             )}
           </div>
           {projects === null ? (
             <div className="h-40" />
           ) : projects.length === 0 ? (
             <p className="rounded-md border border-line-soft px-5 py-10 text-center text-sm text-mute">
-              No projects yet. Open some photos to start your first session.
+              Nothing here yet. Open a photo to start editing. Your edits are saved on this device.
             </p>
           ) : (
-            <ul className="grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
+            <ul className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 lg:grid-cols-4">
               <AnimatePresence initial={false}>
                 {projects.map((p, i) => (
                   <motion.li
@@ -282,24 +302,21 @@ export function GalleryScreen() {
                     transition={{ duration: 0.3, delay: Math.min(i, 8) * 0.03 }}
                     className="group"
                   >
-                    <Link to={`/project/${p.id}`} className="block rounded-sm bg-ink-950 p-2 pb-1.5 ring-1 ring-line-soft transition-shadow hover:ring-line-strong">
-                      <div className="aspect-[4/3] overflow-hidden rounded-xs bg-ink-800">
+                    <Link to={`/project/${p.id}`} className="block overflow-hidden rounded-sm bg-ink-950 ring-1 ring-line-soft transition-shadow hover:ring-line-strong">
+                      <div className="aspect-[4/3] overflow-hidden bg-ink-800">
                         {p.cover ? (
                           <img src={p.cover} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
                         ) : (
                           <div className="flex h-full items-center justify-center text-xs text-faint">Empty</div>
                         )}
                       </div>
-                      <div className="edge-code mt-1.5 flex justify-between">
-                        <span>▸ {String(i + 1).padStart(2, '0')}A</span>
-                        <span>{p.photoIds.length} FR</span>
-                      </div>
                     </Link>
                     <div className="mt-2 flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate text-[13px] text-ivory">{p.name}</p>
                         <p className="text-xs text-faint">
-                          {new Date(p.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {new Date(p.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {p.photoIds.length}{' '}
+                          {p.photoIds.length === 1 ? 'photo' : 'photos'}
                         </p>
                       </div>
                       <div className="flex opacity-100 transition-opacity fine:opacity-0 fine:group-focus-within:opacity-100 fine:group-hover:opacity-100">
@@ -393,6 +410,26 @@ function RenameDialog({ project, onClose, onSave }: { project: ProjectCard | nul
         />
       </div>
     </Dialog>
+  );
+}
+
+function HomeAction({ primary = false, icon: Icon, title, text, onClick }: { primary?: boolean; icon: LucideIcon; title: string; text: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-[136px] flex-col justify-between rounded-md p-4 text-left transition-transform active:scale-[0.98] ${
+        primary ? 'bg-amber text-ink-950' : 'border border-amber/40 bg-gradient-to-br from-amber/15 to-transparent text-ivory'
+      }`}
+    >
+      <span className={`flex h-10 w-10 items-center justify-center rounded-full ${primary ? 'bg-ink-950/10' : 'bg-amber/15 text-amber'}`}>
+        <Icon size={20} />
+      </span>
+      <span>
+        <span className="block text-[15px] font-semibold">{title}</span>
+        <span className={`mt-0.5 block text-xs leading-snug ${primary ? 'text-ink-950/75' : 'text-mute'}`}>{text}</span>
+      </span>
+    </button>
   );
 }
 

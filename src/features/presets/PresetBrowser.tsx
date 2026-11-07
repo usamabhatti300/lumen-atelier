@@ -12,8 +12,10 @@ import { Button } from '@/components/ui/Button';
 type Filter = 'all' | 'favorites' | PresetCategoryId;
 
 /**
- * `panel`: side panel grid. `page`: the preset library. `strip`: phones, one row of large
- * cards that scrolls sideways under the photo, with search behind an icon.
+ * `panel`: side panel grid. `page`: the preset library. `strip`: phones, one row of square
+ * thumbnails with the name underneath (the filter row of most phone editors) that scrolls
+ * sideways under the photo, with search behind an icon. Favourite / more actions live in the
+ * expanded grid, so nothing covers the small previews.
  */
 export function PresetBrowser({
   variant = 'panel',
@@ -133,7 +135,7 @@ export function PresetBrowser({
           <ul
             className={
               strip
-                ? 'scroll-quiet flex h-full gap-2 overflow-x-auto overscroll-x-contain px-3 pb-2'
+                ? 'scroll-quiet flex h-[124px] gap-2.5 overflow-x-auto overscroll-x-contain px-3 pt-1 pb-2'
                 : `grid gap-x-2.5 gap-y-3 ${variant === 'panel' ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'}`
             }
             aria-label="Presets"
@@ -231,19 +233,23 @@ const PresetCard = memo(function PresetCard({
   const url = thumb?.key === thumbKey ? thumb.url : null;
 
   return (
-    <li className={`group relative ${strip ? 'aspect-[3/4] h-full max-w-[44vw] min-w-24 shrink-0' : ''}`}>
+    <li className={`group relative ${strip ? 'w-[88px] shrink-0' : ''}`}>
       <button
         type="button"
         onClick={() => onApply?.(preset)}
         disabled={!onApply}
         aria-pressed={active}
         aria-label={`${onApply ? actionVerb : 'Preset'} ${preset.name}`}
-        title={preset.description}
-        className={`w-full overflow-hidden rounded-xs text-left ring-1 transition-[box-shadow,transform] duration-200 enabled:active:scale-[0.98] ${strip ? 'flex h-full flex-col' : 'block'} ${
-          active ? 'ring-2 ring-amber' : 'ring-line-soft hover:ring-line-strong'
+        title={preset.description ? `${preset.name}: ${preset.description}` : preset.name}
+        className={`w-full text-left transition-[box-shadow,transform] duration-200 enabled:active:scale-[0.97] ${
+          strip ? 'block' : `block overflow-hidden rounded-xs ring-1 ${active ? 'ring-2 ring-amber' : 'ring-line-soft hover:ring-line-strong'}`
         }`}
       >
-        <div className={`relative bg-ink-800 ${strip ? 'min-h-0 flex-1' : large ? 'aspect-[4/3]' : 'aspect-[3/2]'}`}>
+        <div
+          className={`relative bg-ink-800 ${
+            strip ? `aspect-square overflow-hidden rounded-sm ring-offset-2 ring-offset-ink-850 ${active ? 'ring-2 ring-amber' : 'ring-1 ring-line-soft'}` : large ? 'aspect-[4/3]' : 'aspect-[3/2]'
+          }`}
+        >
           <AnimatePresence>
             {url && (
               <motion.img
@@ -273,12 +279,20 @@ const PresetCard = memo(function PresetCard({
             </span>
           )}
         </div>
-        <div className="shrink-0 bg-ink-850 px-2 py-1.5">
-          <p className={`truncate leading-tight text-ivory ${strip ? 'text-xs' : 'text-[11.5px]'}`}>{preset.name}</p>
+        <div className={strip ? 'pt-1.5' : 'shrink-0 bg-ink-850 px-2 py-1.5'}>
+          <p
+            className={
+              strip
+                ? `truncate text-center text-[11px] leading-tight ${active ? 'font-medium text-amber' : 'text-ivory-dim'}`
+                : 'line-clamp-2 min-h-[2.5em] text-[11.5px] leading-tight text-ivory'
+            }
+          >
+            {preset.name}
+          </p>
           {large && <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-faint">{preset.description}</p>}
         </div>
       </button>
-      <div className="absolute top-1 right-1 flex gap-0.5">
+      <div className={`absolute top-1 right-1 flex gap-0.5 ${strip ? 'hidden' : ''}`}>
         <motion.button
           type="button"
           whileTap={{ scale: 0.8 }}

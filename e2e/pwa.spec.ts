@@ -52,7 +52,7 @@ test('offline: gallery, editor, presets, settings and export work without a conn
   await page.goto('/');
   await expectNetworkCut(page);
   await expect(page.getByTestId('offline-pill')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your edits' })).toBeVisible();
 
   await page.goto(projectUrl);
   await waitForRender(page);
