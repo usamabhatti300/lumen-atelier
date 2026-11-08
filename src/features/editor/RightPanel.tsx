@@ -55,7 +55,7 @@ export function RightPanel() {
             aria-selected={tab === t.id}
             aria-controls="right-tabpanel"
             onClick={() => selectRightTab(t.id)}
-            className={`relative flex min-w-0 flex-col items-center gap-1 rounded-md py-2 text-[10.5px] font-medium tracking-[-0.02em] transition-colors ${
+            className={`relative flex min-w-0 flex-col items-center gap-1 rounded-md py-2 text-[11px] font-medium tracking-[-0.02em] transition-colors ${
               tab === t.id ? 'text-fg' : 'text-fg-3 hover:text-fg'
             }`}
           >

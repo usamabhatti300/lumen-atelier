@@ -107,7 +107,7 @@ export function MasksPanel() {
             type="button"
             onClick={() => setMenu(layers.length === 0 ? true : !menu)}
             aria-expanded={showMenu}
-            className="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium text-accent-fg transition-colors hover:bg-accent/10"
+            className="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium text-fg-2 transition-colors hover:bg-control hover:text-fg"
           >
             <Plus size={14} /> New mask
           </button>
@@ -125,9 +125,9 @@ export function MasksPanel() {
               <button
                 type="button"
                 onClick={addObjectLayer}
-                className="group col-span-3 flex h-14 items-center gap-3 rounded-md bg-accent/[0.07] px-3.5 text-left ring-1 ring-accent/30 transition-[background-color,box-shadow,transform] hover:bg-accent/[0.12] hover:ring-accent/60 active:scale-[0.98]"
+                className="group col-span-3 flex h-14 items-center gap-3 rounded-md bg-raised-2 px-3.5 text-left ring-1 ring-line transition-[background-color,box-shadow,transform] hover:bg-control hover:ring-line-strong active:scale-[0.98]"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-on-accent">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-fg text-ground">
                   <MousePointerClick size={15} />
                 </span>
                 <span className="flex-1 text-sm font-medium text-fg">Select object</span>

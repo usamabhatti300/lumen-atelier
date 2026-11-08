@@ -186,13 +186,14 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
           <>
             <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.15fr)_minmax(400px,1fr)] lg:overflow-hidden">
               <ReferencePane onReplace={() => fileInput.current?.click()} />
-              {/* Once the look exists it leads: the look, then your photo with it, then how it was made. */}
-              <div className="scroll-quiet min-h-0 border-line-soft lg:overflow-y-auto lg:border-l">
-                <AnimatePresence>{result && <LookCard key="look" result={result} />}</AnimatePresence>
+              {/* Once the look exists, the payoff leads: your photo wearing it, then what the look is,
+                  then how it was made. On phones this column moves above the reference. */}
+              <div className={`scroll-quiet border-line-soft lg:order-none lg:min-h-0 lg:overflow-y-auto lg:border-l ${result ? 'order-first' : ''}`}>
                 {/* Data is passed as props so the pane keeps its last values while it animates out after a reset. */}
                 <AnimatePresence>
                   {result && stats && working && <ApplyPane result={result} refStats={stats} working={working} onImportTarget={onImportTarget} />}
                 </AnimatePresence>
+                <AnimatePresence>{result && <LookCard key="look" result={result} />}</AnimatePresence>
                 <AnalysisPane />
                 <Measurements className="px-4 pb-6 sm:px-6 lg:hidden" />
               </div>
@@ -601,13 +602,13 @@ function LookCard({ result }: { result: MappingResult }) {
               <ul className="mt-4 space-y-1.5">
                 {result.warnings.map((w) => (
                   <li key={w} className="flex gap-2 text-[13px] leading-relaxed text-fg-2">
-                    <AlertTriangle size={14} className="mt-0.5 shrink-0 text-accent-fg" />
+                    <AlertTriangle size={14} className="mt-0.5 shrink-0 text-fg-3" />
                     {w}
                   </li>
                 ))}
               </ul>
             )}
-            <button type="button" onClick={() => setShowWhy(!showWhy)} aria-expanded={showWhy} className="mt-4 -ml-1 rounded-full px-1 py-1 text-[13px] font-medium text-accent-fg hover:underline coarse:py-2.5">
+            <button type="button" onClick={() => setShowWhy(!showWhy)} aria-expanded={showWhy} className="mt-4 -ml-1 rounded-full px-1 py-1 text-[13px] font-medium text-fg-2 underline decoration-fg-4 underline-offset-4 hover:text-fg coarse:py-2.5">
               {showWhy ? 'Hide' : 'Show'} how the preset was built
             </button>
             <AnimatePresence initial={false}>
@@ -618,7 +619,7 @@ function LookCard({ result }: { result: MappingResult }) {
                       <p className="flex flex-wrap items-center gap-2 text-xs font-medium text-fg-2">
                         {e.area}
                         <span className="rounded-full bg-control px-2 font-mono text-[10px] tracking-wide text-fg-3 uppercase">{e.basis.replace('+', ' + ')}</span>
-                        {e.weak && <span className="text-[11px] text-accent-fg">low confidence</span>}
+                        {e.weak && <span className="text-[11px] text-fg-3">low confidence</span>}
                       </p>
                       <p className="mt-1 text-[13px] leading-relaxed text-fg-3">{e.text}</p>
                     </li>
@@ -682,7 +683,8 @@ function AnalysisPane() {
 }
 
 function ConfidenceBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
-  const color = level === 'high' ? 'text-success bg-success/12' : level === 'medium' ? 'text-accent-fg bg-accent/12' : 'text-danger bg-danger/12';
+  // Confidence is information, not an error: only high gets colour (success); medium and low stay neutral.
+  const color = level === 'high' ? 'text-success bg-success/12' : level === 'medium' ? 'text-fg-2 bg-control' : 'text-fg-3 bg-control ring-1 ring-line';
   return (
     <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${color}`} title="How reliable this estimate is">
       <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
@@ -918,6 +920,16 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
           <div className="theme-frame relative mt-4 overflow-hidden rounded-xl bg-well ring-1 ring-line-soft">
             <canvas ref={canvas} className="block max-h-[380px] w-full object-contain" aria-label={`Preview of ${target.name}`} />
             {isApplied && <div key={`${applied?.name}`} className="lumen-sweep" aria-hidden />}
+            {/* The reference, inset, so the two can be compared at a glance. */}
+            <motion.img
+              src={working.url}
+              alt=""
+              aria-hidden
+              initial={{ opacity: 0, scale: 0.8, rotate: -4 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 22, delay: 0.35 }}
+              className="pointer-events-none absolute top-3 right-3 h-16 w-16 rounded-md object-cover shadow-lift ring-2 ring-white/80 sm:h-20 sm:w-20"
+            />
             <span className="surface-float pointer-events-none absolute top-3 left-3 rounded-full px-2.5 py-1 font-mono text-[11px] text-fg" aria-hidden>
               {isApplied ? `Your photo · ${Math.round(applied!.amount)}%` : 'Your photo'}
             </span>
@@ -1009,7 +1021,7 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
             <ul className="mt-4 space-y-1.5">
               {warnings.map((m) => (
                 <li key={m} className="flex gap-2 text-[13px] text-fg-2">
-                  <AlertTriangle size={14} className="mt-0.5 shrink-0 text-accent-fg" />
+                  <AlertTriangle size={14} className="mt-0.5 shrink-0 text-fg-3" />
                   {m}
                 </li>
               ))}
@@ -1024,7 +1036,7 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
 
           {effectiveMode === 'matched' && match && (
             <>
-              <button type="button" onClick={() => setShowHow(!showHow)} aria-expanded={showHow} className="mt-4 -ml-1 rounded-full px-1 py-1 text-[13px] font-medium text-accent-fg hover:underline coarse:py-2.5">
+              <button type="button" onClick={() => setShowHow(!showHow)} aria-expanded={showHow} className="mt-4 -ml-1 rounded-full px-1 py-1 text-[13px] font-medium text-fg-2 underline decoration-fg-4 underline-offset-4 hover:text-fg coarse:py-2.5">
                 {showHow ? 'Hide' : 'Show'} how it was matched to this photo
               </button>
               <AnimatePresence initial={false}>
@@ -1034,7 +1046,7 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
                       <li key={i} className="rounded-md bg-raised px-3.5 py-2.5">
                         <p className="flex items-center gap-2 text-xs font-medium text-fg-2">
                           {e.area}
-                          {e.weak && <span className="text-[11px] text-accent-fg">low confidence</span>}
+                          {e.weak && <span className="text-[11px] text-fg-3">low confidence</span>}
                         </p>
                         <p className="mt-1 text-[13px] leading-relaxed text-fg-3">{e.text}</p>
                       </li>
