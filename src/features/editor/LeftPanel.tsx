@@ -175,13 +175,20 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
       ? `${applied.overrides.length} hand-edited setting${applied.overrides.length === 1 ? '' : 's'} kept when the amount changes.`
       : undefined;
 
-  // Phones: one row of fixed height whether or not a look is on, so choosing a look never moves the
-  // photo. Without a look it says what to do.
+  // Phones: the amount row exists only while a look is on (no hint line taking space). It opens and
+  // folds away with a spring, so the photo re-fits smoothly instead of jumping.
   if (compact)
     return (
-      <div className="relative mx-4 mb-1 h-[86px] shrink-0 border-t border-line-soft" title={overridesNote}>
+      <motion.div
+        initial={false}
+        animate={{ height: applied ? 86 : 0, opacity: applied ? 1 : 0 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 40 }}
+        className="relative mx-4 shrink-0 overflow-hidden"
+        title={overridesNote}
+      >
+        <div className="h-[86px] border-t border-line-soft">
         <AnimatePresence initial={false} mode="popLayout">
-          {applied ? (
+          {applied && (
             <motion.div
               key="amount"
               initial={{ opacity: 0, y: 6 }}
@@ -200,19 +207,10 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
               </div>
               {amount}
             </motion.div>
-          ) : (
-            <motion.p
-              key="hint"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1, transition: { duration: 0.2 } }}
-              exit={{ opacity: 0, transition: { duration: 0.06 } }}
-              className="flex h-full items-center justify-center font-mono text-[11px] text-fg-4"
-            >
-              tap a look · hold the photo to compare
-            </motion.p>
           )}
         </AnimatePresence>
-      </div>
+        </div>
+      </motion.div>
     );
 
   return (

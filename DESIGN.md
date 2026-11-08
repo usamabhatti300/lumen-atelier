@@ -213,7 +213,7 @@ last 12 looks applied, newest first; Yours = looks you saved or matched). Under 
 of the numbered rolls (selected: ivory with a lilac underline) and "all"; coming back to Rolls reopens
 the roll you were on. Grids show the open roll's mood under it; the phone strip doesn't (fixed height).
 On phones the strip's frames have no captions (the chosen look's name is in the amount row), and the
-empty amount row is one mono hint ("tap a look · hold the photo to compare"). Home shows one cover per
+amount row appears only while a look is on (it springs open and folds away; no hint line). Home shows one cover per
 roll, rendered with its first look on your last photo. Applying a look to several photos (Photos tab)
 opens the same grid in a dialog instead of a dropdown.
 
