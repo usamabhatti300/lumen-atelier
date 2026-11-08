@@ -72,6 +72,13 @@ export default function SettingsScreen() {
           </Row>
           <Divider />
           <Toggle
+            checked={s.adaptiveLooks}
+            onChange={(v) => s.update({ adaptiveLooks: v })}
+            label="Adaptive looks"
+            description="Before a look is applied, the photo's exposure and white balance are evened out so the look reads as it was made to. The change shows in Light (exposure, temperature, tint) and can be edited. Matched looks are already fitted and are left as they are."
+          />
+          <Divider />
+          <Toggle
             checked={s.forceCpu}
             onChange={(v) => s.update({ forceCpu: v })}
             label="Use CPU renderer"

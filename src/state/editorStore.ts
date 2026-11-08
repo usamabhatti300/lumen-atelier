@@ -3,6 +3,7 @@
  * UI state, and the actions that change them. GPU work lives in
  * engine/controller.ts, which subscribes to this store.
  */
+import { isAdapted, withLookAdaptation, type LookAdaptation } from '@/lib/analysis/lookAdapt';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import {
@@ -131,7 +132,8 @@ export interface EditorState {
   undo(): void;
   redo(): void;
 
-  applyPreset(preset: Pick<Preset, 'id' | 'name' | 'adjustments'>, amount?: number): void;
+  /** `adapt`: adaptive-look offsets for this photo (library looks only; see lib/analysis/lookAdapt). */
+  applyPreset(preset: Pick<Preset, 'id' | 'name' | 'adjustments'>, amount?: number, adapt?: LookAdaptation | null): void;
   setPresetAmount(amount: number): void;
   clearAppliedPreset(): void;
   toggleAdjustmentsVisible(): void;
@@ -380,15 +382,18 @@ export const useEditor = create<EditorState>()(
         if (r) set({ history: r.history, edit: r.state, saveState: 'unsaved' });
       },
 
-      applyPreset(preset, amount = 100) {
+      applyPreset(preset, amount = 100, adapt = null) {
         change(`Apply ${preset.name}`, (e) => {
           // Re-applying over a live preset starts from that preset's baseline.
           const baseline = e.appliedPreset ? e.appliedPreset.baseline : e.adjustments;
-          const values = preset.adjustments as PartialAdjustments;
+          const adapted = isAdapted(adapt) ? adapt : undefined;
+          const values = adapted
+            ? withLookAdaptation(preset.adjustments as PartialAdjustments, baseline, adapted)
+            : (preset.adjustments as PartialAdjustments);
           return {
             ...e,
             adjustments: blendPreset(baseline, values, amount),
-            appliedPreset: { id: preset.id, name: preset.name, amount, baseline, values, overrides: [] },
+            appliedPreset: { id: preset.id, name: preset.name, amount, baseline, values, overrides: [], ...(adapted ? { adapted } : {}) },
           };
         });
       },

@@ -36,8 +36,9 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   rules for this run: ask before any library/model ([ask] items), before naming new rolls; stop at the
   end of Phase 1 for review. **1.0 done**: the **Finish** step (wording agreed, now in DESIGN.md) at
   the top of the export dialog, with an opt-in date stamp (capture date, else today) and a contact-sheet
-  share image (this project's photos, up to 12). See PROJECT_STATUS.md for tests. **Next: 1.1 HEIC
-  import, which needs the owner's OK for libheif-js (LGPL, WASM).**
+  share image (this project's photos, up to 12). **1.1 HEIC: skipped for now by the owner** (asked
+  about libheif-js). **1.2 done**: adaptive looks (Settings toggle, on by default). See
+  PROJECT_STATUS.md for tests. **Next: 1.3 auto face detection.**
 
 - **2026-11-08 (newest): third redesign, "Afterimage" (built, committed).** The owner's new brief banned
   neon lime, rainbow gradients, champagne gold, glassmorphism and glows (so Afterglow's lime and prism are

@@ -109,6 +109,28 @@ comparison on real photos and writes contact sheets (see `docs/steps/REFERENCE_M
 - These adaptation options and suggestions apply to the **Generic look** mode; the matched mode does its
   own comparison in the closed loop.
 
+## Adaptive looks (`src/lib/analysis/lookAdapt.ts`, constants `LOOK_ADAPT`)
+
+Library looks are designed on well-exposed, neutral photos. When "Adaptive looks" is on (Settings,
+default on), applying a library look first evens out this photo's exposure and white balance toward
+what the look was made to do. Measurements and fixed rules only; no AI.
+
+- **Intent:** the look rendered on a neutral grey ramp (perceptual lightness 0.03–0.97, no cast) with
+  the CPU pipeline (`renderPixels`, same maths as the shader); its output median lightness and cast.
+- **Photo:** the look rendered on ~2,500 pixels of the photo's original preview, measured the same way.
+- **Exposure:** an offset (bisection, ±1.25 EV) that closes `keep` = 50% of the gap between the photo's
+  output median and the intent's; gaps under 0.025 are left alone.
+  Guards: brightening stops before the brightest 0.5% of pixels pass lightness 0.95 (or where they
+  already were), darkening before the darkest 0.5% fall below 0.03, so low-key and night photos keep
+  their highlights instead of being blown out to an average brightness.
+- **White balance:** cast = mean OKLab a/b of the least colourful half of the pixels (skipped when even
+  those exceed chroma 0.12). 60% of the difference from the intent's cast becomes temperature/tint via
+  `inverseWhiteBalance` (caps ±30 / ±20), kept only if a trial render brings the cast at least 10%
+  closer. Looks that leave the photo without colour (black and white) get no white-balance change.
+- The offsets are added to the look's own exposure/temperature/tint (or the baseline's, when the look
+  doesn't set them), so they scale with Amount, stay editable, and are listed under the applied look
+  ("Fitted to this photo: exposure −0.40 · temperature −6"). Matched looks are never adapted.
+
 ## Privacy and security
 
 - The API key lives only in the server environment (`ANTHROPIC_API_KEY`). It is never in a

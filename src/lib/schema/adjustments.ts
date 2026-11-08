@@ -437,6 +437,8 @@ export interface AppliedPreset {
   values: PartialAdjustments;
   /** Paths ("basic.exposure") edited by hand since applying; kept when amount changes. */
   overrides: string[];
+  /** Adaptive looks: offsets already added to `values` to fit this photo (shown to the user). */
+  adapted?: { exposure: number; temperature: number; tint: number };
 }
 
 export interface EditState {
@@ -843,6 +845,10 @@ export const EditStateSchema = z.object({
       baseline: AdjustmentsSchema,
       values: PartialAdjustmentsSchema,
       overrides: z.array(z.string().max(64)).max(500),
+      adapted: z
+        .object({ exposure: z.number().finite(), temperature: z.number().finite(), tint: z.number().finite() })
+        .optional()
+        .catch(undefined),
     })
     .nullable(),
   adjustmentsVisible: z.boolean(),

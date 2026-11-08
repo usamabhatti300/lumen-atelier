@@ -14,6 +14,8 @@ import { matchInWorker, matchSampleFor } from '@/lib/analysis/client';
 import type { PresetCategoryId } from '@/lib/schema/preset';
 import { PhotosPanel } from './PhotosPanel';
 import { tick } from '@/lib/haptics';
+import { adaptationForLook } from '@/engine/lookAdapt';
+import { describeAdaptation } from '@/lib/analysis/lookAdapt';
 
 /**
  * `compact`: inside the mobile presets sheet, where the bottom bar already has "Match look".
@@ -100,7 +102,8 @@ export function LeftPanel({
             variant={compact && !expanded ? 'strip' : 'panel'}
             onApply={(p) => {
               tick(12);
-              applyPreset(p, 100);
+              // Library looks are evened out for this photo first (Settings → Adaptive looks).
+              applyPreset(p, 100, adaptationForLook(p.adjustments));
             }}
             canApply={hasPhoto}
             trailing={
@@ -187,6 +190,8 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
     applied && applied.overrides.length > 0
       ? `${applied.overrides.length} hand-edited setting${applied.overrides.length === 1 ? '' : 's'} kept when the amount changes.`
       : undefined;
+  // Honest about adaptive looks: say what was changed to fit this photo.
+  const adaptNote = applied?.adapted ? `Fitted to this photo: ${describeAdaptation(applied.adapted)}.` : undefined;
 
   // Phones: one line, only while a look is on (Amount · value · save · remove). The look's name is
   // on the chip over the photo. It springs open and folds away, so the photo re-fits smoothly.
@@ -197,7 +202,7 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
         animate={{ height: applied ? 48 : 0, opacity: applied ? 1 : 0 }}
         transition={{ type: 'spring', stiffness: 420, damping: 40 }}
         className="relative mx-3 shrink-0 overflow-hidden"
-        title={overridesNote}
+        title={[adaptNote, overridesNote].filter(Boolean).join(' ') || undefined}
       >
         {applied && (
           <div className="flex h-12 items-center gap-1 border-t border-line-soft pt-1">
@@ -248,6 +253,11 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
             </div>
             {amount}
             {matchButton}
+            {adaptNote && (
+              <p className="pb-1.5 text-[11px] text-fg-4" data-testid="look-adapted">
+                {adaptNote}
+              </p>
+            )}
             {overridesNote && <p className="pb-1.5 text-[11px] text-fg-4">{overridesNote}</p>}
           </div>
         </motion.div>

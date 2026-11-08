@@ -9,7 +9,28 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-08 (newest): roadmap 1.0, export date stamp and contact sheet** (Finish step, DESIGN.md).
+**2026-11-08 (newest): roadmap 1.2, adaptive looks** (1.1 HEIC skipped for now by the owner).
+Applying a library look first evens out the photo's exposure and white balance toward what the look
+was made for (`src/lib/analysis/lookAdapt.ts`, rules in `docs/AI_ARCHITECTURE.md`): the look's intent
+is measured on a neutral grey ramp, the photo's on a 2,500-pixel sample with the matcher's CPU
+pipeline; exposure closes half the gap (±1.25 EV, with highlight and shadow guards so low-key photos
+aren't blown out), and a capped white-balance offset is kept only if it measurably reduces the cast.
+The offsets are added to the look's values (they scale with Amount and show in Light), recorded on
+the applied look ("Fitted to this photo: exposure −0.40" on desktop), and can be turned off in
+Settings → Adaptive looks (on by default). Matched looks are never adapted. ~30–50 ms per tap.
+Found in the visual check and fixed before commit: a dark, low-key photo was pushed to the +1.25 EV
+cap and blew out its highlights (now +0.83 with the ring intact).
+Tests run: typecheck clean; lint 0 errors (same 10 warnings); Vitest 222 passed, 1 skipped (9 new:
+bright, dark, backlit, low-key, warm and cool casts, black-and-white, offsets, speed); e2e
+`adaptive-looks` (new), `editor`, `finish` passed; `mobile` + `mobile-finish` 5 passed (one earlier
+`mobile` failure happened while the PC slept, 6.4 h test time; passed on re-run); `critical-journey`
+is flaky here: on this code it failed once (reference analysis still running after 45 s, a step this
+change doesn't touch) and passed once; it also failed once on the 1.0 commit and passed on the
+pre-1.0 commit. Not re-run: `test:e2e:pwa`, AI-tool suites. Checked at 390, 834 and 1440 px.
+Known limits: look previews in the strip are not adapted (they show the look as made); the phone
+shows the fitted values only in Light (the desktop panel also lists them).
+
+**2026-11-08: roadmap 1.0, export date stamp and contact sheet** (Finish step, DESIGN.md).
 The export dialog opens with **finish**: a live preview drawn by the same code as the export, an
 opt-in orange date stamp (capture date from EXIF, else today; editable; four corners) burned in after
 any AI upscale, and a **Contact sheet** share format (up to 12 of the project's photos, each with its

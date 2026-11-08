@@ -20,6 +20,8 @@ export interface Settings {
   exportFormat: 'image/jpeg' | 'image/png' | 'image/webp';
   exportQuality: number;
   lastProjectId: string | null;
+  /** Even out a photo's exposure and white balance toward a library look's intent before applying it. */
+  adaptiveLooks: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -30,6 +32,7 @@ const DEFAULTS: Settings = {
   exportFormat: 'image/jpeg',
   exportQuality: 92,
   lastProjectId: null,
+  adaptiveLooks: true,
 };
 
 interface SettingsState extends Settings {
