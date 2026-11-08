@@ -378,25 +378,29 @@ body {
  * (screen blend, ~0.9 s). Purely decorative; hidden with reduced motion.
  */
 @keyframes lumen-sweep {
-  0% { transform: translateX(-120%) skewX(-16deg); opacity: 0; }
-  15% { opacity: 1; }
-  100% { transform: translateX(220%) skewX(-16deg); opacity: 0; }
+  0% { transform: translateX(-130%) skewX(-14deg); opacity: 0; }
+  12% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateX(260%) skewX(-14deg); opacity: 0; }
 }
 .lumen-sweep {
   position: absolute;
   inset: 0 auto 0 0;
-  width: 45%;
+  width: 42%;
   pointer-events: none;
   mix-blend-mode: screen;
+  /* A bright core with prism fringes: visible on bright skies as well as dark scenes. */
   background: linear-gradient(
     90deg,
     transparent,
-    rgb(255 92 122 / 0.10) 25%,
-    rgb(255 240 200 / 0.28) 50%,
-    rgb(63 224 255 / 0.10) 75%,
+    rgb(143 125 255 / 0.16) 18%,
+    rgb(63 224 255 / 0.22) 32%,
+    rgb(255 252 235 / 0.5) 50%,
+    rgb(255 181 71 / 0.24) 66%,
+    rgb(255 92 122 / 0.16) 80%,
     transparent
   );
-  animation: lumen-sweep 900ms var(--ease-in-out-soft) both;
+  animation: lumen-sweep 1050ms var(--ease-in-out-soft) both;
 }
 
 /* Look readout: the chosen look's name arrives (rise and sharpen). */

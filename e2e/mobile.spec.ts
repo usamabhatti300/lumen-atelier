@@ -101,6 +101,12 @@ test('mobile: every editor feature is reachable by touch', async ({ page }) => {
   ]);
   await expect.poll(() => photoWidth(page)).toBeCloseTo(fit, 0);
 
+  // Press and hold the photo to see the original; letting go returns to the edit.
+  await touch(page, [{ type: 'pointerdown', id: 5, x: 180, y: 200 }]);
+  await expect(page.getByTestId('viewport').getByText('Before', { exact: true })).toBeVisible();
+  await touch(page, [{ type: 'pointerup', id: 5, x: 180, y: 200 }]);
+  await expect(page.getByTestId('viewport').getByText('Before', { exact: true })).toBeHidden();
+
   // Remove: Shift's job is an on-screen mode on touch screens; Done leaves the tool.
   await nav.getByRole('button', { name: 'More' }).click();
   await sheet.getByRole('button', { name: 'Remove', exact: true }).click();

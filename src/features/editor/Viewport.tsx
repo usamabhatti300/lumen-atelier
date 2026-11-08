@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, ImagePlus, Loader2 } from 'lucide-react';
 import { engine } from '@/engine/controller';
 import { useEngine } from '@/engine/engineStore';
+import { motionReduced, tick } from '@/lib/haptics';
 import { useEditor } from '@/state/editorStore';
 import { frameSize, outputSize } from '@/lib/engine/geometry';
 import { CropOverlay } from './overlays/CropOverlay';
@@ -140,8 +141,18 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     const [a, b] = [...touches.current.values()];
     return { dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
   };
+  // Press and hold the photo (one finger, still) to see the original; let go to return.
+  const hold = useRef<{ timer: number; x: number; y: number; on: boolean } | null>(null);
+  const endHold = () => {
+    const h = hold.current;
+    hold.current = null;
+    if (!h) return;
+    window.clearTimeout(h.timer);
+    if (h.on) setUi({ compare: 'off' });
+  };
   const onTouchDown = (e: React.PointerEvent) => {
     touches.current.set(e.pointerId, local(e));
+    endHold();
     if (touches.current.size === 2) {
       // A second finger turns a pan into a pinch.
       panning.current = null;
@@ -160,11 +171,24 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       return true;
     }
     lastTap.current = { t: e.timeStamp, x: p.x, y: p.y };
+    if (useEditor.getState().compare === 'off') {
+      const h = { x: p.x, y: p.y, on: false, timer: 0 };
+      h.timer = window.setTimeout(() => {
+        if (hold.current !== h || touches.current.size !== 1) return;
+        h.on = true;
+        tick();
+        setUi({ compare: 'before' });
+      }, 320);
+      hold.current = h;
+    }
     return false;
   };
   const onTouchMove = (e: React.PointerEvent) => {
     if (!touches.current.has(e.pointerId)) return false;
-    touches.current.set(e.pointerId, local(e));
+    const at = local(e);
+    touches.current.set(e.pointerId, at);
+    const h = hold.current;
+    if (h && !h.on && Math.hypot(at.x - h.x, at.y - h.y) > 10) endHold();
     const start = pinch.current;
     if (!start || touches.current.size !== 2) return false;
     const f = pinchFrame();
@@ -180,15 +204,36 @@ export function Viewport({ onImport }: { onImport: () => void }) {
   const lookId = useEditor((s) => s.edit.appliedPreset?.id ?? null);
   const [sweep, setSweep] = useState(0);
   const lastLook = useRef<{ photo: string | null; look: string | null } | null>(null);
+  const pendingSweep = useRef(false);
+  const frame = useEngine((s) => s.frame);
   useEffect(() => {
     const prev = lastLook.current;
     lastLook.current = { photo: activePhotoId, look: lookId };
     // Only a new look on the same photo sweeps; opening a photo with a look already applied doesn't.
-    if (prev && prev.photo === activePhotoId && lookId && prev.look !== lookId) setSweep((n) => n + 1);
+    if (prev && prev.photo === activePhotoId && lookId && prev.look !== lookId) pendingSweep.current = true;
   }, [lookId, activePhotoId]);
+  // The sweep waits for the first frame rendered with the new look, so the light passes over the
+  // look itself rather than over the old render.
+  useEffect(() => {
+    if (!pendingSweep.current) return;
+    pendingSweep.current = false;
+    setSweep((n) => n + 1);
+    // The photo lands: a breath of light and scale (skipped when motion is reduced).
+    if (!motionReduced()) {
+      land.current?.animate(
+        [
+          { transform: 'scale(0.985)', filter: 'brightness(1.14) saturate(1.08)' },
+          { transform: 'scale(1)', filter: 'none' },
+        ],
+        { duration: 650, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      );
+    }
+  }, [frame]);
+  const land = useRef<HTMLDivElement>(null);
 
   const onTouchUp = (e: React.PointerEvent) => {
     touches.current.delete(e.pointerId);
+    endHold();
     if (touches.current.size < 2) pinch.current = null;
   };
 
@@ -238,7 +283,9 @@ export function Viewport({ onImport }: { onImport: () => void }) {
         className="absolute"
         style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
       >
-        <div ref={attachCanvas} className="h-full w-full shadow-[0_40px_90px_-30px_rgba(0,0,0,0.95)] [&>canvas]:h-full [&>canvas]:w-full" />
+        <div ref={land} className="h-full w-full">
+          <div ref={attachCanvas} className="h-full w-full shadow-[0_40px_90px_-30px_rgba(0,0,0,0.95)] [&>canvas]:h-full [&>canvas]:w-full" />
+        </div>
         {/* Signature: a band of light passes over the photo when a new look loads. */}
         {sweep > 0 && (
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">

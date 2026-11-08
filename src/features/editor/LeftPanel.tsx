@@ -13,6 +13,7 @@ import { engine } from '@/engine/controller';
 import { matchInWorker, matchSampleFor } from '@/lib/analysis/client';
 import type { PresetCategoryId } from '@/lib/schema/preset';
 import { PhotosPanel } from './PhotosPanel';
+import { tick } from '@/lib/haptics';
 
 /**
  * `compact`: inside the mobile presets sheet, where the bottom bar already has "Match look".
@@ -60,7 +61,7 @@ export function LeftPanel({
         </button>
       </div>
       <div className={`flex shrink-0 items-center justify-between gap-2 ${compact ? 'pr-2 pl-4' : 'px-3 pt-1'}`}>
-        {compact && <h2 className="display mr-auto text-[19px] whitespace-nowrap text-fg">{tab === 'photos' ? 'Your photos' : 'Pick a look'}</h2>}
+        <h2 className="sr-only">{tab === 'photos' ? 'Your photos' : 'Pick a look'}</h2>
         <Segmented
           label="Left panel"
           size="xs"
@@ -77,13 +78,13 @@ export function LeftPanel({
             disabled={!hasPhoto}
             onClick={() => setSaving(true)}
             aria-label="Save look"
-            className="flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-medium text-accent-fg transition-colors hover:bg-accent/10 disabled:text-fg-4 coarse:h-9"
+            className={`flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-medium text-fg-2 transition-colors hover:bg-control hover:text-fg disabled:text-fg-4 coarse:h-11 ${compact ? 'ml-auto' : ''}`}
           >
             <Plus size={15} /> {compact ? <span aria-hidden>Save</span> : 'Save look'}
           </button>
         )}
         {onClose && (
-          <button type="button" aria-label="Close panel" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 transition-transform active:scale-90">
+          <button type="button" aria-label="Close panel" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 transition-transform active:scale-90 coarse:h-11 coarse:w-11">
             <X size={16} />
           </button>
         )}
@@ -93,7 +94,10 @@ export function LeftPanel({
         {tab === 'photos' ? (
           <PhotosPanel />
         ) : (
-          <PresetBrowser variant={compact && !expanded ? 'strip' : 'panel'} onApply={(p) => applyPreset(p, 100)} canApply={hasPhoto} />
+          <PresetBrowser variant={compact && !expanded ? 'strip' : 'panel'} onApply={(p) => {
+              tick(12);
+              applyPreset(p, 100);
+            }} canApply={hasPhoto} />
         )}
       </div>
       {tab !== 'photos' && compact && <AppliedPresetBar compact />}
@@ -133,6 +137,87 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
       setMatching(null);
     }
   };
+  const amount = (
+    <Slider
+      label="Amount"
+      value={applied?.amount ?? 100}
+      range={{ min: 0, max: 100, default: 100, step: 1 }}
+      fillFrom="min"
+      format={(v) => `${Math.round(v)}%`}
+      onGestureStart={() => begin('Preset amount')}
+      onGestureEnd={end}
+      onChange={setAmount}
+    />
+  );
+  const matchButton = source && (
+    <button
+      type="button"
+      onClick={() => void matchToPhoto()}
+      disabled={!!matching}
+      title="Compare this photo with the reference the preset came from and set the sliders to match it"
+      className={`flex shrink-0 items-center gap-1.5 rounded-full text-xs font-medium text-fg-2 transition-colors hover:bg-control hover:text-fg disabled:text-fg-4 ${compact ? 'h-8 bg-control px-3' : 'mb-1 h-8 px-2.5'}`}
+      data-testid="match-preset-to-photo"
+    >
+      {matching ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
+      {matching
+        ? matching.pass === 0
+          ? 'Matching…'
+          : `Matching · pass ${matching.pass}`
+        : compact
+          ? isMatched ? 'Match again' : 'Match to photo'
+          : isMatched
+            ? 'Match again to this photo'
+            : 'Match to this photo'}
+    </button>
+  );
+  const overridesNote =
+    applied && applied.overrides.length > 0
+      ? `${applied.overrides.length} hand-edited setting${applied.overrides.length === 1 ? '' : 's'} kept when the amount changes.`
+      : undefined;
+
+  // Phones: one row of fixed height whether or not a look is on, so choosing a look never moves the
+  // photo. Without a look it says what to do.
+  if (compact)
+    return (
+      <div className="relative mx-4 mb-1 h-[92px] shrink-0 border-t border-line-soft" title={overridesNote}>
+        <AnimatePresence initial={false} mode="popLayout">
+          {applied ? (
+            <motion.div
+              key="amount"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ type: 'spring', stiffness: 520, damping: 38 }}
+              className="pt-2"
+            >
+              <div className="flex h-8 items-center gap-2">
+                <span aria-hidden className="spectrum h-2 w-2 shrink-0 rounded-full shadow-[0_0_10px_rgb(212_255_63/0.5)]" />
+                <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-fg">{applied.name}</p>
+                {matchButton}
+                <button type="button" onClick={clear} aria-label="Remove preset" title="Remove preset" className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-3 transition-colors hover:bg-control hover:text-fg">
+                  <X size={15} />
+                </button>
+              </div>
+              {amount}
+            </motion.div>
+          ) : (
+            <motion.p
+              key="hint"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { duration: 0.2 } }}
+              exit={{ opacity: 0, transition: { duration: 0.06 } }}
+              className="flex h-full items-center gap-3 text-[13px] leading-snug text-fg-3"
+            >
+              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-fg-4/60" />
+              <span>
+                <span className="font-medium text-fg-2">Tap a look to try it.</span> Slide to set its strength; hold the photo to see the original.
+              </span>
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+
   return (
     <AnimatePresence initial={false}>
       {applied && (
@@ -143,7 +228,7 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="shrink-0 overflow-hidden"
         >
-          <div className={`rounded-lg bg-raised-2 px-3.5 pt-2.5 pb-1.5 ring-1 ring-line-soft ${compact ? 'mx-3 mb-2' : 'mx-3 mt-3'}`}>
+          <div className="mx-3 mt-3 rounded-lg bg-raised-2 px-3.5 pt-2.5 pb-1.5 ring-1 ring-line-soft">
             <div className="flex items-center gap-2">
               <span aria-hidden className="spectrum h-2 w-2 shrink-0 rounded-full" />
               <p className="min-w-0 flex-1 truncate text-[13px] text-fg-3">
@@ -153,37 +238,9 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
                 <X size={14} />
               </button>
             </div>
-            <Slider
-              label="Amount"
-              value={applied.amount}
-              range={{ min: 0, max: 100, default: 100, step: 1 }}
-              format={(v) => `${Math.round(v)}%`}
-              onGestureStart={() => begin('Preset amount')}
-              onGestureEnd={end}
-              onChange={setAmount}
-            />
-            {source && (
-              <button
-                type="button"
-                onClick={() => void matchToPhoto()}
-                disabled={!!matching}
-                title="Compare this photo with the reference the preset came from and set the sliders to match it"
-                className="mb-1 flex h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium text-accent-fg transition-colors hover:bg-accent/10 disabled:text-fg-4"
-                data-testid="match-preset-to-photo"
-              >
-                {matching ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
-                {matching
-                  ? matching.pass === 0
-                    ? 'Matching…'
-                    : `Matching · pass ${matching.pass}`
-                  : isMatched
-                    ? 'Match again to this photo'
-                    : 'Match to this photo'}
-              </button>
-            )}
-            {applied.overrides.length > 0 && (
-              <p className="pb-1.5 text-[11px] text-fg-4">{applied.overrides.length} hand-edited setting{applied.overrides.length === 1 ? '' : 's'} kept when the amount changes.</p>
-            )}
+            {amount}
+            {matchButton}
+            {overridesNote && <p className="pb-1.5 text-[11px] text-fg-4">{overridesNote}</p>}
           </div>
         </motion.div>
       )}

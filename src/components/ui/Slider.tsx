@@ -30,6 +30,8 @@ export interface SliderProps {
    * taller track with a tick ruler (the Halide / Lightroom mobile pattern).
    */
   size?: 'md' | 'lg';
+  /** `min`: the fill grows from the left (amounts, intensities); `default` (usual): from the default. */
+  fillFrom?: 'default' | 'min';
 }
 
 const decimals = (step: number) => (step >= 1 ? 0 : Math.min(3, Math.ceil(-Math.log10(step))));
@@ -46,6 +48,7 @@ export const Slider = memo(function Slider({
   disabled,
   hint,
   size = 'md',
+  fillFrom = 'default',
 }: SliderProps) {
   const lg = size === 'lg';
   const id = useId();
@@ -55,7 +58,7 @@ export const Slider = memo(function Slider({
   const touch = useRef<{ id: number; x: number; y: number; start: number; width: number; active: boolean } | null>(null);
   const span = range.max - range.min;
   const pct = ((value - range.min) / span) * 100;
-  const origin = ((Math.min(Math.max(range.default, range.min), range.max) - range.min) / span) * 100;
+  const origin = fillFrom === 'min' ? 0 : ((Math.min(Math.max(range.default, range.min), range.max) - range.min) / span) * 100;
   const d = decimals(range.step);
   const display = format ? format(value) : (value > 0 && range.min < 0 ? '+' : '') + value.toFixed(d);
   const changed = Math.abs(value - range.default) > range.step / 2;
@@ -197,7 +200,7 @@ export const Slider = memo(function Slider({
             style={fillStyle}
           />
         )}
-        {range.min < range.default && range.default < range.max && (
+        {fillFrom === 'default' && range.min < range.default && range.default < range.max && (
           <div
             className="pointer-events-none absolute top-1/2 h-2.5 w-px -translate-y-1/2 bg-fg-4"
             style={{ left: `${origin}%` }}

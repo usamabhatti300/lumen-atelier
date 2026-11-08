@@ -26,6 +26,7 @@ import { useShortcuts } from '@/features/editor/useShortcuts';
 import { ExportDialog } from '@/features/export/ExportDialog';
 import { Progress } from '@/components/ui/misc';
 import { useMediaQuery } from '@/lib/useMediaQuery';
+import { tick } from '@/lib/haptics';
 
 const ReferenceStudio = lazy(() => import('@/features/reference/ReferenceStudio'));
 
@@ -50,6 +51,15 @@ export default function EditorScreen() {
   // Phones held sideways: panels go beside the photo instead of under it.
   const landscape = useMediaQuery('(orientation: landscape) and (max-height: 540px)');
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  // Phones and tablets: a fresh photo opens with the looks strip showing, so the first step is
+  // obvious (try a look) and nothing is hidden behind the dock. Once per visit to the editor.
+  const ready = !!loadedId && loadedId === projectId;
+  const [autoOpenedFor, setAutoOpenedFor] = useState<string | null>(null);
+  if (ready && !desktop && autoOpenedFor !== loadedId) {
+    // Adjusting state while rendering (React's pattern for "when X changes"), once per project.
+    setAutoOpenedFor(loadedId);
+    if (!useEditor.getState().edit.appliedPreset) setSheet('presets');
+  }
 
   // Load the project.
   useEffect(() => {
@@ -124,7 +134,7 @@ export default function EditorScreen() {
     setSearch(next, { replace: true });
   };
 
-  if (!loadedId || loadedId !== projectId) {
+  if (!ready) {
     return <div className="h-full bg-ground" />;
   }
 
@@ -253,9 +263,11 @@ type Sheet = 'presets' | RightTab;
 /** Tablet/mobile: a floating dock. Each item opens a panel docked under (or beside) the photo. */
 function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null; setSheet: (s: Sheet | null) => void; onOpenReference: () => void }) {
   const isMore = sheet !== null && sheet !== 'presets' && sheet !== 'adjust' && sheet !== 'color';
+  // A tab bar: tapping the open tab keeps it (close with ×, a drag down, or Escape).
   const open = (id: Sheet) => {
-    if (sheet === id || (id === 'masks' && isMore)) return setSheet(null);
+    if (sheet === id || (id === 'masks' && isMore)) return;
     if (id !== 'presets') selectRightTab(id);
+    tick();
     setSheet(id);
   };
   return (
@@ -306,7 +318,8 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
           // strip, or one slider at a time); other tools a short sheet. Drag the handle up for everything.
           animate={side ? { width: 'min(320px, 46vw)' } : { height: tall ? '64dvh' : focusable(sheet) ? 'auto' : '40dvh' }}
           exit={side ? { width: 0 } : { height: 0 }}
-          transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ type: 'spring', stiffness: 420, damping: 40, mass: 0.9 }}
+          onKeyDown={(e) => e.key === 'Escape' && close()}
           className={`flex shrink-0 flex-col overflow-hidden bg-raised ${side ? 'rounded-l-xl border-l border-line-soft' : 'rounded-t-xl border-t border-line-soft shadow-[0_-20px_40px_-20px_rgb(0_0_0/0.8)]'}`}
           role="region"
           aria-label={`${SHEET_TITLE[sheet] ?? 'More'} panel`}
@@ -363,7 +376,7 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
                   }}
                 />
               )}
-              <button type="button" aria-label="Close panel" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 transition-transform active:scale-90">
+              <button type="button" aria-label="Close panel" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 transition-transform active:scale-90 coarse:h-11 coarse:w-11">
                 <X size={16} />
               </button>
             </div>
