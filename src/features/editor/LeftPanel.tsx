@@ -179,7 +179,7 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
   // photo. Without a look it says what to do.
   if (compact)
     return (
-      <div className="relative mx-4 mb-1 h-[92px] shrink-0 border-t border-line-soft" title={overridesNote}>
+      <div className="relative mx-4 mb-1 h-[86px] shrink-0 border-t border-line-soft" title={overridesNote}>
         <AnimatePresence initial={false} mode="popLayout">
           {applied ? (
             <motion.div
@@ -206,12 +206,9 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { duration: 0.2 } }}
               exit={{ opacity: 0, transition: { duration: 0.06 } }}
-              className="flex h-full items-center gap-3 text-[13px] leading-snug text-fg-3"
+              className="flex h-full items-center justify-center font-mono text-[11px] text-fg-4"
             >
-              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-fg-4/60" />
-              <span>
-                <span className="font-medium text-fg-2">Tap a look to try it.</span> Slide to set its strength; hold the photo to see the original.
-              </span>
+              tap a look · hold the photo to compare
             </motion.p>
           )}
         </AnimatePresence>

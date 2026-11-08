@@ -1,4 +1,6 @@
-import { CheckSquare, Download, Square, Trash2, Wand } from 'lucide-react';
+import { CheckSquare, Copy, Download, Square, Trash2 } from 'lucide-react';
+import { LooksIcon } from '@/components/icons';
+import { PresetBrowser } from '@/features/presets/PresetBrowser';
 import { useState } from 'react';
 import { useEditor } from '@/state/editorStore';
 import { usePresets } from '@/state/presetStore';
@@ -19,9 +21,8 @@ export function PhotosPanel() {
   const [selected, setSelected] = useState<string[]>([]);
   const [progress, setProgress] = useState<BatchProgress | null>(null);
   const [controller, setController] = useState<AbortController | null>(null);
-  const [presetId, setPresetId] = useState('');
+  const [picking, setPicking] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const allPresets = usePresets((s) => s.all);
   const openExport = useExportDialog((s) => s.open);
 
   const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -44,7 +45,7 @@ export function PhotosPanel() {
     void run('Settings applied', (e) => ({ ...e, adjustments: structuredClone(source.adjustments), appliedPreset: source.appliedPreset, lut: source.lut }), ids);
   };
 
-  const applyPresetToSelected = () => {
+  const applyPresetToSelected = (presetId: string) => {
     const preset = usePresets.getState().byId(presetId);
     if (!preset) return;
     void run(`${preset.name} applied`, (e) => {
@@ -102,35 +103,27 @@ export function PhotosPanel() {
             </Button>
           </div>
         ) : (
-          <>
-            <Button size="sm" variant="secondary" className="w-full" disabled={targets.filter((t) => t !== activeId).length === 0} onClick={syncSettings} icon={<Wand size={13} />}>
-              Copy current settings to selected
-            </Button>
-            <div className="flex gap-1">
-              <select
-                value={presetId}
-                onChange={(e) => setPresetId(e.target.value)}
-                aria-label="Preset to apply"
-                className="h-7 min-w-0 flex-1 rounded-xs border border-line bg-well px-1.5 text-xs text-fg"
-              >
-                <option value="">Choose a preset…</option>
-                {allPresets().map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              <Button size="sm" variant="secondary" disabled={!presetId || targets.length === 0} onClick={applyPresetToSelected}>
-                Apply
-              </Button>
-            </div>
-            <div className="flex gap-1">
-              <Button size="sm" variant="secondary" className="flex-1" disabled={targets.length === 0} icon={<Download size={13} />} onClick={() => openExport(targets)}>
-                Export selected
-              </Button>
-              <Button size="sm" variant="ghost" disabled={targets.length === 0} aria-label="Remove selected photos" onClick={() => setConfirmRemove(true)} icon={<Trash2 size={13} />} />
-            </div>
-          </>
+          targets.length === 0 ? (
+            // Nothing selected: one quiet line instead of a stack of disabled buttons.
+            <p className="font-mono text-[11px] text-fg-4">select photos to copy settings, apply a look or export them together</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" variant="secondary" icon={<LooksIcon size={14} />} onClick={() => setPicking(true)}>
+                  Apply a look
+                </Button>
+                <Button size="sm" variant="secondary" disabled={targets.filter((t) => t !== activeId).length === 0} onClick={syncSettings} icon={<Copy size={13} />}>
+                  Copy my edits
+                </Button>
+                <Button size="sm" variant="secondary" icon={<Download size={13} />} onClick={() => openExport(targets)}>
+                  Export
+                </Button>
+                <Button size="sm" variant="ghost" className="text-danger hover:text-danger" icon={<Trash2 size={13} />} onClick={() => setConfirmRemove(true)}>
+                  Remove
+                </Button>
+              </div>
+            </>
+          )
         )}
       </div>
       <Dialog
@@ -159,6 +152,19 @@ export function PhotosPanel() {
         }
       >
         <p className="px-4 py-4 text-sm text-fg-3">The selected photos and their edits will be removed from this project. Files on your computer are not affected.</p>
+      </Dialog>
+      {/* Pick a look for the selected photos from the same grid as the Looks panel. */}
+      <Dialog open={picking} onClose={() => setPicking(false)} title={`Apply a look to ${targets.length} photo${targets.length === 1 ? '' : 's'}`}>
+        <div className="h-[min(60dvh,520px)] pb-2">
+          <PresetBrowser
+            variant="panel"
+            actionVerb="Apply to selected:"
+            onApply={(p) => {
+              setPicking(false);
+              applyPresetToSelected(p.id);
+            }}
+          />
+        </div>
       </Dialog>
     </div>
   );

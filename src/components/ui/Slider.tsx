@@ -28,8 +28,9 @@ export interface SliderProps {
   /**
    * `lg`: the phone "one slider at a time" view. Larger label and value, a reset button, and a
    * taller track with a tick ruler (the Halide / Lightroom mobile pattern).
+   * `row`: one line (label · track · value), for short lists of sliders on phones.
    */
-  size?: 'md' | 'lg';
+  size?: 'md' | 'lg' | 'row';
   /** `min`: the fill grows from the left (amounts, intensities); `default` (usual): from the default. */
   fillFrom?: 'default' | 'min';
 }
@@ -51,6 +52,7 @@ export const Slider = memo(function Slider({
   fillFrom = 'default',
 }: SliderProps) {
   const lg = size === 'lg';
+  const row = size === 'row';
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -124,13 +126,15 @@ export const Slider = memo(function Slider({
 
   return (
     <div
-      className={`group/slider grid items-center gap-x-2 ${lg ? 'grid-cols-[1fr_auto_auto] py-1' : 'grid-cols-[1fr_auto] py-[3px]'} ${disabled ? 'opacity-40' : ''}`}
+      className={`group/slider grid items-center ${
+        lg ? 'grid-cols-[1fr_auto_auto] gap-x-2 py-1' : row ? 'grid-cols-[76px_minmax(0,1fr)_48px] gap-x-3' : 'grid-cols-[1fr_auto] gap-x-2 py-[3px]'
+      } ${disabled ? 'opacity-40' : ''}`}
     >
       <label
         htmlFor={id}
         onDoubleClick={reset}
         title={hint ?? 'Double-click to reset'}
-        className={`cursor-default select-none truncate transition-colors ${lg ? `text-[15px] font-medium ${changed ? 'text-fg' : 'text-fg-2'}` : `text-[13px] ${changed ? 'text-fg' : 'text-fg-3'}`}`}
+        className={`cursor-default select-none truncate transition-colors ${row ? 'col-start-1 row-start-1' : ''} ${lg ? `text-[15px] font-medium ${changed ? 'text-fg' : 'text-fg-2'}` : `text-[13px] ${changed ? 'text-fg' : 'text-fg-3'}`}`}
       >
         {label}
       </label>
@@ -138,7 +142,7 @@ export const Slider = memo(function Slider({
         <input
           autoFocus
           aria-label={`${label} value`}
-          className={`rounded-xs border border-accent/60 bg-well px-1.5 text-right font-mono text-fg outline-none ${lg ? 'h-8 w-20 text-base' : 'h-6 w-16 text-xs'}`}
+          className={`rounded-xs border border-accent/60 bg-well px-1.5 text-right font-mono text-fg outline-none ${row ? 'col-start-3 row-start-1 w-12' : ''} ${lg ? 'h-8 w-20 text-base' : 'h-6 w-16 text-xs'}`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commitDraft}
@@ -156,7 +160,7 @@ export const Slider = memo(function Slider({
             setDraft(value.toFixed(d));
             setEditing(true);
           }}
-          className={`rounded-xs px-1.5 text-right font-mono transition-colors hover:bg-control ${lg ? 'h-8 min-w-14 text-base font-medium' : 'h-6 min-w-11 text-xs'} ${
+          className={`rounded-xs px-1.5 text-right font-mono transition-colors hover:bg-control ${row ? 'col-start-3 row-start-1 justify-self-end' : ''} ${lg ? 'h-8 min-w-14 text-base font-medium' : 'h-6 min-w-11 text-xs'} ${
             changed ? 'text-accent-fg' : 'text-fg-4'
           }`}
         >
@@ -175,7 +179,7 @@ export const Slider = memo(function Slider({
         </button>
       )}
       <div
-        className={`relative touch-pan-y ${lg ? 'col-span-3 flex h-12 items-center' : 'col-span-2 h-[22px] coarse:h-8'}`}
+        className={`relative touch-pan-y ${lg ? 'col-span-3 flex h-12 items-center' : row ? 'col-start-2 row-start-1 h-[30px] coarse:h-10' : 'col-span-2 h-[22px] coarse:h-8'}`}
         onDoubleClick={reset}
         onPointerDown={onTouchDown}
         onPointerMove={onTouchMove}

@@ -175,11 +175,11 @@ test('mobile touch: scrolling panels never changes edits; strip, curve and slide
   const nav = page.getByRole('navigation', { name: 'Editing tools' });
   const scroller = page.locator('[data-testid="compact-sheet"] .overflow-y-auto').first();
 
-  // Presets: a sideways strip of large cards; a tap applies.
+  // Presets: a sideways strip of small film frames; a tap applies.
   await nav.getByRole('button', { name: 'Looks' }).click();
   const strip = page.locator('[data-testid="compact-sheet"] ul[aria-label="Presets"]');
   const sb = (await strip.boundingBox())!;
-  expect(sb.height).toBeGreaterThan(120);
+  expect(sb.height).toBeGreaterThan(70);
   await t.swipe(sb.x + sb.width * 0.8, sb.y + sb.height / 2, -sb.width * 0.5, 0);
   await expect.poll(() => strip.evaluate((e) => e.scrollLeft)).toBeGreaterThan(40);
   const card = strip.locator('li > button').first();
@@ -189,11 +189,11 @@ test('mobile touch: scrolling panels never changes edits; strip, curve and slide
   await expect(card).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Close panel' }).click();
 
-  // Light opens as one slider at a time: a tool row picks what the large slider controls.
+  // Light opens on a group (Tone): a short list of one-line sliders; the row picks the group.
   await nav.getByRole('button', { name: 'Light' }).click();
   const sheet = page.getByTestId('compact-sheet');
   await expect(page.getByTestId('focus-tools')).toBeVisible();
-  await expect(sheet.getByRole('slider')).toHaveCount(1);
+  await expect(sheet.getByRole('slider')).toHaveCount(4);
   const exposure = page.getByRole('slider', { name: 'Exposure', exact: true });
   const focusStart = await exposure.inputValue();
   let fb = (await exposure.boundingBox())!;
@@ -202,23 +202,22 @@ test('mobile touch: scrolling panels never changes edits; strip, curve and slide
   fb = (await exposure.boundingBox())!;
   await t.swipe(fb.x + fb.width * 0.5, fb.y + fb.height / 2, fb.width * 0.25, 0); // sideways: changes it
   expect(Number(await exposure.inputValue())).toBeGreaterThan(Number(focusStart));
-  // The edited tool is marked in the row; picking another tool swaps the slider.
-  await expect(sheet.getByRole('tab', { name: /Exposure.*edited/ })).toBeVisible();
-  // (The preset applied above changed Contrast, so its chip is marked too.)
-  await sheet.getByRole('tab', { name: /^Contrast/ }).click();
-  await expect(page.getByRole('slider', { name: 'Contrast', exact: true })).toBeVisible();
+  // The edited group is marked in the row; picking another group swaps the sliders.
+  await expect(sheet.getByRole('tab', { name: /Tone.*edited/ })).toBeVisible();
+  await sheet.getByRole('tab', { name: /^Range/ }).click();
+  await expect(page.getByRole('slider', { name: 'Whites', exact: true })).toBeVisible();
   await expect(exposure).toHaveCount(0);
-  // Reset puts the tool back to its default and clears the mark.
-  await sheet.getByRole('button', { name: 'Reset Contrast' }).click();
-  await expect(sheet.getByRole('button', { name: 'Reset Contrast' })).toBeDisabled();
-  await expect(sheet.getByRole('tab', { name: 'Contrast', exact: true })).toBeVisible();
+  // Reset puts the group back to its defaults and clears the mark.
+  await sheet.getByRole('tab', { name: /^Tone/ }).click();
+  await sheet.getByRole('button', { name: 'Reset tone' }).click();
+  await expect(sheet.getByRole('button', { name: 'Reset tone' })).toBeDisabled();
+  await expect(sheet.getByRole('tab', { name: 'Tone', exact: true })).toBeVisible();
 
-  // Colour opens on Mix: a band swatch and Hue / Saturation / Luminance choose the slider.
+  // Colour opens on Mix: a band swatch shows that colour's Hue, Saturation and Luminance together.
   await nav.getByRole('button', { name: 'Colour' }).click();
   await sheet.getByRole('radio', { name: 'Blue', exact: true }).click();
-  await expect(page.getByRole('slider', { name: 'Blue saturation', exact: true })).toBeVisible();
-  await sheet.getByRole('radio', { name: 'Hue', exact: true }).click();
-  await expect(page.getByRole('slider', { name: 'Blue hue', exact: true })).toBeVisible();
+  await expect(sheet.getByRole('radio', { name: 'Blue', exact: true })).toHaveAttribute('aria-checked', 'true');
+  for (const name of ['Hue', 'Saturation', 'Luminance']) await expect(sheet.getByRole('slider', { name, exact: true })).toBeVisible();
   await sheet.getByRole('tab', { name: 'Grade', exact: true }).click();
   await expect(sheet.getByRole('slider', { name: 'Luminance', exact: true })).toBeVisible();
 

@@ -32,6 +32,14 @@ test.describe('editor', () => {
     await expect(page.getByRole('slider', { name: 'Exposure', exact: true })).toHaveValue('0');
     await page.keyboard.press('Control+Shift+z');
     await expect(page.getByRole('slider', { name: 'Exposure', exact: true })).toHaveValue('1.5');
+
+    // Press and hold the photo with the mouse to see the original; release to return to the edit.
+    const box = (await page.locator('canvas.editor-canvas').boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await expect(page.getByTestId('viewport').getByText('original', { exact: true })).toBeVisible();
+    await page.mouse.up();
+    await expect(page.getByTestId('viewport').getByText('original', { exact: true })).toBeHidden();
   });
 
   test('keyboard can operate sliders and the before/after split', async ({ page }) => {
@@ -96,9 +104,8 @@ test.describe('editor', () => {
     await page.goto('/');
     await page.getByTestId('gallery-file-input').setInputFiles({ name: 'a.jpg', mimeType: 'image/jpeg', buffer: await makeImage(page, 'target') });
     await waitForRender(page);
-    // Roll 01, Editor's Picks, is the default tab; Kept comes first (Last roll joins once a look is used).
-    const tabs = page.getByRole('tablist', { name: 'Preset categories' }).getByRole('tab');
-    await expect(tabs.first()).toHaveText('Kept');
+    // One switch picks the collection; Rolls is the default, open on roll 01 (Editor's Picks).
+    await expect(page.getByRole('radio', { name: 'Rolls' })).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByRole('tab', { name: "Editor's Picks" })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(51);
     await page.getByRole('button', { name: 'Apply Velvet Slide' }).click();
@@ -106,11 +113,12 @@ test.describe('editor', () => {
     await setRange(page, 'Amount', 40);
     await expect(page.getByRole('slider', { name: 'Amount' })).toHaveValue('40');
     await page.getByRole('button', { name: 'Add Velvet Slide to favourites' }).click();
-    await page.getByRole('tab', { name: 'Kept' }).click();
+    await page.getByRole('radio', { name: 'Kept' }).click();
     await expect(page.getByRole('button', { name: 'Apply Velvet Slide' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(1);
-    // Search covers the whole library, not just the open tab.
-    await page.getByRole('tab', { name: "Editor's Picks" }).click();
+    // Search covers the whole library, not just the open tab. Rolls reopens the roll you were on.
+    await page.getByRole('radio', { name: 'Rolls' }).click();
+    await expect(page.getByRole('tab', { name: "Editor's Picks" })).toHaveAttribute('aria-selected', 'true');
     await page.getByRole('searchbox', { name: 'Search presets' }).fill('bleach');
     await expect(page.getByRole('button', { name: 'Apply Bleach Bypass' })).toBeVisible();
     // Roll tabs filter (Monochrome Diary, the black & white roll, holds the four monochrome recipes).

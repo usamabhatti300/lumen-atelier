@@ -59,7 +59,7 @@ test('reference to preset to export', async ({ page }) => {
 
   // Remove the preset, then reapply the saved one from the library.
   await page.getByRole('button', { name: 'Remove preset' }).click();
-  await page.getByRole('tab', { name: 'Matched' }).click();
+  await page.getByRole('radio', { name: 'Yours' }).click();
   await page.getByRole('button', { name: 'Apply E2E Reference Look' }).click();
   await expect(page.getByText('E2E Reference Look', { exact: true }).first()).toBeVisible();
   // The saved reference preset carries the reference's statistics, so it can be matched to this photo.

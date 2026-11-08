@@ -27,7 +27,7 @@ import { useShortcuts } from '@/features/editor/useShortcuts';
 import { ExportDialog } from '@/features/export/ExportDialog';
 import { Progress } from '@/components/ui/misc';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { tick } from '@/lib/haptics';
+import { motionReduced, tick } from '@/lib/haptics';
 
 const ReferenceStudio = lazy(() => import('@/features/reference/ReferenceStudio'));
 
@@ -262,6 +262,42 @@ export default function EditorScreen() {
 /** `tools`: the More grid, which leads to one of the right-panel tabs. */
 type Sheet = 'presets' | 'tools' | RightTab;
 
+/**
+ * The dock steps aside while you work directly on the photo or a control: pressing and holding,
+ * dragging or pinching the photo, or dragging a slider, curve or wheel. It comes back shortly after
+ * you let go. A quick tap never hides it.
+ */
+function useDockAway() {
+  const [away, setAway] = useState(false);
+  useEffect(() => {
+    let hideTimer = 0;
+    let showTimer = 0;
+    const WORK = '[data-testid="viewport"], [data-testid="slider-track"], .slider-input, [data-dock-away]';
+    const down = (e: PointerEvent) => {
+      if (!(e.target as Element | null)?.closest?.(WORK)) return;
+      window.clearTimeout(showTimer);
+      window.clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => setAway(true), 180);
+    };
+    const up = () => {
+      window.clearTimeout(hideTimer);
+      window.clearTimeout(showTimer);
+      showTimer = window.setTimeout(() => setAway(false), 650);
+    };
+    window.addEventListener('pointerdown', down, true);
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    return () => {
+      window.clearTimeout(hideTimer);
+      window.clearTimeout(showTimer);
+      window.removeEventListener('pointerdown', down, true);
+      window.removeEventListener('pointerup', up, true);
+      window.removeEventListener('pointercancel', up, true);
+    };
+  }, []);
+  return away;
+}
+
 /** Tablet/mobile: a floating dock. Each item opens a panel docked under (or beside) the photo. */
 function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null; setSheet: (s: Sheet | null) => void; onOpenReference: () => void }) {
   const isMore = sheet !== null && sheet !== 'presets' && sheet !== 'adjust' && sheet !== 'color';
@@ -272,9 +308,19 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
     tick();
     setSheet(id);
   };
+  const away = useDockAway();
   return (
-    <div className="shrink-0 bg-ground px-3 pt-2 pb-[max(env(safe-area-inset-bottom),10px)] land:pt-1 land:pb-[max(env(safe-area-inset-bottom),6px)]">
-      <nav className="mx-auto flex h-[60px] max-w-lg items-stretch rounded-[22px] border border-line bg-raised-2 px-1 shadow-float land:h-12 land:rounded-full" aria-label="Editing tools">
+    // The dock floats a little over the panel above it (glass), and keeps its space when it slides
+    // away, so nothing ever moves under your finger.
+    <div className="relative z-20 -mt-4 shrink-0 px-3 pt-0 pb-[max(env(safe-area-inset-bottom),10px)] land:-mt-2 land:pb-[max(env(safe-area-inset-bottom),6px)]">
+      <motion.nav
+        animate={away ? { y: '115%', opacity: 0 } : { y: 0, opacity: 1 }}
+        transition={motionReduced() ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 38 }}
+        style={{ pointerEvents: away ? 'none' : undefined }}
+        aria-hidden={away || undefined}
+        className="surface-glass mx-auto flex h-[60px] max-w-lg items-stretch rounded-[22px] px-1 shadow-float land:h-12 land:rounded-full"
+        aria-label="Editing tools"
+      >
         <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={LooksIcon} label="Looks" />
         <CompactTab active={sheet === 'adjust'} onClick={() => open('adjust')} icon={Sun} label="Light" />
         {/* The featured action, not a tab: a lilac lens with its afterimage, so it never reads as the selected tab. */}
@@ -285,7 +331,7 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
         </button>
         <CompactTab active={sheet === 'color'} onClick={() => open('color')} icon={Droplet} label="Colour" />
         <CompactTab active={isMore} onClick={() => open('tools')} icon={Ellipsis} label="More" />
-      </nav>
+      </motion.nav>
     </div>
   );
 }
@@ -320,7 +366,7 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
           exit={side ? { width: 0 } : { height: 0 }}
           transition={{ type: 'spring', stiffness: 420, damping: 40, mass: 0.9 }}
           onKeyDown={(e) => e.key === 'Escape' && close()}
-          className={`flex shrink-0 flex-col overflow-hidden bg-raised ${side ? 'rounded-l-xl border-l border-line-soft' : 'rounded-t-xl border-t border-line-soft shadow-[0_-20px_40px_-20px_rgb(0_0_0/0.8)]'}`}
+          className={`flex shrink-0 flex-col overflow-hidden bg-raised ${side ? 'rounded-l-xl border-l border-line-soft' : 'rounded-t-xl border-t border-line-soft pb-4 shadow-[0_-20px_40px_-20px_rgb(0_0_0/0.8)]'}`}
           role="region"
           aria-label={`${SHEET_TITLE[sheet] ?? 'More'} panel`}
           data-testid="compact-sheet"

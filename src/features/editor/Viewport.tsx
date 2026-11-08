@@ -178,10 +178,23 @@ export function Viewport({ onImport }: { onImport: () => void }) {
         h.on = true;
         tick();
         setUi({ compare: 'before' });
-      }, 320);
+      }, 220);
       hold.current = h;
     }
     return false;
+  };
+  // Mouse and pen: press and hold the photo (still) to see the original; release to return.
+  const startMouseHold = (e: React.PointerEvent) => {
+    endHold();
+    if (useEditor.getState().compare !== 'off') return;
+    const p = local(e);
+    const h = { x: p.x, y: p.y, on: false, timer: 0 };
+    h.timer = window.setTimeout(() => {
+      if (hold.current !== h) return;
+      h.on = true;
+      setUi({ compare: 'before' });
+    }, 220);
+    hold.current = h;
   };
   const onTouchMove = (e: React.PointerEvent) => {
     if (!touches.current.has(e.pointerId)) return false;
@@ -258,6 +271,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
       }}
       onPointerDown={(e) => {
         if (e.pointerType === 'touch' && canPinch && onTouchDown(e)) return;
+        if (e.pointerType !== 'touch' && e.button === 0 && canPinch && !canPan) startMouseHold(e);
         if (!canPan || (e.button !== 0 && e.button !== 1)) return;
         panning.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
         setIsPanning(true);
@@ -268,11 +282,16 @@ export function Viewport({ onImport }: { onImport: () => void }) {
         }
       }}
       onPointerMove={(e) => {
+        if (e.pointerType !== 'touch' && hold.current && !hold.current.on) {
+          const p = local(e);
+          if (Math.hypot(p.x - hold.current.x, p.y - hold.current.y) > 6) endHold();
+        }
         if (e.pointerType === 'touch' && onTouchMove(e)) return;
         if (!panning.current) return;
         setPan({ x: panning.current.px + e.clientX - panning.current.x, y: panning.current.py + e.clientY - panning.current.y });
       }}
       onPointerUp={(e) => {
+        if (e.pointerType !== 'touch') endHold();
         onTouchUp(e);
         panning.current = null;
         setIsPanning(false);

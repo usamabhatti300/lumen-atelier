@@ -208,16 +208,21 @@ layer only; presets keep their category ids): 01 Editor's Picks, 02 Late Showing
 Minutes, 10 Postcards, 11 Moss & Clay, 12 Flash at Midnight, 13 Monochrome Diary, 14 Feed Ready; plus
 **Yours** and **Matched**. Each has a two-word mood that also feeds search.
 
-The browser's chips: **Last roll** (the last 12 looks applied, newest first; shown once you've used
-one), **Kept** (favourites), the numbered rolls, **All**. Grids show the open roll's title and mood
-under the chips; the phone strip doesn't (fixed height). Home shows one cover per roll, rendered with
-its first look on your last photo.
+The browser has one switch: **Rolls · Kept · Last roll · Yours** (Kept = favourites; Last roll = the
+last 12 looks applied, newest first; Yours = looks you saved or matched). Under Rolls, a slim mono row
+of the numbered rolls (selected: ivory with a lilac underline) and "all"; coming back to Rolls reopens
+the roll you were on. Grids show the open roll's mood under it; the phone strip doesn't (fixed height).
+On phones the strip's frames have no captions (the chosen look's name is in the amount row), and the
+empty amount row is one mono hint ("tap a look · hold the photo to compare"). Home shows one cover per
+roll, rendered with its first look on your last photo. Applying a look to several photos (Photos tab)
+opens the same grid in a dialog instead of a dropdown.
 
 ## Elevation & depth
 
 Surfaces step up in lightness. `shadow-float` / `shadow-lift` only for things that float. The lilac
 offset (`shadow-offset`, `shadow-offset-sm`, `shadow-selected`) is the only coloured shadow. App bars
-keep a light backdrop blur for legibility; nothing else uses glass.
+keep a light backdrop blur for legibility, and the phone dock is frosted glass (`.surface-glass`, the
+owner's request, 2026-11-08) that floats a little over the panel above it; nothing else uses glass.
 
 ## Components
 
@@ -231,8 +236,15 @@ keep a light backdrop blur for legibility; nothing else uses glass.
 - **Roll chip**: mono roll number + name; selected is ivory.
 - **Crop**: lilac viewfinder brackets at the corners, ivory edge bars, and a readout with size and
   ratio ("1200 × 1500 · 4:5").
-- **Compare (press and hold)**: an "original" chip with an ivory dot, and under it "let go for
+- **Compare (press and hold)**: hold the photo still for ~0.2 s (finger, mouse or pen) to see the
+  original, let go to return. An "original" chip with an ivory dot, and under it "let go for
   {look} · {amount}".
+- **Light on phones**: groups (Tone, Range, White balance, Colour, Texture) as chips, a dot marking a
+  group with edits; the group's sliders as one-line rows (`Slider size="row"`: label · track with tick
+  scale · value) and a "Reset {group}" text button. **Colour mix on phones**: the band swatches, then
+  that band's Hue, Saturation and Luminance rows together. Grade and Curve unchanged.
+- **Dock behaviour**: it slides away (spring, ~115% down and faded) while you press, drag or pinch the
+  photo or drag a slider, and returns ~0.65 s after you let go. It keeps its space, so nothing moves.
 - **Match result**: your photo leads; the look card adds a camera-style info list of what was measured
   (`src/lib/analysis/readout.ts`: exposure, contrast, white balance, colour, grain, vignette), using
   the mapping's own thresholds.
@@ -264,7 +276,7 @@ Layout stability is part of motion: nothing the user taps may shift the photo.
 - Keep touch targets ≥44px on coarse pointers.
 
 **Don't**
-- Don't add glows, gradients, blur or glass.
+- Don't add glows, gradients, blur or glass (the phone dock and app bars are the only exceptions).
 - Don't add a fourth analog prop, or put props on the photo.
 - Don't use orange for anything but date stamps.
 - Don't use emoji or Unicode glyphs as icons; use Lucide.

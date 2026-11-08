@@ -10,7 +10,15 @@ import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { rollOf } from '@/lib/presets/rolls';
 
-type Filter = 'all' | 'favorites' | 'recent' | PresetCategoryId;
+type Filter = 'all' | 'favorites' | 'recent' | 'yours' | PresetCategoryId;
+type Mode = 'rolls' | 'kept' | 'recent' | 'yours';
+
+const MODES: { id: Mode; label: string }[] = [
+  { id: 'rolls', label: 'Rolls' },
+  { id: 'kept', label: 'Kept' },
+  { id: 'recent', label: 'Last roll' },
+  { id: 'yours', label: 'Yours' },
+];
 
 /** Today as a digicam date stamp: '26 11 08. */
 function dateStamp(d = new Date()): string {
@@ -69,6 +77,7 @@ export function PresetBrowser({
     }
     return all().filter((p) => {
       if (filter === 'favorites' && !favorites.includes(p.id)) return false;
+      if (filter === 'yours') return p.origin !== 'builtin' && matches(p);
       if (filter !== 'all' && filter !== 'favorites' && p.category !== filter) return false;
       return matches(p);
     });
@@ -90,18 +99,17 @@ export function PresetBrowser({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, all]);
 
-  // Last roll (once you've used a look), Kept, then the numbered rolls, then everything.
-  const filters: Filter[] = [
-    ...(recent.length > 0 || filter === 'recent' ? (['recent'] as const) : []),
-    'favorites',
-    'signature',
-    ...PRESET_CATEGORY_IDS.filter((c) => c !== 'signature')
-      .filter((c) => c !== 'reference' || user.some((p) => p.category === 'reference'))
-      .filter((c) => c !== 'custom' || user.some((p) => p.category === 'custom')),
-    'all',
-  ];
+  // One switch picks the collection: Rolls (then a row of rolls), Kept, Last roll, Yours.
+  const mode: Mode = filter === 'favorites' ? 'kept' : filter === 'recent' ? 'recent' : filter === 'yours' ? 'yours' : 'rolls';
+  // Coming back to Rolls reopens the roll you were on.
+  const [lastRoll, setLastRoll] = useState<Filter>(filter);
+  const pickMode = (m: Mode) => {
+    if (m === mode) return;
+    setFilter(m === 'kept' ? 'favorites' : m === 'recent' ? 'recent' : m === 'yours' ? 'yours' : lastRoll);
+  };
+  const rolls: Filter[] = [...PRESET_CATEGORY_IDS.filter((c) => c !== 'custom' && c !== 'reference'), 'all'];
   const stamp = useMemo(() => dateStamp(), []);
-  const roll = filter !== 'all' && filter !== 'favorites' && filter !== 'recent' ? rollOf(filter) : null;
+  const roll = mode === 'rolls' && filter !== 'all' ? rollOf(filter) : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -116,7 +124,7 @@ export function PresetBrowser({
             onChange={(e) => {
               setQuery(e.target.value);
               // Search the whole library, not only the open category (Kept and Last roll stay filters).
-              if (e.target.value.trim() && filter !== 'all' && filter !== 'favorites') setFilter('all');
+              if (e.target.value.trim() && mode === 'rolls' && filter !== 'all') setFilter('all');
             }}
             placeholder={`Search ${all().length} looks`}
             autoFocus={strip}
@@ -137,48 +145,75 @@ export function PresetBrowser({
           )}
         </label>
         )}
-        <div className={`flex gap-1.5 ${variant === 'page' ? 'no-scrollbar -mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0' : 'no-scrollbar -mx-3 overflow-x-auto px-3 pb-1 [mask-image:linear-gradient(90deg,#000_86%,transparent)]'}`} role="tablist" aria-label="Preset categories">
+        <div className="flex items-center gap-2">
+          <div role="radiogroup" aria-label="Look collections" className="flex min-w-0 flex-1 rounded-full border border-line bg-well p-[3px]">
+            {MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                role="radio"
+                aria-checked={mode === m.id}
+                onClick={() => pickMode(m.id)}
+                className={`relative h-8 flex-1 rounded-full px-2 text-[12.5px] font-medium whitespace-nowrap transition-colors coarse:h-9 ${mode === m.id ? 'text-fg' : 'text-fg-4 hover:text-fg-2'}`}
+              >
+                {mode === m.id && (
+                  <motion.span
+                    layoutId={`look-mode-${variant}`}
+                    className="absolute inset-0 rounded-full bg-raised-2 ring-1 ring-line"
+                    transition={{ type: 'spring', stiffness: 520, damping: 40 }}
+                  />
+                )}
+                <span className="relative">{m.label}</span>
+              </button>
+            ))}
+          </div>
           {strip && !searching && (
             <button
               type="button"
               aria-label="Search presets"
               onClick={() => setSearching(true)}
-              className="flex h-8 w-9 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 coarse:h-9 coarse:w-10"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 hover:text-fg coarse:h-10 coarse:w-10"
             >
-              <Search size={14} />
+              <Search size={16} />
             </button>
           )}
-          {filters.map((f) => (
-            <button
-              key={f}
-              type="button"
-              role="tab"
-              aria-selected={filter === f}
-              onClick={() => setFilter(f)}
-              className={`h-8 shrink-0 rounded-full px-3.5 text-[13px] font-medium whitespace-nowrap transition-[background-color,color,transform] duration-200 active:scale-95 coarse:h-9 coarse:px-4 ${
-                filter === f ? 'bg-fg text-ground' : 'bg-control text-fg-2 hover:bg-control-2 hover:text-fg'
-              }`}
-            >
-              {f === 'all' ? (
-                'All'
-              ) : f === 'favorites' ? (
-                <span className="flex items-center gap-1.5"><Star size={12} fill="currentColor" aria-hidden /> Kept</span>
-              ) : f === 'recent' ? (
-                'Last roll'
-              ) : (
-                <span className="flex items-baseline gap-1.5">
-                  {rollOf(f).no !== '—' && (
-                    <span aria-hidden className={`font-mono text-[10px] ${filter === f ? 'text-ground/60' : 'text-fg-4'}`}>
+        </div>
+        {/* Rolls: a slim mono row of the numbered rolls, then "all". */}
+        {mode === 'rolls' && (
+          <div
+            role="tablist"
+            aria-label="Preset categories"
+            className={`no-scrollbar flex gap-4 overflow-x-auto ${variant === 'page' ? '-mx-4 px-4 sm:mx-0 sm:flex-wrap sm:gap-x-5 sm:gap-y-1 sm:px-0' : '-mx-3 px-3 [mask-image:linear-gradient(90deg,#000_88%,transparent)]'}`}
+          >
+            {rolls.map((f) => (
+              <button
+                key={f}
+                type="button"
+                role="tab"
+                aria-selected={filter === f}
+                onClick={() => {
+                  setFilter(f);
+                  setLastRoll(f);
+                }}
+                className={`flex h-8 shrink-0 items-baseline gap-1.5 border-b-[1.5px] pt-2 font-mono text-[11px] lowercase whitespace-nowrap transition-colors [font-stretch:87.5%] coarse:h-9 ${
+                  filter === f ? 'border-accent text-fg' : 'border-transparent text-fg-4 hover:text-fg-2'
+                }`}
+              >
+                {f === 'all' ? (
+                  'All'
+                ) : (
+                  <>
+                    <span aria-hidden className={filter === f ? 'text-accent-fg' : 'text-fg-4/70'}>
                       {rollOf(f).no}
                     </span>
-                  )}
-                  {rollOf(f).name}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        {/* The open roll's title and mood (grids only; the phone strip keeps its fixed height). */}
+                    {rollOf(f).name}
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* The open roll's mood (grids only; the phone strip keeps its fixed height). */}
         {!strip && (
           <p className="label-caps truncate text-fg-3">
             {roll ? (
@@ -190,6 +225,8 @@ export function PresetBrowser({
               'the looks you used last, newest first'
             ) : filter === 'favorites' ? (
               'looks you starred'
+            ) : filter === 'yours' ? (
+              'looks you saved or matched'
             ) : (
               `every look · ${all().length}`
             )}
@@ -205,7 +242,9 @@ export function PresetBrowser({
                 ? 'Nothing kept yet. Star a look to keep it here.'
                 : filter === 'recent'
                   ? 'Looks you put on a photo will show up here.'
-                  : 'No looks here yet.'}
+                  : filter === 'yours'
+                    ? 'Looks you save or match from a reference will show up here.'
+                    : 'No looks here yet.'}
           </p>
         ) : (
           <ul
@@ -324,11 +363,11 @@ const PresetCard = memo(function PresetCard({
   }, [preset.id, preset.adjustments, thumbKey, near]);
   const url = thumb?.key === thumbKey ? thumb.url : null;
 
-  // Phones: a frame from a contact strip (sprocket edge, the preview, its frame number), with the
-  // name under it. The chosen frame gets a lilac edge and its afterimage.
+  // Phones: a small frame from a contact strip (sprocket edge, the preview, its frame number); no
+  // caption, so the photo keeps the space. The name shows in the amount row once a look is chosen.
   if (strip) {
     return (
-      <li ref={item} className="w-[78px] shrink-0">
+      <li ref={item} className="w-[64px] shrink-0">
         <button
           type="button"
           onClick={() => onApply?.(preset)}
@@ -359,7 +398,6 @@ const PresetCard = memo(function PresetCard({
           </span>
           <span className={`px-0.5 font-mono text-[9px] ${active ? 'text-fg' : 'text-fg-4'}`}>{catalogue}</span>
         </button>
-        <span className={`mt-1.5 line-clamp-2 block px-0.5 text-[10.5px] leading-tight ${active ? 'font-medium text-fg' : 'text-fg-3'}`}>{preset.name}</span>
       </li>
     );
   }

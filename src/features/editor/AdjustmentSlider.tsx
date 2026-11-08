@@ -12,7 +12,7 @@ export const AdjustmentSlider = memo(function AdjustmentSlider({
   range,
   size,
 }: {
-  size?: 'md' | 'lg';
+  size?: 'md' | 'lg' | 'row';
   path: string;
   label: string;
   track?: string;

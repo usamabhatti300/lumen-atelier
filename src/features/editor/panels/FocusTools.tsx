@@ -56,31 +56,82 @@ export function FocusTools({ tab, onExpand }: { tab: 'adjust' | 'color'; onExpan
   );
 }
 
+/** Light on phones: a few named groups, each a short list of one-line sliders (label · track · value). */
+const LIGHT_GROUPS: { id: string; label: string; tools: string[] }[] = [
+  { id: 'tone', label: 'Tone', tools: ['basic.exposure', 'basic.contrast', 'basic.highlights', 'basic.shadows'] },
+  { id: 'range', label: 'Range', tools: ['basic.whites', 'basic.blacks', 'basic.brightness'] },
+  { id: 'wb', label: 'White balance', tools: ['basic.temperature', 'basic.tint'] },
+  { id: 'colour', label: 'Colour', tools: ['basic.vibrance', 'basic.saturation', 'basic.monochrome'] },
+  { id: 'texture', label: 'Texture', tools: ['presence.texture', 'presence.clarity', 'presence.dehaze'] },
+];
+const toolFor = (path: string) => LIGHT_TOOLS.find((t) => t.path === path)!;
+const isChanged = (adj: unknown, path: string) => {
+  const r = rangeForPath(path);
+  const v = getPath(adj as never, path) as number;
+  return !!r && Math.abs(v - r.default) > r.step / 2;
+};
+
 function LightFocus({ onExpand }: { onExpand: () => void }) {
-  const [path, setPath] = useState(last.light);
-  const tool = LIGHT_TOOLS.find((t) => t.path === path) ?? LIGHT_TOOLS[0];
-  const pick = (p: string) => {
-    remember({ light: p });
-    setPath(p);
+  const [groupId, setGroupId] = useState(LIGHT_GROUPS.find((g) => g.tools.includes(last.light))?.id ?? 'tone');
+  const group = LIGHT_GROUPS.find((g) => g.id === groupId) ?? LIGHT_GROUPS[0];
+  const changedInGroup = useEditor((s) => group.tools.some((p) => isChanged(s.edit.adjustments, p)));
+  const reset = () => {
+    const st = useEditor.getState();
+    st.beginGesture(`Reset ${group.label.toLowerCase()}`);
+    group.tools.forEach((p) => st.resetAdjustment(p));
+    st.endGesture();
   };
   return (
     <>
       <ToolRow label="Light tools" onExpand={onExpand}>
-        {LIGHT_TOOLS.map((t) => (
-          <ToolChip key={t.path} path={t.path} label={t.label} selected={t.path === path} onSelect={() => pick(t.path)} />
+        {LIGHT_GROUPS.map((g) => (
+          <GroupChip
+            key={g.id}
+            paths={g.tools}
+            label={g.label}
+            selected={g.id === group.id}
+            onSelect={() => {
+              remember({ light: g.tools[0] });
+              setGroupId(g.id);
+            }}
+          />
         ))}
       </ToolRow>
-      <motion.div key={tool.path} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }}>
-        <AdjustmentSlider size="lg" path={tool.path} label={tool.label} track={tool.track} format={tool.format} />
+      <motion.div key={group.id} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }} className="space-y-0.5">
+        {group.tools.map((p) => {
+          const t = toolFor(p);
+          return <AdjustmentSlider key={p} size="row" path={t.path} label={t.label} track={t.track} format={t.format} />;
+        })}
       </motion.div>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={reset}
+          disabled={!changedInGroup}
+          className="h-9 rounded-full px-2 font-mono text-[11px] text-fg-3 transition-colors hover:text-fg disabled:opacity-35 coarse:h-10"
+        >
+          Reset {group.label.toLowerCase()}
+        </button>
+      </div>
     </>
   );
 }
 
+/** A group chip; a dot marks a group with edits, so they are easy to find again. */
+const GroupChip = memo(function GroupChip({ paths, label, selected, onSelect }: { paths: string[]; label: string; selected: boolean; onSelect: () => void }) {
+  const changed = useEditor((s) => paths.some((p) => isChanged(s.edit.adjustments, p)));
+  return (
+    <ModeChip selected={selected} onSelect={onSelect}>
+      {label}
+      {changed && <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-ground' : 'bg-accent'}`} />}
+      {changed && <span className="sr-only">(edited)</span>}
+    </ModeChip>
+  );
+});
+
 function ColorFocus({ onExpand }: { onExpand: () => void }) {
   const [mode, setMode] = useState<ColorMode>(last.colorMode);
   const [band, setBand] = useState<HslBand>(last.band);
-  const [hsl, setHsl] = useState<HslMode>(last.hsl);
   const [zone, setZone] = useState<GradeZone>(last.zone);
   const [curve, setCurve] = useState<CurveChannel>(last.curve);
   const pickMode = (m: ColorMode) => {
@@ -140,29 +191,12 @@ function ColorFocus({ onExpand }: { onExpand: () => void }) {
               />
             ))}
           </div>
-          <div className="mt-3 flex justify-center">
-            <Segmented
-              label="HSL mode"
-              size="xs"
-              value={hsl}
-              onChange={(v) => {
-                remember({ hsl: v });
-                setHsl(v);
-              }}
-              options={[
-                { value: 'hue', label: 'Hue' },
-                { value: 'saturation', label: 'Saturation' },
-                { value: 'luminance', label: 'Luminance' },
-              ]}
-            />
-          </div>
-          <AdjustmentSlider
-            key={`${band}-${hsl}`}
-            size="lg"
-            path={`hsl.${band}.${hsl}`}
-            label={`${BAND_LABEL[band]} ${hsl}`}
-            track={hslTrack(band, hsl)}
-          />
+          {/* The chosen colour's three sliders, all at once. */}
+          <motion.div key={band} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18 }} className="mt-2 space-y-0.5">
+            {(['hue', 'saturation', 'luminance'] as const).map((m) => (
+              <AdjustmentSlider key={m} size="row" path={`hsl.${band}.${m}`} label={m[0].toUpperCase() + m.slice(1)} track={hslTrack(band, m)} />
+            ))}
+          </motion.div>
         </>
       ) : (
         <>
@@ -226,22 +260,6 @@ function ModeChip({ selected, onSelect, children }: { selected: boolean; onSelec
     </button>
   );
 }
-
-/** A tool chip; a dot marks tools that differ from their default, so edits are easy to find again. */
-const ToolChip = memo(function ToolChip({ path, label, selected, onSelect }: { path: string; label: string; selected: boolean; onSelect: () => void }) {
-  const changed = useEditor((s) => {
-    const r = rangeForPath(path);
-    const v = getPath(s.edit.adjustments, path) as number;
-    return !!r && Math.abs(v - r.default) > r.step / 2;
-  });
-  return (
-    <ModeChip selected={selected} onSelect={onSelect}>
-      {label}
-      {changed && <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-on-accent' : 'bg-accent shadow-offset-sm'}`} />}
-      {changed && <span className="sr-only">(edited)</span>}
-    </ModeChip>
-  );
-});
 
 function BandSwatch({ band, selected, onSelect }: { band: HslBand; selected: boolean; onSelect: () => void }) {
   const changed = useEditor((s) => {
