@@ -50,6 +50,9 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   **Next, agreed with the owner (second step):** opt-in date stamp burned into exports and a "contact
   sheet" share image (both need exporter changes). Still open from the shared UX plan: sheet detents,
   export size presets, labelled desktop top bar; not yet checked on a real phone.
+  **Follow-up the same day** (owner: "not like the mockups", home "too much text"): the phone top bar,
+  dock icons (`src/components/icons.tsx`), film-frame looks strip, mono sheet titles and the More tool
+  grid now follow the approved mockups; home rebuilt as headline + two actions + contact sheet + rolls.
 - **2026-11-08 (earlier): second critic pass on Afterglow.** Scored in the running app at 390/834/1440 px:
   6.4 → 7.4 average. Kept the identity, fixed the execution (details and the list of problems in
   `PROJECT_STATUS.md`). Scorecard before → after: crave 6→7, identity/colour 6.5→7.5, type 7→7, layout

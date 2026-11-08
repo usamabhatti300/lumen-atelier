@@ -324,6 +324,46 @@ const PresetCard = memo(function PresetCard({
   }, [preset.id, preset.adjustments, thumbKey, near]);
   const url = thumb?.key === thumbKey ? thumb.url : null;
 
+  // Phones: a frame from a contact strip (sprocket edge, the preview, its frame number), with the
+  // name under it. The chosen frame gets a lilac edge and its afterimage.
+  if (strip) {
+    return (
+      <li ref={item} className="w-[78px] shrink-0">
+        <button
+          type="button"
+          onClick={() => onApply?.(preset)}
+          disabled={!onApply}
+          aria-pressed={active}
+          aria-label={`${onApply ? actionVerb : 'Preset'} ${preset.name}`}
+          title={preset.description ? `${preset.name}: ${preset.description}` : preset.name}
+          className={`relative flex w-full flex-col gap-1 rounded-[6px] border bg-well px-1 pt-2 pb-1 text-left transition-[transform,box-shadow,border-color] duration-200 enabled:active:scale-[0.95] ${
+            active ? 'border-accent shadow-offset-sm' : 'border-line'
+          }`}
+        >
+          <span aria-hidden className="absolute top-[3px] right-1.5 left-1.5 h-[3px] bg-[repeating-linear-gradient(90deg,var(--color-line-strong)_0_4px,transparent_4px_8px)] opacity-70" />
+          <span className="relative block aspect-[4/5] overflow-hidden rounded-[2px] bg-raised-2">
+            <AnimatePresence>
+              {url && (
+                <motion.img
+                  key={url}
+                  src={url}
+                  alt=""
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4 }}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              )}
+            </AnimatePresence>
+            {!url && <span className="skeleton absolute inset-0" />}
+          </span>
+          <span className={`px-0.5 font-mono text-[9px] ${active ? 'text-fg' : 'text-fg-4'}`}>{catalogue}</span>
+        </button>
+        <span className={`mt-1.5 line-clamp-2 block px-0.5 text-[10.5px] leading-tight ${active ? 'font-medium text-fg' : 'text-fg-3'}`}>{preset.name}</span>
+      </li>
+    );
+  }
+
   return (
     <li ref={item} className={`group relative ${strip ? 'w-[92px] shrink-0' : 'flex flex-col'}`}>
       {/* A look: its preview fills the tile; the chosen look gets a lilac edge, its afterimage and today's date stamp. */}

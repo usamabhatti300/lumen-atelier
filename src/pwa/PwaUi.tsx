@@ -89,18 +89,12 @@ export function InstallBanner() {
   const ios = isIosSafari();
   if (hidden || standalone || (!installEvent && !ios)) return null;
   return (
-    <div className="mx-4 mt-3 mb-1 flex items-center gap-3 rounded-lg border border-line bg-raised py-2 pr-1.5 pl-3 sm:hidden" data-testid="install-banner">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent-fg">
-        <Download size={17} />
-      </span>
-      <p className="min-w-0 flex-1 text-[13px] leading-snug text-fg">
-        Install Lumen Atelier
-        <span className="block text-xs text-fg-3">Full screen, works offline. Photos stay on this phone.</span>
-      </p>
+    <div className="mx-4 mt-2 flex items-center gap-2 border-b border-line-soft py-1 sm:hidden" data-testid="install-banner">
+      <p className="min-w-0 flex-1 truncate font-mono text-[11px] text-fg-3">add lumen to your home screen</p>
       <button
         type="button"
         onClick={() => (installEvent ? void promptInstall() : setIosHelp(true))}
-        className="h-11 shrink-0 rounded-full bg-fg px-4 text-[13px] font-medium text-ground transition-transform active:scale-95"
+        className="h-11 shrink-0 rounded-full px-3 text-[13px] font-medium text-fg transition-transform active:scale-95"
       >
         Install
       </button>

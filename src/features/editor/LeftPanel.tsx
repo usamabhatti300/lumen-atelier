@@ -84,7 +84,7 @@ export function LeftPanel({
           </button>
         )}
         {onClose && (
-          <button type="button" aria-label="Close panel" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 transition-transform active:scale-90 coarse:h-11 coarse:w-11">
+          <button type="button" aria-label="Close panel" onClick={onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 transition-transform hover:text-fg active:scale-90 coarse:h-11 coarse:w-11">
             <X size={16} />
           </button>
         )}

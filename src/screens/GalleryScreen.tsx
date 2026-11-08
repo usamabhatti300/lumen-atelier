@@ -1,6 +1,7 @@
-/** Home: the hero with the two ways in, the stage (drop zone / continue), looks by category, and your edits. */
+/** Home: one line of promise and the two ways in, your edits as a contact sheet, and the rolls. */
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, ImagePlus, Pencil, Settings, Sparkles, SwatchBook, Trash2, Blend } from 'lucide-react';
+import { ArrowRight, Ellipsis, ImagePlus, Pencil, Settings, Trash2 } from 'lucide-react';
+import { LooksIcon, MatchIcon } from '@/components/icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { InstallBanner, InstallButton } from '@/pwa/PwaUi';
@@ -19,14 +20,12 @@ import { useEditor } from '@/state/editorStore';
 import {
   createProject,
   deleteProject,
-  getOriginal,
   getPhoto,
   listProjects,
   saveProject,
   type ProjectRecord,
 } from '@/lib/storage/db';
 import { importFiles } from '@/engine/importer';
-import { useMediaQuery } from '@/lib/useMediaQuery';
 
 interface ProjectCard extends ProjectRecord {
   cover: string | null;
@@ -58,6 +57,22 @@ export function GalleryScreen() {
   const fileInput = useRef<HTMLInputElement>(null);
   const intent = useRef<'edit' | 'reference'>('edit');
   const lastProjectId = useSettings((s) => s.lastProjectId);
+  // The open "⋯" menu on one of your edits (closes on any tap outside it).
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!menuFor) return;
+    const away = (e: PointerEvent) => {
+      const t = e.target as Element;
+      if (!t.closest('[data-frame-menu]') && !t.closest('[aria-haspopup="menu"]')) setMenuFor(null);
+    };
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setMenuFor(null);
+    window.addEventListener('pointerdown', away);
+    window.addEventListener('keydown', esc);
+    return () => {
+      window.removeEventListener('pointerdown', away);
+      window.removeEventListener('keydown', esc);
+    };
+  }, [menuFor]);
   const showToast = useEditor((s) => s.showToast);
 
   const refresh = useCallback(async () => {
@@ -157,7 +172,6 @@ export function GalleryScreen() {
   const resume = projects?.find((p) => p.id === lastProjectId);
   // The stage on the home screen holds the edit you were last in, else the newest one.
   const hero = resume ?? projects?.[0];
-  const heroSrc = useHeroImage(hero?.photoIds[0]) ?? hero?.cover;
   const thumbs = useCategoryThumbs(projects === null ? undefined : (hero?.photoIds[0] ?? null));
   const pickPhotos = () => {
     intent.current = 'edit';
@@ -178,7 +192,6 @@ export function GalleryScreen() {
         if (document.documentElement.dataset.motion === 'reduced') return;
         const tl = gsap.timeline({ defaults: { ease: 'expo.out', duration: 0.9 } });
         tl.from('[data-reveal]', { y: 26, opacity: 0, stagger: 0.07 }, 0.05)
-          .from('[data-stage]', { y: 34, opacity: 0, scale: 0.97, duration: 1.1 }, 0.2)
           .from('[data-look]', { x: 40, opacity: 0, stagger: 0.04, duration: 0.8 }, 0.45);
       });
       return () => mm.revert();
@@ -198,7 +211,7 @@ export function GalleryScreen() {
               className="flex h-10 items-center gap-2 rounded-full px-3 text-[13px] font-medium text-fg-2 transition-colors hover:bg-control hover:text-fg coarse:h-11 coarse:w-11 coarse:justify-center coarse:px-0 sm:coarse:w-auto sm:coarse:px-3"
               aria-label="Looks"
             >
-              <SwatchBook size={18} /> <span className="hidden sm:inline">Looks</span>
+              <LooksIcon size={18} /> <span className="hidden sm:inline">Looks</span>
             </Link>
             <Link
               to="/settings"
@@ -212,7 +225,7 @@ export function GalleryScreen() {
       </header>
       <InstallBanner />
 
-      <main className="screen-enter mx-auto max-w-7xl px-4 pb-24 sm:px-8">
+      <main className="screen-enter mx-auto max-w-5xl px-4 pb-24 sm:px-8">
         <input
           ref={fileInput}
           type="file"
@@ -226,153 +239,175 @@ export function GalleryScreen() {
           }}
         />
 
-        <section className="relative grid gap-7 pt-6 pb-14 sm:pt-12 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-16 lg:pt-16 lg:pb-20">
-          <div className="relative">
-            <p data-reveal className="label-caps inline-flex items-center gap-2 rounded-full border border-line bg-raised/70 py-1.5 pr-3 pl-2.5 text-fg-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-offset-sm" />
-              Free · On this device · No account
-            </p>
-            <h1 className="display mt-5 text-[clamp(3rem,14vw,6.5rem)] text-fg sm:mt-6">
-              <span data-reveal className="block">
-                Any look.
-              </span>
-              <span data-reveal className="block">
-                Made <span className="voice pr-2 text-[1.08em] text-accent">yours.</span>
-              </span>
-            </h1>
-            <p data-reveal className="mt-5 max-w-[42ch] text-base leading-relaxed text-fg-2 sm:mt-6 sm:text-[17px]">
-              Show Lumen Atelier a photo you love and it builds an editable look from it, or start from {BUILTIN_PRESETS.length} original
-              looks. Your photos never leave this device.
-            </p>
-            <div data-reveal className="mt-7 grid grid-cols-2 gap-2.5 sm:mt-8 sm:flex sm:gap-3">
-              <Button variant="accent" size="lg" className="h-13 px-4 text-[15px] sm:h-12 sm:px-6" icon={<Blend size={18} />} onClick={matchLook}>
-                Match a look
-              </Button>
-              <Button variant="primary" size="lg" className="h-13 px-4 text-[15px] sm:h-12 sm:px-6" icon={<ImagePlus size={18} />} onClick={pickPhotos}>
-                Open a photo
-              </Button>
+        {/* One line of promise, the two ways in, nothing else. */}
+        <section className="pt-8 pb-12 sm:pt-16 sm:pb-16">
+          <h1 className="display text-[clamp(2.9rem,13vw,5.5rem)] text-fg">
+            <span data-reveal className="block">
+              Any look.
+            </span>
+            <span data-reveal className="block">
+              Made <span className="voice pr-2 text-accent">yours.</span>
+            </span>
+          </h1>
+          <div data-reveal className="mt-8 grid grid-cols-2 gap-2.5 sm:flex sm:gap-3">
+            <Button variant="accent" size="lg" className="h-13 px-4 text-[15px] sm:h-12 sm:px-6" icon={<MatchIcon size={18} strokeWidth={2} />} onClick={matchLook}>
+              Match a look
+            </Button>
+            <Button variant="secondary" size="lg" className="h-13 px-4 text-[15px] sm:h-12 sm:px-6" icon={<ImagePlus size={18} />} onClick={pickPhotos}>
+              Open a photo
+            </Button>
+          </div>
+          <p data-reveal className="mt-4 font-mono text-[11px] text-fg-4">
+            free · private · on this device
+          </p>
+          {importing && (
+            <div className="mt-6 max-w-sm" role="status">
+              <p className="mb-2 font-mono text-xs text-fg-3">
+                importing {importing.done} of {importing.total}
+              </p>
+              <Progress value={importing.done / importing.total} label="Import progress" />
             </div>
-            {importing && (
-              <div className="mt-6 max-w-sm" role="status">
-                <p className="mb-2 text-sm text-fg-3 tabular">
-                  Importing {importing.done} of {importing.total}…
-                </p>
-                <Progress value={importing.done / importing.total} label="Import progress" />
-              </div>
-            )}
-          </div>
-
-          <div data-stage>
-            <Stage dragOver={dragOver} hero={hero ? { id: hero.id, name: hero.name, updatedAt: hero.updatedAt, frames: hero.photoIds.length, src: heroSrc ?? null } : null} onPick={pickPhotos} />
-          </div>
+          )}
         </section>
 
-        <section aria-labelledby="looks-title">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="label-caps text-fg-4">{hero ? 'Previewed on your last photo' : `${SHELF.length} rolls`}</p>
-              <h2 id="looks-title" className="display mt-2 text-[2rem] text-fg sm:text-[2.6rem]">
-                Start from a <span className="voice">look</span>
-              </h2>
-            </div>
-            <Link
-              to="/presets"
-              className="group mb-1 flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-fg-2 transition-colors hover:bg-control hover:text-fg"
-            >
-              All {BUILTIN_PRESETS.length}
-              <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-          <ul className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:scroll-px-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-7 lg:overflow-visible lg:px-0">
-            {SHELF.map((c) => (
-              <li key={c.id} data-look className="w-[148px] shrink-0 snap-start lg:w-auto">
-                <CategoryTile category={c} src={thumbs[c.id]} rendering={!!hero} />
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="pt-16" aria-labelledby="edits-title">
-          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-            <h2 id="edits-title" className="display text-[2rem] text-fg sm:text-[2.6rem]">
+        {/* Your edits as a contact sheet: numbered frames with their dates. */}
+        <section aria-labelledby="edits-title" className="pb-14">
+          <div className="mb-3 flex items-baseline justify-between gap-4">
+            <h2 id="edits-title" className="font-mono text-[13px] font-medium text-fg lowercase [font-stretch:100%]">
               Your edits
             </h2>
             {projects && projects.length > 0 && (
-              <p className="label-caps text-fg-4 sm:mb-2">
-                {projects.length} {projects.length === 1 ? 'project' : 'projects'} · saved on this device
-              </p>
+              <span className="font-mono text-[11px] text-fg-4">
+                {projects.length} {projects.length === 1 ? 'frame' : 'frames'}
+              </span>
             )}
           </div>
           {projects === null ? (
             <div className="h-40" />
           ) : projects.length === 0 ? (
-            <div className="flex flex-col items-start gap-4 rounded-xl border border-dashed border-line p-6 sm:flex-row sm:items-center sm:justify-between">
-              <p className="max-w-[48ch] text-[15px] leading-relaxed text-fg-3">
-                Nothing here yet. Open a photo and it appears here; every edit saves on this device as you go.
-              </p>
-              <Button variant="secondary" icon={<ImagePlus size={16} />} onClick={pickPhotos}>
-                Open a photo
-              </Button>
-            </div>
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+              <li>
+                <button
+                  type="button"
+                  onClick={pickPhotos}
+                  className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-3 rounded-[8px] border border-dashed border-line-strong text-fg-3 transition-colors hover:border-accent hover:text-fg"
+                >
+                  <FinderMark size={34} bright={dragOver} />
+                  <span className="font-mono text-[10px]">add a photo</span>
+                </button>
+              </li>
+              {[1, 2].map((n) => (
+                <li key={n} aria-hidden className="aspect-[4/5] rounded-[8px] border border-dashed border-line-soft" />
+              ))}
+            </ul>
           ) : (
-            <ul className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 sm:gap-y-8 lg:grid-cols-4">
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">
               <AnimatePresence initial={false}>
-                {projects.map((p, i) => (
-                  <motion.li
-                    key={p.id}
-                    layout
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: Math.min(i, 8) * 0.04 }}
-                    className="group"
-                  >
-                    <Link
-                      to={`/project/${p.id}`}
-                      className="relative block aspect-[4/5] overflow-hidden rounded-lg bg-raised shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] transition-transform duration-300 ease-out hover:-translate-y-1 sm:aspect-[4/3]"
+                {projects.map((p, i) => {
+                  const current = p.id === hero?.id;
+                  const d = new Date(p.updatedAt);
+                  const date = `${String(d.getMonth() + 1).padStart(2, '0')}·${String(d.getDate()).padStart(2, '0')}`;
+                  return (
+                    <motion.li
+                      key={p.id}
+                      layout
+                      data-frame
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: Math.min(i, 8) * 0.03 }}
+                      className="group relative"
                     >
-                      {p.cover ? (
-                        <img src={p.cover} alt="" className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" />
-                      ) : (
-                        <span className="flex h-full items-center justify-center text-sm text-fg-4">Empty</span>
-                      )}
-                      {p.photoIds.length > 1 && (
-                        <span className="label-caps absolute top-2 left-2 rounded-full bg-black/55 px-2 py-1 text-[10px] text-white backdrop-blur-md">
-                          {p.photoIds.length} photos
+                      <Link
+                        to={`/project/${p.id}`}
+                        aria-label={`Open ${p.name}`}
+                        title={p.name}
+                        className={`relative flex flex-col gap-1.5 rounded-[8px] border bg-well px-1.5 pt-3 pb-1.5 transition-[transform,border-color,box-shadow] duration-200 active:scale-[0.98] ${
+                          current ? 'border-accent shadow-offset-sm' : 'border-line hover:border-line-strong'
+                        }`}
+                      >
+                        <span aria-hidden className="absolute top-[5px] right-2 left-2 h-[3px] bg-[repeating-linear-gradient(90deg,var(--color-line-strong)_0_5px,transparent_5px_10px)] opacity-70" />
+                        <span className="relative block aspect-[4/5] overflow-hidden rounded-[3px] bg-raised-2">
+                          {p.cover ? (
+                            <img src={p.cover} alt="" className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]" />
+                          ) : (
+                            <span className="skeleton block h-full w-full" />
+                          )}
+                          {p.photoIds.length > 1 && (
+                            <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/55 px-1.5 font-mono text-[9px] text-white">
+                              ×{p.photoIds.length}
+                            </span>
+                          )}
                         </span>
+                        <span className="flex justify-between px-0.5 font-mono text-[10px]">
+                          <span className={current ? 'text-fg' : 'text-fg-4'}>{String(projects.length - i).padStart(2, '0')}</span>
+                          <span className="text-fg-4">{date}</span>
+                        </span>
+                      </Link>
+                      <button
+                        type="button"
+                        aria-label={`Options for ${p.name}`}
+                        aria-haspopup="menu"
+                        aria-expanded={menuFor === p.id}
+                        onClick={() => setMenuFor(menuFor === p.id ? null : p.id)}
+                        className="absolute top-4 right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white transition-opacity coarse:h-9 coarse:w-9 fine:opacity-0 fine:group-focus-within:opacity-100 fine:group-hover:opacity-100"
+                      >
+                        <Ellipsis size={14} />
+                      </button>
+                      {menuFor === p.id && (
+                        <div role="menu" data-frame-menu className="absolute top-12 right-1.5 z-20 w-36 rounded-md border border-line bg-raised-2 p-1 shadow-float">
+                          <button
+                            type="button"
+                            role="menuitem"
+                            aria-label={`Rename ${p.name}`}
+                            onClick={() => {
+                              setMenuFor(null);
+                              setRenaming(p);
+                            }}
+                            className="flex h-9 w-full items-center gap-2 rounded-sm px-2.5 text-[13px] text-fg-2 hover:bg-control hover:text-fg coarse:h-11"
+                          >
+                            <Pencil size={13} /> Rename
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            aria-label={`Delete ${p.name}`}
+                            onClick={() => {
+                              setMenuFor(null);
+                              setConfirmDelete(p);
+                            }}
+                            className="flex h-9 w-full items-center gap-2 rounded-sm px-2.5 text-[13px] text-danger hover:bg-control coarse:h-11"
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        </div>
                       )}
-                    </Link>
-                    <div className="mt-2.5 flex items-start justify-between gap-1">
-                      <div className="min-w-0 pl-0.5">
-                        <p className="truncate text-[15px] font-medium tracking-[-0.01em] text-fg">{p.name}</p>
-                        <p className="font-mono text-xs text-fg-4">
-                          {new Date(p.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                        </p>
-                      </div>
-                      <div className="-mt-1 flex opacity-100 transition-opacity fine:opacity-0 fine:group-focus-within:opacity-100 fine:group-hover:opacity-100">
-                        <button
-                          type="button"
-                          aria-label={`Rename ${p.name}`}
-                          onClick={() => setRenaming(p)}
-                          className="flex h-9 w-9 items-center justify-center rounded-full text-fg-3 hover:bg-control hover:text-fg coarse:h-11 coarse:w-11"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Delete ${p.name}`}
-                          onClick={() => setConfirmDelete(p)}
-                          className="flex h-9 w-9 items-center justify-center rounded-full text-fg-3 hover:bg-control hover:text-danger coarse:h-11 coarse:w-11"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </div>
-                  </motion.li>
-                ))}
+                    </motion.li>
+                  );
+                })}
               </AnimatePresence>
             </ul>
           )}
+        </section>
+
+        {/* The rolls, each cover rendered with its first look on your last photo. */}
+        <section aria-labelledby="looks-title">
+          <div className="mb-3 flex items-baseline justify-between gap-4">
+            <h2 id="looks-title" className="font-mono text-[13px] font-medium text-fg lowercase [font-stretch:100%]">
+              Rolls
+            </h2>
+            <Link to="/presets" className="group flex items-center gap-1 font-mono text-[11px] text-fg-3 transition-colors hover:text-fg">
+              all {BUILTIN_PRESETS.length}
+              <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+          <ul className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:scroll-px-8 sm:px-8">
+            {SHELF.map((c) => (
+              <li key={c.id} data-look className="w-[132px] shrink-0 snap-start sm:w-[150px]">
+                <CategoryTile category={c} src={thumbs[c.id]} rendering={!!hero} />
+              </li>
+            ))}
+          </ul>
         </section>
       </main>
 
@@ -469,29 +504,6 @@ function RenameDialog({ project, onClose, onSave }: { project: ProjectCard | nul
   );
 }
 
-/**
- * Phones: the home stage is large, so the 360 px thumbnail looks soft. Load the stored original
- * for it (the browser decodes it at display size); the thumbnail shows until then.
- */
-function useHeroImage(photoId: string | undefined) {
-  const phone = useMediaQuery('(max-width: 639px)');
-  const [img, setImg] = useState<{ id: string; url: string } | null>(null);
-  useEffect(() => {
-    if (!phone || !photoId) return;
-    let alive = true;
-    let url: string | null = null;
-    void getOriginal(photoId).then((blob) => {
-      if (!alive || !blob) return;
-      url = URL.createObjectURL(blob);
-      setImg({ id: photoId, url });
-    });
-    return () => {
-      alive = false;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [phone, photoId]);
-  return img && img.id === photoId ? img.url : undefined;
-}
 
 /** The rolls on the home rail: one tile per roll, its cover rendered with its first look on your last photo. */
 const SHELF = PRESET_CATEGORIES.map((id) => {
@@ -552,7 +564,7 @@ function CategoryTile({ category: c, src, rendering }: { category: (typeof SHELF
       <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/30" />
       <span className="relative flex items-center justify-between font-mono text-[11px] font-medium text-white/85">
         <span>{c.code}</span>
-        <span className="tabular">{c.count} looks</span>
+        <span className="tabular">{c.count}</span>
       </span>
       <span className="relative">
         <span className="block text-[15px] leading-tight font-semibold tracking-[-0.015em] text-white">{c.label}</span>
@@ -576,106 +588,4 @@ function FinderMark({ size = 96, bright = false }: { size?: number; bright?: boo
   );
 }
 
-/**
- * The stage: empty, it is the drop zone (tap or drop photos) with the prism ring; once there are
- * edits it holds the latest one as a big photo card, ready to continue.
- */
-function Stage({
-  dragOver,
-  hero,
-  onPick,
-}: {
-  dragOver: boolean;
-  hero: { id: string; name: string; updatedAt: number; frames: number; src: string | null } | null;
-  onPick: () => void;
-}) {
-  if (hero) {
-    return (
-      <Link
-        to={`/project/${hero.id}`}
-        aria-label={`Continue editing ${hero.name}`}
-        className="group relative block aspect-[4/5] overflow-hidden rounded-xl bg-well shadow-float sm:aspect-[4/3]"
-      >
-        {hero.src ? (
-          <img src={hero.src} alt="" decoding="async" className="h-full w-full object-cover transition-transform duration-[1.2s] ease-out group-hover:scale-[1.03]" />
-        ) : (
-          <span className="skeleton block h-full w-full" />
-        )}
-        <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/25" />
-        <span className="label-caps absolute top-4 left-4 flex items-center gap-2 rounded-full bg-black/45 px-3 py-1.5 text-[10.5px] text-white/90 backdrop-blur-md">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Last edit
-        </span>
-        <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 sm:p-5">
-          <span className="min-w-0">
-            <span className="block truncate text-xl font-semibold tracking-[-0.02em] text-white sm:text-2xl">{hero.name}</span>
-            <span className="mt-0.5 block font-mono text-xs text-white/65">
-              {new Date(hero.updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · {hero.frames}{' '}
-              {hero.frames === 1 ? 'photo' : 'photos'}
-            </span>
-          </span>
-          <span className="flex h-12 shrink-0 items-center gap-2 rounded-full bg-fg pr-4 pl-5 text-[15px] font-medium text-ground shadow-lift transition-transform duration-300 group-hover:translate-x-0.5">
-            Continue <ArrowRight size={17} />
-          </span>
-        </span>
-      </Link>
-    );
-  }
-  return (
-    <>
-    <HowItWorks className="hidden coarse:block" />
-    <button
-      type="button"
-      onClick={onPick}
-      className={`group relative flex aspect-[4/3] w-full flex-col coarse:hidden items-center justify-center gap-5 overflow-hidden rounded-xl border bg-raised/60 text-center transition-[border-color,background-color] duration-300 ${
-        dragOver ? 'border-accent bg-accent/5' : 'border-line hover:border-line-strong'
-      }`}
-    >
-      <span aria-hidden className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_45%,rgb(255_255_255/0.05),transparent)]" />
-      <span className="transition-transform duration-500 ease-out group-hover:scale-110">
-        <FinderMark size={88} bright={dragOver} />
-      </span>
-      <span className="relative">
-        <span className="display block text-[1.9rem] text-fg">Drop a photo here</span>
-        <span className="mt-2 block text-sm text-fg-3">or click to choose. Several at once is fine.</span>
-      </span>
-      <span className="label-caps relative text-fg-4">JPEG · PNG · WebP</span>
-    </button>
-    </>
-  );
-}
 
-/**
- * Touch screens, first visit: the drop zone would only repeat the Open button, so the stage
- * explains the one idea that makes the app different, in three steps joined by the prism.
- */
-const STEPS: { n: string; title: string; body: string; icon: typeof ImagePlus }[] = [
-  { n: '01', title: 'Show it a photo you love', body: 'A saved post, a screenshot, a film still.', icon: ImagePlus },
-  { n: '02', title: 'It becomes your look', body: 'Measured on this device into editable settings.', icon: Sparkles },
-  { n: '03', title: 'Wear it, tweak it, keep it', body: 'On any photo, as a preset you can reuse.', icon: Blend },
-];
-
-function HowItWorks({ className = '' }: { className?: string }) {
-  return (
-    <div className={`relative overflow-hidden rounded-xl border border-line-soft bg-raised/70 p-5 ${className}`}>
-      <p className="label-caps text-fg-4">How it works</p>
-      <ol className="relative mt-4 space-y-5">
-        {/* A lilac line joins the steps. */}
-        <span aria-hidden className="absolute top-5 bottom-5 left-[19px] w-[2px] rounded-full bg-accent/40" />
-        {STEPS.map((st) => (
-          <li key={st.n} className="relative flex items-start gap-4">
-            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised-2 text-fg ring-1 ring-line">
-              <st.icon size={17} />
-            </span>
-            <span className="min-w-0 pt-0.5">
-              <span className="flex items-baseline gap-2">
-                <span className="font-mono text-[11px] text-fg-4">{st.n}</span>
-                <span className="text-[15px] leading-snug font-semibold tracking-[-0.01em] text-fg">{st.title}</span>
-              </span>
-              <span className="mt-0.5 block text-[13px] leading-snug text-fg-3">{st.body}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}

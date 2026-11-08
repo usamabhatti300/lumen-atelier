@@ -177,9 +177,24 @@ Self-hosted via Fontsource (OFL): `@fontsource-variable/geist`, `@fontsource-var
 
 Unchanged from the previous system (phone first; 16px gutter, 32px from `sm`; 56px app bar).
 
-**Editor, phone/tablet (<1024px):** top bar → photo stage → look readout pill → docked sheet → the
-floating dock (Looks, Light, *Match look* lilac lens with offset, Colour, More). A fresh photo opens
-on the Looks sheet. The amount row has a fixed height, so choosing a look never moves the photo.
+**Home:** the wordmark (plus Looks and Settings icons), then only: "Any look. Made *yours.*", the two
+actions (Match a look in lilac, Open a photo secondary) and one mono line ("free · private · on this
+device"). Below: **your edits** as a contact sheet (3 columns on phones: film frames with a sprocket
+edge, the cover, a frame number and an mm·dd date; the edit you were last in has the lilac edge; a ⋯
+menu holds Rename and Delete), then **rolls** (covers rendered on your last photo). Section heads are
+lowercase mono. No paragraphs, eyebrows, step cards or drop-zone art: dropping files anywhere works.
+The install suggestion is one quiet mono row.
+
+**Editor, phone/tablet (<1024px):** top bar (plain back chevron, undo, redo, then ⋮ and an ivory
+Export pill; Add photos and the split view live in ⋮) → photo stage → look readout pill → docked sheet
+→ the dock: a raised bar with plain icon + label tabs (Looks = contact-sheet icon, Light = sun, Colour =
+drop, More = dots; the open one ivory, the rest fg-4, no pill) and the Match lens in the middle (a
+lilac circle with the offset, two overlapping circles, no label). Sheet titles are lowercase mono
+("light", "colour", "more tools"). **More** opens a 2-column grid of named tools with one-line
+descriptions (Crop, Masks, Remove, Portrait, Detail, Lens blur); each tool's header has a back chevron
+to the grid. On phones the looks strip shows **film frames** (sprocket edge, preview, frame number)
+with the name under each. A fresh photo opens on the Looks sheet. The amount row has a fixed height,
+so choosing a look never moves the photo.
 
 **Editor, desktop (≥1024px):** 52px top bar (the "lu" mark, project name, tools, Save, Export) → left
 rail (Match a look card whose edge turns lilac on hover, Looks/Photos, applied look, looks grid) |
@@ -221,7 +236,8 @@ keep a light backdrop blur for legibility; nothing else uses glass.
 - **Match result**: your photo leads; the look card adds a camera-style info list of what was measured
   (`src/lib/analysis/readout.ts`: exposure, contrast, white balance, colour, grain, vignette), using
   the mapping's own thresholds.
-- **Icons**: Lucide. Match a look uses `Blend` (two overlapping circles: a double exposure), never a
+- **Icons**: Lucide at stroke 1.6–2, plus two of our own in `src/components/icons.tsx`: `LooksIcon`
+  (two frames over a wide one) and `MatchIcon` (two overlapping circles: a double exposure). Never a
   magic wand.
 
 ## Motion

@@ -68,9 +68,9 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
       <Link
         to="/"
         aria-label="Back to all edits"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-control text-fg transition-transform active:scale-90 lg:hidden"
+        className="-ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg transition-transform active:scale-90 lg:hidden"
       >
-        <ChevronLeft size={20} strokeWidth={2.2} />
+        <ChevronLeft size={22} strokeWidth={1.8} />
       </Link>
       <input
         aria-label="Project name"
@@ -86,22 +86,23 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
       />
       <SaveIndicator state={saveState} />
 
-      <div className="mx-auto flex items-center gap-0.5 lg:rounded-full lg:bg-raised lg:p-1 lg:ring-1 lg:ring-line-soft">
+      {/* Phones: back · undo · redo, then ⋮ and Export on the right (everything else lives in ⋮). */}
+      <div className="flex items-center gap-0.5 lg:mx-auto lg:rounded-full lg:bg-raised lg:p-1 lg:ring-1 lg:ring-line-soft">
         <IconButton label="Toggle left panel" active={leftOpen} onClick={() => setUi({ leftOpen: !leftOpen })} className="hidden lg:inline-flex">
           <PanelLeft size={16} />
         </IconButton>
-        <IconButton label="Import photos" shortcut={`${mod}+O`} onClick={onImport}>
+        <IconButton label="Import photos" shortcut={`${mod}+O`} onClick={onImport} className="hidden lg:inline-flex">
           <ImagePlus size={16} />
         </IconButton>
-        <span className="mx-1 h-5 w-px bg-line" />
+        <span className="mx-1 hidden h-5 w-px bg-line lg:block" />
         <IconButton label={undoLabel ? `Undo ${undoLabel}` : 'Undo'} shortcut={`${mod}+Z`} disabled={!canUndo} onClick={undo}>
           <Undo2 size={16} />
         </IconButton>
         <IconButton label={redoLabel ? `Redo ${redoLabel}` : 'Redo'} shortcut={`${mod}+⇧+Z`} disabled={!canRedo} onClick={redo}>
           <Redo2 size={16} />
         </IconButton>
-        <span className="mx-1 hidden h-5 w-px bg-line sm:block" />
-        <IconButton label="Before / after split" shortcut="Y" active={compare === 'split'} disabled={disabled} onClick={() => setCompare('split')}>
+        <span className="mx-1 hidden h-5 w-px bg-line md:block" />
+        <IconButton label="Before / after split" shortcut="Y" active={compare === 'split'} disabled={disabled} onClick={() => setCompare('split')} className="hidden md:inline-flex">
           <SplitSquareHorizontal size={16} />
         </IconButton>
         <IconButton label="Side by side" active={compare === 'side'} disabled={disabled} onClick={() => setCompare('side')} className="hidden md:inline-flex">
@@ -133,12 +134,13 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
         </IconButton>
       </div>
 
-      <CompactMenu onPaste={onPaste} />
+      <span className="flex-1 lg:hidden" />
+      <CompactMenu onPaste={onPaste} onImport={onImport} />
       <IconButton label="Save now" shortcut={`${mod}+S`} onClick={() => void saveNow()} className="hidden sm:inline-flex">
         <Save size={16} />
       </IconButton>
-      <Button variant="primary" size="sm" icon={<Download size={15} />} disabled={disabled} onClick={() => activePhotoId && openExport([activePhotoId])} data-testid="export-open" className="ml-1 h-9 px-3 sm:px-4 coarse:h-10">
-        <span className="hidden min-[380px]:inline">Export</span>
+      <Button variant="primary" size="sm" icon={<Download size={15} className="hidden lg:block" />} disabled={disabled} onClick={() => activePhotoId && openExport([activePhotoId])} data-testid="export-open" className="ml-1 h-9 px-3 sm:px-4 coarse:h-10">
+        Export
       </Button>
     </header>
     </>
@@ -149,7 +151,7 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
  * Phones and tablets: every top-bar action that is hidden at this width, in one menu
  * (rename, save, compare modes, zoom, copy / paste / reset settings).
  */
-function CompactMenu({ onPaste }: { onPaste: () => void }) {
+function CompactMenu({ onPaste, onImport }: { onPaste: () => void; onImport: () => void }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const narrow = !useMediaQuery('(min-width: 768px)');
@@ -211,8 +213,14 @@ function CompactMenu({ onPaste }: { onPaste: () => void }) {
             <MenuItem icon={<Save size={15} />} onClick={run(() => void saveNow())}>
               Save now
             </MenuItem>
+            <MenuItem icon={<ImagePlus size={15} />} onClick={run(onImport)}>
+              Add photos
+            </MenuItem>
             {narrow && (
               <>
+                <MenuItem icon={<SplitSquareHorizontal size={15} />} checked={compare === 'split'} disabled={disabled} onClick={run(() => setUi({ compare: compare === 'split' ? 'off' : 'split' }))}>
+                  Before / after split
+                </MenuItem>
                 <MenuItem icon={<Columns2 size={15} />} checked={compare === 'side'} disabled={disabled} onClick={run(() => setUi({ compare: compare === 'side' ? 'off' : 'side' }))}>
                   Side by side
                 </MenuItem>

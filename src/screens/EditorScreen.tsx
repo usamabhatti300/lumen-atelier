@@ -1,6 +1,7 @@
 /** Main editor: top bar, presets/photos panel, canvas, adjustment panels, filmstrip. */
 import { AnimatePresence, motion } from 'motion/react';
-import { Layers, Palette, SlidersHorizontal, SwatchBook, Blend, X } from 'lucide-react';
+import { ChevronLeft, Droplet, Ellipsis, Sun, X } from 'lucide-react';
+import { LooksIcon, MatchIcon } from '@/components/icons';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useEditor, type PhotoMeta, type RightTab } from '@/state/editorStore';
@@ -258,41 +259,41 @@ export default function EditorScreen() {
   );
 }
 
-type Sheet = 'presets' | RightTab;
+/** `tools`: the More grid, which leads to one of the right-panel tabs. */
+type Sheet = 'presets' | 'tools' | RightTab;
 
 /** Tablet/mobile: a floating dock. Each item opens a panel docked under (or beside) the photo. */
 function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null; setSheet: (s: Sheet | null) => void; onOpenReference: () => void }) {
   const isMore = sheet !== null && sheet !== 'presets' && sheet !== 'adjust' && sheet !== 'color';
   // A tab bar: tapping the open tab keeps it (close with ×, a drag down, or Escape).
   const open = (id: Sheet) => {
-    if (sheet === id || (id === 'masks' && isMore)) return;
-    if (id !== 'presets') selectRightTab(id);
+    if (sheet === id || (id === 'tools' && isMore)) return;
+    if (id !== 'presets' && id !== 'tools') selectRightTab(id);
     tick();
     setSheet(id);
   };
   return (
     <div className="shrink-0 bg-ground px-3 pt-2 pb-[max(env(safe-area-inset-bottom),10px)] land:pt-1 land:pb-[max(env(safe-area-inset-bottom),6px)]">
-      <nav className="surface-float mx-auto flex h-[68px] max-w-lg items-stretch rounded-[26px] px-1 shadow-float land:h-12 land:rounded-full" aria-label="Editing tools">
-        <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={SwatchBook} label="Looks" />
-        <CompactTab active={sheet === 'adjust'} onClick={() => open('adjust')} icon={SlidersHorizontal} label="Light" />
+      <nav className="mx-auto flex h-[60px] max-w-lg items-stretch rounded-[22px] border border-line bg-raised-2 px-1 shadow-float land:h-12 land:rounded-full" aria-label="Editing tools">
+        <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={LooksIcon} label="Looks" />
+        <CompactTab active={sheet === 'adjust'} onClick={() => open('adjust')} icon={Sun} label="Light" />
         {/* The featured action, not a tab: a lilac lens with its afterimage, so it never reads as the selected tab. */}
-        <button type="button" onClick={onOpenReference} className="group flex flex-1 flex-col items-center justify-center gap-1">
-          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-accent land:h-9 land:w-9 text-on-accent shadow-offset-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-active:scale-90">
-            <Blend size={18} strokeWidth={2.2} />
+        <button type="button" onClick={onOpenReference} aria-label="Match look" className="group flex flex-1 items-center justify-center">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-on-accent shadow-offset transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-active:scale-90 group-active:shadow-none land:h-9 land:w-9">
+            <MatchIcon size={20} strokeWidth={2} />
           </span>
-          <span className="text-[11px] font-medium text-fg land:sr-only">Match look</span>
         </button>
-        <CompactTab active={sheet === 'color'} onClick={() => open('color')} icon={Palette} label="Colour" />
-        <CompactTab active={isMore} onClick={() => open('masks')} icon={Layers} label="More" />
+        <CompactTab active={sheet === 'color'} onClick={() => open('color')} icon={Droplet} label="Colour" />
+        <CompactTab active={isMore} onClick={() => open('tools')} icon={Ellipsis} label="More" />
       </nav>
     </div>
   );
 }
 
 /** Sheets with a compact view that sizes itself: the preset strip and the one-slider tools. */
-const focusable = (s: Sheet) => s === 'presets' || s === 'adjust' || s === 'color';
+const focusable = (s: Sheet) => s === 'presets' || s === 'adjust' || s === 'color' || s === 'tools';
 
-const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Looks', adjust: 'Light', color: 'Colour' };
+const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Looks', adjust: 'Light', color: 'Colour', tools: 'More tools' };
 
 /**
  * The open panel: docked under the photo (portrait) or beside it (phone landscape), so edits
@@ -365,8 +366,12 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
           {sheet !== 'presets' && (
             <div className={`flex h-11 shrink-0 items-center justify-between gap-2 pr-2 pl-4 ${inner}`}>
               {SHEET_TITLE[sheet] ? (
-                <span className="display text-[19px] text-fg">{SHEET_TITLE[sheet]}</span>
+                <h2 className="font-mono text-[13px] font-medium text-fg [font-stretch:100%]">{SHEET_TITLE[sheet]!.toLowerCase()}</h2>
               ) : (
+                <span className="flex min-w-0 items-center gap-1">
+                  <button type="button" aria-label="All tools" onClick={() => setSheet('tools')} className="-ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fg-2 active:scale-90 coarse:h-11 coarse:w-11">
+                    <ChevronLeft size={18} />
+                  </button>
                 <MoreTabs
                   value={sheet as RightTab}
                   onChange={(t) => {
@@ -374,8 +379,9 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
                     setSheet(t);
                   }}
                 />
+                </span>
               )}
-              <button type="button" aria-label="Close panel" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-control text-fg-2 transition-transform active:scale-90 coarse:h-11 coarse:w-11">
+              <button type="button" aria-label="Close panel" onClick={close} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 transition-transform hover:text-fg active:scale-90 coarse:h-11 coarse:w-11">
                 <X size={16} />
               </button>
             </div>
@@ -383,6 +389,13 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
           <div className={`scroll-quiet min-h-0 flex-1 overscroll-contain ${sheet === 'presets' ? 'flex flex-col' : 'overflow-y-auto'} ${inner}`}>
             {sheet === 'presets' ? (
               <LeftPanel compact expanded={expanded} onClose={close} onOpenReference={() => undefined} />
+            ) : sheet === 'tools' ? (
+              <ToolGrid
+                onPick={(t) => {
+                  selectRightTab(t);
+                  setSheet(t);
+                }}
+              />
             ) : (
               <>
                 {/* Full histogram costs ~110 px; the short sheet gets a slim one. */}
@@ -420,23 +433,56 @@ function MoreTabs({ value, onChange }: { value: RightTab; onChange: (t: RightTab
   );
 }
 
-function CompactTab({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: typeof SwatchBook; label: string }) {
+/** A dock tab: plain icon and label; the open one is ivory and a touch heavier, the rest recede. */
+function CompactTab({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: (p: { size?: number; strokeWidth?: number }) => React.ReactNode;
+  label: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors duration-200 active:scale-95 ${active ? 'text-fg' : 'text-fg-3'}`}
+      className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors duration-200 active:scale-95 ${active ? 'text-fg' : 'text-fg-4'}`}
     >
-      {active && (
-        <motion.span
-          layoutId="compact-tab-indicator"
-          className="absolute inset-x-1 inset-y-1.5 rounded-[20px] bg-white/[0.07]"
-          transition={{ type: 'spring', stiffness: 480, damping: 36 }}
-        />
-      )}
-      <Icon size={20} strokeWidth={active ? 2.1 : 1.7} className={`relative transition-colors ${active ? 'text-accent' : ''}`} />
-      <span className="relative text-[11px] font-medium land:sr-only">{label}</span>
+      <Icon size={20} strokeWidth={active ? 2 : 1.6} />
+      <span className={`text-[10.5px] land:sr-only ${active ? 'font-semibold' : 'font-medium'}`}>{label}</span>
     </button>
+  );
+}
+
+/** The More grid: every other tool, named and explained, one tap away. */
+const TOOLS: { id: RightTab; label: string; body: string }[] = [
+  { id: 'geometry', label: 'Crop', body: 'Straighten and frame' },
+  { id: 'masks', label: 'Masks', body: 'Select an object or paint an area' },
+  { id: 'remove', label: 'Remove', body: "Brush out what you don't want" },
+  { id: 'portrait', label: 'Portrait', body: 'Skin, eyes and face light' },
+  { id: 'detail', label: 'Detail', body: 'Sharpen, grain and noise' },
+  { id: 'detail', label: 'Lens blur', body: 'Soften the background' },
+];
+
+function ToolGrid({ onPick }: { onPick: (t: RightTab) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+      {TOOLS.map((t) => (
+        <button
+          key={t.label}
+          type="button"
+          aria-label={t.label}
+          onClick={() => onPick(t.id)}
+          className="flex min-h-[76px] flex-col items-start gap-1 rounded-md border border-line bg-raised-2 p-3 text-left transition-[background-color,transform] active:scale-[0.98] active:bg-control"
+        >
+          <span className="text-[14px] font-semibold tracking-[-0.01em] text-fg">{t.label}</span>
+          <span className="text-[12px] leading-snug text-fg-3">{t.body}</span>
+        </button>
+      ))}
+    </div>
   );
 }
