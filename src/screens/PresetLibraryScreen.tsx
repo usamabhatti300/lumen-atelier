@@ -35,17 +35,19 @@ export default function PresetLibraryScreen() {
   return (
     <div className="scroll-quiet h-full overflow-y-auto bg-ground">
       <AppBar>
-          <Button size="sm" variant="secondary" icon={<Upload size={14} />} onClick={() => file.current?.click()}>
-            Import
+          <Button size="sm" variant="secondary" aria-label="Import" className="max-sm:w-10 max-sm:px-0" icon={<Upload size={14} />} onClick={() => file.current?.click()}>
+            <span className="max-sm:sr-only">Import</span>
           </Button>
           <Button
             size="sm"
             variant="secondary"
+            aria-label="Export mine"
+            className="max-sm:w-10 max-sm:px-0"
             icon={<Download size={14} />}
             disabled={user.length === 0}
             onClick={() => downloadText(usePresets.getState().exportJson(user.map((p) => p.id)), 'lumen-atelier-presets.json')}
           >
-            Export mine
+            <span className="max-sm:sr-only">Export mine</span>
           </Button>
         <input
           ref={file}

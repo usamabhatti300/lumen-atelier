@@ -69,12 +69,29 @@ export function previewSourceId(): string {
   return source?.id ?? 'none';
 }
 
-export function presetThumb(presetId: string, values: PartialAdjustments): Promise<string> {
+/**
+ * Renders (or returns the cached) preview of a preset on the current source. Pass a signal to
+ * drop the request if the tile goes away before its turn, so visible tiles never wait behind
+ * tiles nobody is looking at any more.
+ */
+export function presetThumb(presetId: string, values: PartialAdjustments, signal?: AbortSignal): Promise<string> {
   const key = `${source?.id}:${presetId}:${JSON.stringify(values).length}:${hash(JSON.stringify(values))}`;
   const hit = cache.get(key);
   if (hit) return Promise.resolve(hit);
   return new Promise((resolve, reject) => {
-    queue.push({ key, values, resolve, reject });
+    const job: Job = { key, values, resolve, reject };
+    queue.push(job);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        const i = queue.indexOf(job);
+        if (i >= 0) {
+          queue.splice(i, 1);
+          reject(new DOMException('Preview no longer needed', 'AbortError'));
+        }
+      },
+      { once: true },
+    );
     pump();
   });
 }

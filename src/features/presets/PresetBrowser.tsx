@@ -241,18 +241,27 @@ const PresetCard = memo(function PresetCard({
     return () => void thumbSourceListeners.delete(fn);
   }, []);
 
+  // Grids render previews only for tiles on or near the screen (the strip is short enough to
+  // render in order). Tiles that scroll away before their turn give their place up.
+  const item = useRef<HTMLLIElement>(null);
+  const [near, setNear] = useState(strip);
+  useEffect(() => {
+    if (near || !item.current || typeof IntersectionObserver === 'undefined') return setNear(true);
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && setNear(true), { rootMargin: '400px 0px' });
+    io.observe(item.current);
+    return () => io.disconnect();
+  }, [near]);
   const thumbKey = `${sourceId}:${preset.id}`;
   useEffect(() => {
-    let alive = true;
-    presetThumb(preset.id, preset.adjustments).then((u) => alive && setThumb({ key: thumbKey, url: u }), () => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [preset.id, preset.adjustments, thumbKey]);
+    if (!near) return;
+    const ctrl = new AbortController();
+    presetThumb(preset.id, preset.adjustments, ctrl.signal).then((u) => !ctrl.signal.aborted && setThumb({ key: thumbKey, url: u }), () => undefined);
+    return () => ctrl.abort();
+  }, [preset.id, preset.adjustments, thumbKey, near]);
   const url = thumb?.key === thumbKey ? thumb.url : null;
 
   return (
-    <li className={`group relative ${strip ? 'w-[92px] shrink-0' : 'flex flex-col'}`}>
+    <li ref={item} className={`group relative ${strip ? 'w-[92px] shrink-0' : 'flex flex-col'}`}>
       {/* A look: its preview fills the tile; the chosen look glows lime. */}
       <button
         type="button"

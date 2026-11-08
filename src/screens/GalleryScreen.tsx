@@ -1,6 +1,6 @@
 /** Home: the hero with the two ways in, the stage (drop zone / continue), looks by category, and your edits. */
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, ImagePlus, Pencil, Settings, SwatchBook, Trash2, Wand2 } from 'lucide-react';
+import { ArrowRight, ImagePlus, Pencil, Settings, Sparkles, SwatchBook, Trash2, Wand2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { InstallBanner, InstallButton } from '@/pwa/PwaUi';
@@ -630,10 +630,12 @@ function Stage({
     );
   }
   return (
+    <>
+    <HowItWorks className="hidden coarse:block" />
     <button
       type="button"
       onClick={onPick}
-      className={`group relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-5 overflow-hidden rounded-xl border bg-raised/60 text-center transition-[border-color,background-color] duration-300 ${
+      className={`group relative flex aspect-[4/3] w-full flex-col coarse:hidden items-center justify-center gap-5 overflow-hidden rounded-xl border bg-raised/60 text-center transition-[border-color,background-color] duration-300 ${
         dragOver ? 'border-accent bg-accent/5' : 'border-line hover:border-line-strong'
       }`}
     >
@@ -642,16 +644,47 @@ function Stage({
         <PrismRing size={88} bright={dragOver} />
       </span>
       <span className="relative">
-        <span className="display block text-[1.9rem] text-fg">
-          <span className="coarse:hidden">Drop a photo here</span>
-          <span className="hidden coarse:inline">Open a photo</span>
-        </span>
-        <span className="mt-2 block text-sm text-fg-3">
-          <span className="coarse:hidden">or click to choose. Several at once is fine.</span>
-          <span className="hidden coarse:inline">From your library or camera.</span>
-        </span>
+        <span className="display block text-[1.9rem] text-fg">Drop a photo here</span>
+        <span className="mt-2 block text-sm text-fg-3">or click to choose. Several at once is fine.</span>
       </span>
       <span className="label-caps relative text-fg-4">JPEG · PNG · WebP</span>
     </button>
+    </>
+  );
+}
+
+/**
+ * Touch screens, first visit: the drop zone would only repeat the Open button, so the stage
+ * explains the one idea that makes the app different, in three steps joined by the prism.
+ */
+const STEPS: { n: string; title: string; body: string; icon: typeof ImagePlus }[] = [
+  { n: '01', title: 'Show it a photo you love', body: 'A saved post, a screenshot, a film still.', icon: ImagePlus },
+  { n: '02', title: 'It becomes your look', body: 'Measured on this device into editable settings.', icon: Sparkles },
+  { n: '03', title: 'Wear it, tweak it, keep it', body: 'On any photo, as a preset you can reuse.', icon: Wand2 },
+];
+
+function HowItWorks({ className = '' }: { className?: string }) {
+  return (
+    <div className={`relative overflow-hidden rounded-xl border border-line-soft bg-raised/70 p-5 ${className}`}>
+      <p className="label-caps text-fg-4">How it works</p>
+      <ol className="relative mt-4 space-y-5">
+        {/* The prism runs down the steps: light going in, a look coming out. */}
+        <span aria-hidden className="absolute top-5 bottom-5 left-[19px] w-[2px] rounded-full bg-[linear-gradient(180deg,var(--color-spec-1),var(--color-spec-2),var(--color-spec-3),var(--color-spec-4),var(--color-spec-5))] opacity-70" />
+        {STEPS.map((st) => (
+          <li key={st.n} className="relative flex items-start gap-4">
+            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised-2 text-fg ring-1 ring-line">
+              <st.icon size={17} />
+            </span>
+            <span className="min-w-0 pt-0.5">
+              <span className="flex items-baseline gap-2">
+                <span className="font-mono text-[11px] text-fg-4">{st.n}</span>
+                <span className="text-[15px] leading-snug font-semibold tracking-[-0.01em] text-fg">{st.title}</span>
+              </span>
+              <span className="mt-0.5 block text-[13px] leading-snug text-fg-3">{st.body}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
