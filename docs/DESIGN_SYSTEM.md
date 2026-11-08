@@ -30,11 +30,14 @@ and pills.
 | instant | 80 ms | Pressed states |
 | fast | 140 ms | Hover, focus, slider thumb |
 | base | 220 ms | Panels, tabs, section collapse |
-| slow | 420 ms | Screen enter, look readout, photo develop (700 ms), lumen sweep (900 ms) |
+| slow | 420 ms | Screen enter, look readout, photo develop (700 ms), photo landing (650 ms), lumen sweep (1050 ms) |
 
 Easing `cubic-bezier(0.22, 1, 0.36, 1)`; springs for the dock pill, tool-tab pill, segmented thumb,
-dialogs, toasts and the chosen look's check. Signature: loading a look spins in the tile's lime check,
-sweeps one band of light across the photo and rises the look readout in. The home screen is staged once
+dialogs, toasts, the chosen look's check and phone sheets (stiffness 420, damping 40). Signature:
+loading a look spins in the tile's lime check, then, on the first frame rendered with the new look, sweeps
+one band of prism-fringed light across the photo, lands the photo (scale + brightness breath) and rises
+the look readout in. Android gets short haptic ticks (`src/lib/haptics.ts`). Tapping never shifts the
+photo: the phone amount row keeps a fixed height (measured CLS 0). The home screen is staged once
 with a GSAP timeline. Progress is a percentage only where measurable. `prefers-reduced-motion` is
 respected, with a Settings override (the sweep is removed entirely).
 
@@ -43,6 +46,7 @@ respected, with a Settings override (the sweep is removed entirely).
 - Desktop (≥1024 px): top bar, left panel 284 px (reference CTA, presets, photos), canvas, right panel
   320 px (histogram, tabs), filmstrip. Both side panels collapse.
 - Tablet/mobile (<1024 px): canvas plus a floating bottom dock (Looks, Light, Match look, Colour, More).
+  A fresh photo opens with the Looks sheet showing; the dock is a tab bar (tapping the open tab keeps it).
   Each opens a panel **docked under the photo** (46 dvh; the photo re-fits above it, so edits stay
   visible), or **beside it** on phones held sideways (`(orientation: landscape) and (max-height: 540px)`).
   The Presets panel is the full left panel (Presets / Photos, Save look, preset Amount); Light adds
@@ -72,3 +76,6 @@ Native range inputs behind the custom slider track (keyboard, screen readers, `a
 double-click / typed values, focus-visible rings in lime (#d4ff3f), focus-trapped dialogs that restore
 focus, `aria-live` status for saving / analysis / export, labelled icon buttons with tooltips and
 shortcuts, keyboard-operable colour wheels, curve points and before/after divider.
+Touch targets are at least 44 px on coarse pointers, including the phone sheet's close, Save and
+remove-look buttons (2026-11-08). Preset previews render only for tiles on or near the screen and drop
+their queued render when they scroll away, so visible tiles fill first.

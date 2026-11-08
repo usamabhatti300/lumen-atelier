@@ -133,8 +133,9 @@ real motion. Afterglow takes that, with its own signature: lime light and the pr
 
 ### Lumen (accent)
 - **Lumen Lime** `#d4ff3f`: the one main action per screen (Match a look; Export in the export sheet),
-  the chosen look's ring and check, changed slider values and fills, active tool icons, the Match look lens
-  in the phone dock. Text on lime is **On-lime** `#0d1003`. Lime is readable as text on the dark ground
+  the chosen look's ring and check, changed slider values and fills, the active tool tab's icon, the Match
+  look lens in the phone dock. **Not** for: panel and view toggles (white), secondary text actions such as
+  *Save look* or *New mask* (fg-2), warnings (fg-3 icon), confidence levels (neutral; only *high* is green). Text on lime is **On-lime** `#0d1003`. Lime is readable as text on the dark ground
   (16:1), so `accent-fg` is the same lime.
 - Lime glows: `shadow-glow` (1.5px ring + 28px bloom) on chosen looks and the active filmstrip frame;
   a soft bloom on the accent button's hover. Nothing else glows.
@@ -189,7 +190,11 @@ Phone first. Pages use a 16px gutter (32px from `sm`), max width 1280px, a 56px 
 **Editor, phone/tablet (<1024px):** top bar (round back, import, undo/redo, compare, ⋮, white Export
 pill) → the photo stage → the look readout (pill: prism dot, look name, lime amount) → a raised sheet
 that docks under the photo when a tool is open (rounded top, grab handle, display title, round close) →
-the floating **dock** (Looks, Light, *Match look* lens, Colour, More). The active dock tab gets a soft
+the floating **dock** (Looks, Light, *Match look* lens, Colour, More). A fresh photo opens with the
+**Looks sheet already showing**, so the first step is obvious. The dock is a tab bar: tapping the open
+tab keeps it open (close with ×, a drag down or Escape). The Looks sheet is: Looks/Photos switch, Save, ×
+→ category chips → the strip of looks → the **amount row**, which has a fixed height whether or not a
+look is on (a one-line hint without one), so choosing a look never moves the photo. The active dock tab gets a soft
 white pill (shared-layout spring) and a lime icon; Match look is a lime lens with a prism halo, never a tab.
 
 **Editor, desktop (≥1024px):** 52px top bar (mark, project name, save state; the tool cluster in a raised
@@ -219,13 +224,20 @@ sheets). Look tiles 16px in rails, 22px in the library. Inputs 10px; search fiel
   shimmer skeleton while it renders), a bottom scrim with the name in white, the catalogue code in mono at
   the top left. Chosen: lime ring + glow + a lime check that spins in. Favourite / more actions are round
   blurred buttons (always visible on touch, on hover with a mouse).
-- **Slider**: 3px graphite track, lime fill from the default with a soft glow, a white thumb that grows on
+- **Slider**: 3px graphite track, lime fill from the default (from zero for amounts and intensities,
+  `fillFrom="min"`) with a soft glow, a white thumb that grows on
   hover and turns lime with a bloom while dragged; mono value turns lime when changed. The phone "one
   slider at a time" view adds a fading tick ruler and a round reset.
 - **Section**: label-caps head with a glowing lime dot when modified; round reset that spins on press.
 - **Dialog**: a bottom sheet on phones, a centred 28px card on larger screens; spring in; blurred scrim.
 - **Toasts**: `surface-float` pills that spring up.
-- **Masks**: with no masks, the ways to make one are shown as tiles (Select object first, lime).
+- **Masks**: with no masks, the ways to make one are shown as tiles (Select object first, with a white
+  icon disc; it is featured by position, not by lime).
+- **Match result**: your photo wearing the look leads (with the reference inset in its corner), then the
+  look's description, then the analysis; on phones this column moves above the reference.
+- **Home, first visit on touch screens**: a three-step *How it works* card joined by a prism line replaces
+  the drop zone (which would only repeat the Open button). Mouse screens keep the drop zone.
+- **Touch targets**: 44px on coarse pointers for sheet close, Save and remove buttons.
 
 ## Motion
 
@@ -234,14 +246,23 @@ Easing `cubic-bezier(0.22, 1, 0.36, 1)`; springs (`stiffness ~420–520, damping
 settle: dock pill, tab pill, segmented thumb, dialogs, toasts, the chosen look's check.
 
 Signature moments:
-- **Loading a look**: the tile's lime check spins in, a soft band of light (**lumen sweep**, 900ms,
-  screen blend) passes once across the photo, and the look readout rises in sharp (`readout-in`).
+- **Loading a look**: the tile's lime check spins in and (on Android) a 12ms haptic tick fires. The
+  **lumen sweep** waits for the first frame rendered with the new look (`engineStore.frame`), so the light
+  passes over the look itself: a bright core with prism fringes, 1050ms, screen blend. At the same moment
+  the photo **lands** (0.985→1 scale with a brightness breath, 650ms, Web Animations API) and the look
+  readout rises in sharp (`readout-in`).
+- **Sheets** open and resize with a critically damped spring (stiffness 420, damping 40); dock tab
+  switches tick on Android (`src/lib/haptics.ts`, skipped with reduced motion).
 - **Opening a photo**: the photo develops in (fade + 0.97→1 scale, 700ms).
 - **Home**: a GSAP timeline stages hero → stage → rail once; the empty stage's prism ring turns slowly.
 - **Screens** arrive with `screen-enter` (fade + 10px rise).
 
 All of it is skipped with `prefers-reduced-motion` or the in-app *Animations: reduced* setting (the sweep
-is removed entirely, other animations collapse to 1ms).
+is removed entirely, the landing and haptics are skipped via `motionReduced()`, other animations collapse
+to 1ms).
+
+Layout stability is part of motion: nothing the user taps may shift the photo (CLS on applying a look is
+0, measured; it was 0.19 before the 2026-11-08 critic pass).
 
 ## Do's and don'ts
 

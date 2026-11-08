@@ -1,6 +1,6 @@
 # Handoff: read this first in a new session
 
-_Last updated: 2026-11-08. Owner: Usama (usama@doppellabs.ai)._
+_Last updated: 2026-11-08 (latest). Owner: Usama (usama@doppellabs.ai)._
 
 ## What this project is
 
@@ -32,6 +32,17 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
 
 ## State as of the last session
 
+- **2026-11-08 (latest): second critic pass on Afterglow.** Scored in the running app at 390/834/1440 px:
+  6.4 → 7.4 average. Kept the identity, fixed the execution (details and the list of problems in
+  `PROJECT_STATUS.md`). Scorecard before → after: crave 6→7, identity/colour 6.5→7.5, type 7→7, layout
+  5.5→7.5, motion 5→7.5, beginner on phone 6→8, enthusiast on desktop 7.5→7.5, consistency 7→7.5,
+  accessibility 7→7.5, performance feel 6→7. **Still under the brief's 8.0 bar.** Open, in order of
+  impact: (1) identity is still close to the common "dark + neon + one serif word" template; a more
+  ownable signature probably needs real sample photography (none licensed in the repo) and a custom
+  display treatment; (2) main-thread long tasks of 0.3–1 s when a look applies (dev build; preset
+  thumbnails and the render share the main thread; an OffscreenCanvas worker for thumbnails is the
+  likely fix); (3) the desktop top bar's 14 unlabelled icons; (4) shadcn/ui still unused; (5) not yet
+  checked on a real phone.
 - **2026-11-08 (later): critic review → second redesign, "Afterglow"** (dark graphite, lime lumen accent,
   prism for signature moments, Geist + Instrument Serif). It replaced "Film Stock Box", which failed the
   review (5.6/10). Before/after scorecard and test results are in `PROJECT_STATUS.md`. Read `DESIGN.md` before any UI work;

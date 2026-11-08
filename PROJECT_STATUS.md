@@ -1,6 +1,6 @@
 # Project status: Lumen Atelier
 
-_Last updated: 2026-10-11. Source of truth for requirements: `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`._
+_Last updated: 2026-11-08. Source of truth for requirements: `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`._
 
 ## Summary
 
@@ -8,6 +8,28 @@ All eight staged phases from spec §18 have a working implementation. The signat
 (reference → analysis → editable preset → preview on target → refine → save → reuse) works end to
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
+
+**2026-11-08 (latest): second critic pass on Afterglow** (same brief, `docs/CRITIC_BRIEF.md`; tested in
+the running app with Playwright at 390, 834 and 1440 px, real photos, frame sequences and layout-shift
+/ long-task measurements). Before: 6.4/10 average (crave 6, motion 5), a fail. Verdict: the identity
+(dark, photo-led, one lime accent) is right for the category and was kept; the execution failed.
+Worst problems found: applying a look on a phone moved the photo (the Amount card grew the sheet; CLS
+0.19); a fresh photo showed no looks (two taps to the first useful thing); the lumen sweep fired before
+the new look rendered and was invisible on bright photos; the match result showed the reference and a
+paragraph first and your photo below the fold, and on phones the results column overlapped the
+reference; library previews were still empty after 5 s (every tile queued in list order, including
+off-screen ones) and the library's app-bar buttons overflowed on phones; lime on toggles, links,
+warnings and a red "Low confidence"; 36 px touch targets in the phone sheet; 10.5 px desktop tab labels;
+a phone home card that repeated the Open button.
+Changed: Looks sheet opens with a fresh photo; the dock is a tab bar; the phone amount row has a fixed
+height (CLS 0 measured) and fills from zero; sweep + photo "landing" on the first rendered frame of a
+new look; spring sheets; haptic ticks on Android (`src/lib/haptics.ts`); press and hold the photo to
+see the original; match result leads with your photo and a reference inset; overlap fixed; previews
+render only for on/near-screen tiles and drop queued work when they scroll away; icon-only library
+actions on phones; lime limited to the main action and changed values; 44 px phone targets; 11 px tab
+labels; a three-step *How it works* card on touch screens' first visit. After: 7.4/10 average (crave 7,
+motion 7.5): it clears the motion and crave floors but not the 8.0 average; see the scorecard in
+HANDOFF.md for what is still open.
 
 **2026-11-08 (later): critic review and second redesign, "Afterglow"** (brief: `docs/CRITIC_BRIEF.md`).
 The Film Stock Box UI scored 5.6/10 (crave 4, motion 4) and failed on identity: it read as vintage
