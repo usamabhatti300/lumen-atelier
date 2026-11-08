@@ -1,6 +1,6 @@
 /** Home: the hero with the two ways in, the stage (drop zone / continue), looks by category, and your edits. */
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, ImagePlus, Pencil, Settings, Sparkles, SwatchBook, Trash2, Wand2 } from 'lucide-react';
+import { ArrowRight, ImagePlus, Pencil, Settings, Sparkles, SwatchBook, Trash2, Blend } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { InstallBanner, InstallButton } from '@/pwa/PwaUi';
@@ -11,8 +11,8 @@ import { Progress } from '@/components/ui/misc';
 import { Wordmark } from '@/components/Wordmark';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { BUILTIN_PRESETS, CATEGORY_LABELS, PRESET_CATEGORIES } from '@/lib/presets/library';
-import { categoryCode, categoryTint } from '@/lib/presets/codes';
+import { BUILTIN_PRESETS, PRESET_CATEGORIES } from '@/lib/presets/library';
+import { rollOf } from '@/lib/presets/rolls';
 import { presetThumb, setPreviewSource } from '@/engine/presetThumbs';
 import { useSettings } from '@/state/settingsStore';
 import { useEditor } from '@/state/editorStore';
@@ -227,11 +227,9 @@ export function GalleryScreen() {
         />
 
         <section className="relative grid gap-7 pt-6 pb-14 sm:pt-12 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:gap-16 lg:pt-16 lg:pb-20">
-          {/* Ambient light behind the hero copy: the only glow on the page, never behind a photo. */}
-          <div aria-hidden className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-accent/[0.07] blur-3xl" />
           <div className="relative">
             <p data-reveal className="label-caps inline-flex items-center gap-2 rounded-full border border-line bg-raised/70 py-1.5 pr-3 pl-2.5 text-fg-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_10px_rgb(212_255_63/0.9)]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-offset-sm" />
               Free · On this device · No account
             </p>
             <h1 className="display mt-5 text-[clamp(3rem,14vw,6.5rem)] text-fg sm:mt-6">
@@ -239,7 +237,7 @@ export function GalleryScreen() {
                 Any look.
               </span>
               <span data-reveal className="block">
-                Made <span className="serif pr-2 text-[1.08em] text-accent">yours.</span>
+                Made <span className="voice pr-2 text-[1.08em] text-accent">yours.</span>
               </span>
             </h1>
             <p data-reveal className="mt-5 max-w-[42ch] text-base leading-relaxed text-fg-2 sm:mt-6 sm:text-[17px]">
@@ -247,7 +245,7 @@ export function GalleryScreen() {
               looks. Your photos never leave this device.
             </p>
             <div data-reveal className="mt-7 grid grid-cols-2 gap-2.5 sm:mt-8 sm:flex sm:gap-3">
-              <Button variant="accent" size="lg" className="h-13 px-4 text-[15px] sm:h-12 sm:px-6" icon={<Wand2 size={18} />} onClick={matchLook}>
+              <Button variant="accent" size="lg" className="h-13 px-4 text-[15px] sm:h-12 sm:px-6" icon={<Blend size={18} />} onClick={matchLook}>
                 Match a look
               </Button>
               <Button variant="primary" size="lg" className="h-13 px-4 text-[15px] sm:h-12 sm:px-6" icon={<ImagePlus size={18} />} onClick={pickPhotos}>
@@ -272,9 +270,9 @@ export function GalleryScreen() {
         <section aria-labelledby="looks-title">
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>
-              <p className="label-caps text-fg-4">{hero ? 'Previewed on your last photo' : `${SHELF.length} collections`}</p>
+              <p className="label-caps text-fg-4">{hero ? 'Previewed on your last photo' : `${SHELF.length} rolls`}</p>
               <h2 id="looks-title" className="display mt-2 text-[2rem] text-fg sm:text-[2.6rem]">
-                Start from a <span className="serif">look</span>
+                Start from a <span className="voice">look</span>
               </h2>
             </div>
             <Link
@@ -387,7 +385,7 @@ export function GalleryScreen() {
             className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-ground/80 backdrop-blur-sm"
           >
             <div className="flex flex-col items-center gap-4">
-              <PrismRing size={120} bright />
+              <FinderMark size={120} bright />
               <p className="display text-3xl text-fg">Drop to open</p>
             </div>
           </motion.div>
@@ -495,10 +493,11 @@ function useHeroImage(photoId: string | undefined) {
   return img && img.id === photoId ? img.url : undefined;
 }
 
-/** The categories on the home rail: one tile per category, previewed with its first look. */
+/** The rolls on the home rail: one tile per roll, its cover rendered with its first look on your last photo. */
 const SHELF = PRESET_CATEGORIES.map((id) => {
   const looks = BUILTIN_PRESETS.filter((p) => p.category === id);
-  return { id, label: CATEGORY_LABELS[id].replace(' Collection', ''), code: categoryCode(id), tint: categoryTint(id), count: looks.length, first: looks[0] };
+  const roll = rollOf(id);
+  return { id, label: roll.name, mood: roll.mood, code: `roll ${roll.no}`, count: looks.length, first: looks[0] };
 }).filter((c) => c.count > 0);
 
 /**
@@ -534,14 +533,8 @@ function CategoryTile({ category: c, src, rendering }: { category: (typeof SHELF
   return (
     <Link
       to={`/presets?category=${c.id}`}
-      className="group relative flex aspect-[3/4] flex-col justify-between overflow-hidden rounded-lg bg-raised p-3 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] transition-transform duration-300 ease-out hover:-translate-y-1"
+      className="group relative flex aspect-[3/4] flex-col justify-between overflow-hidden rounded-lg bg-raised-2 p-3 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-offset"
     >
-      {/* A wash of the category's tint until (and under) the real render. */}
-      <span
-        aria-hidden
-        className="absolute inset-0 opacity-40 transition-opacity duration-500 group-hover:opacity-60"
-        style={{ background: `radial-gradient(110% 70% at 25% 15%, ${c.tint}, transparent 65%), radial-gradient(90% 60% at 90% 100%, ${c.tint}55, transparent 70%)` }}
-      />
       <AnimatePresence>
         {src && (
           <motion.img
@@ -557,30 +550,28 @@ function CategoryTile({ category: c, src, rendering }: { category: (typeof SHELF
       </AnimatePresence>
       {!src && rendering && <span aria-hidden className="skeleton absolute inset-0 opacity-50" />}
       <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/30" />
-      <span className="relative flex items-center justify-between font-mono text-[11px] font-medium tracking-[0.06em] text-white/85">
-        <span className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: c.tint }} />
-          {c.code}
-        </span>
-        <span className="tabular">{c.count}</span>
+      <span className="relative flex items-center justify-between font-mono text-[11px] font-medium text-white/85">
+        <span>{c.code}</span>
+        <span className="tabular">{c.count} looks</span>
       </span>
-      <span className="relative text-[15px] leading-tight font-semibold tracking-[-0.015em] text-white">{c.label}</span>
+      <span className="relative">
+        <span className="block text-[15px] leading-tight font-semibold tracking-[-0.015em] text-white">{c.label}</span>
+        <span className="mt-1 block font-mono text-[10px] text-white/70">{c.mood}</span>
+      </span>
     </Link>
   );
 }
 
-/** A ring of split light, slowly turning: the empty stage's invitation (static with reduced motion). */
-function PrismRing({ size = 96, bright = false }: { size?: number; bright?: boolean }) {
-  const ring = 'conic-gradient(from 0deg, var(--color-spec-1), var(--color-spec-2), var(--color-spec-3), var(--color-spec-4), var(--color-spec-5), var(--color-spec-1))';
-  const mask = 'radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px))';
+/** Viewfinder corners around a lilac point: the empty stage's invitation. `bright` while a drop hovers. */
+function FinderMark({ size = 96, bright = false }: { size?: number; bright?: boolean }) {
+  const corner = `absolute h-[30%] w-[30%] border-solid transition-colors duration-300 ${bright ? 'border-accent' : 'border-fg-3'}`;
   return (
     <span aria-hidden className="relative block" style={{ width: size, height: size }}>
-      <span
-        className={`absolute inset-0 animate-[spin_14s_linear_infinite] rounded-full blur-xl ${bright ? 'opacity-80' : 'opacity-45'}`}
-        style={{ background: ring }}
-      />
-      <span className="absolute inset-0 animate-[spin_14s_linear_infinite] rounded-full" style={{ background: ring, WebkitMask: mask, mask }} />
-      <span className="absolute inset-0 m-auto h-[22%] w-[22%] rounded-full bg-accent shadow-[0_0_24px_rgb(212_255_63/0.8)]" />
+      <span className={`${corner} top-0 left-0 border-t-2 border-l-2`} />
+      <span className={`${corner} top-0 right-0 border-t-2 border-r-2`} />
+      <span className={`${corner} bottom-0 left-0 border-b-2 border-l-2`} />
+      <span className={`${corner} right-0 bottom-0 border-r-2 border-b-2`} />
+      <span className="absolute inset-0 m-auto h-[18%] w-[18%] rounded-full bg-accent shadow-offset-sm" />
     </span>
   );
 }
@@ -641,7 +632,7 @@ function Stage({
     >
       <span aria-hidden className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_45%,rgb(255_255_255/0.05),transparent)]" />
       <span className="transition-transform duration-500 ease-out group-hover:scale-110">
-        <PrismRing size={88} bright={dragOver} />
+        <FinderMark size={88} bright={dragOver} />
       </span>
       <span className="relative">
         <span className="display block text-[1.9rem] text-fg">Drop a photo here</span>
@@ -660,7 +651,7 @@ function Stage({
 const STEPS: { n: string; title: string; body: string; icon: typeof ImagePlus }[] = [
   { n: '01', title: 'Show it a photo you love', body: 'A saved post, a screenshot, a film still.', icon: ImagePlus },
   { n: '02', title: 'It becomes your look', body: 'Measured on this device into editable settings.', icon: Sparkles },
-  { n: '03', title: 'Wear it, tweak it, keep it', body: 'On any photo, as a preset you can reuse.', icon: Wand2 },
+  { n: '03', title: 'Wear it, tweak it, keep it', body: 'On any photo, as a preset you can reuse.', icon: Blend },
 ];
 
 function HowItWorks({ className = '' }: { className?: string }) {
@@ -668,8 +659,8 @@ function HowItWorks({ className = '' }: { className?: string }) {
     <div className={`relative overflow-hidden rounded-xl border border-line-soft bg-raised/70 p-5 ${className}`}>
       <p className="label-caps text-fg-4">How it works</p>
       <ol className="relative mt-4 space-y-5">
-        {/* The prism runs down the steps: light going in, a look coming out. */}
-        <span aria-hidden className="absolute top-5 bottom-5 left-[19px] w-[2px] rounded-full bg-[linear-gradient(180deg,var(--color-spec-1),var(--color-spec-2),var(--color-spec-3),var(--color-spec-4),var(--color-spec-5))] opacity-70" />
+        {/* A lilac line joins the steps. */}
+        <span aria-hidden className="absolute top-5 bottom-5 left-[19px] w-[2px] rounded-full bg-accent/40" />
         {STEPS.map((st) => (
           <li key={st.n} className="relative flex items-start gap-4">
             <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-raised-2 text-fg ring-1 ring-line">

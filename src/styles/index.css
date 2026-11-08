@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/geist/wght.css';
-@import '@fontsource-variable/geist-mono/wght.css';
-@import '@fontsource/instrument-serif/latin-400-italic.css';
+/* Martian Mono with both axes: weight, and width (75–112.5%) so short UI labels can run narrower. */
+@import '@fontsource-variable/martian-mono/wdth.css';
 
 /* Touch screens (phones, tablets): `coarse:` enlarges hit targets. */
 @custom-variant coarse (@media (pointer: coarse));
@@ -11,49 +11,51 @@
 @custom-variant land (@media (orientation: landscape) and (max-height: 540px));
 
 /*
- * Lumen Atelier design tokens: "Afterglow".
- * A dark, neutral graphite instrument where the only light is the photo and what you are doing
- * to it. Neutral chrome keeps colour judgement honest; one lime "lumen" accent marks the one
- * thing being done (main action, active value, chosen look); the prism spectrum appears only at
- * signature moments (a look loading, an analysis running, an export finishing).
+ * Lumen Atelier design tokens: "Afterimage".
+ * The early digicam and the contact sheet, seen from now. Night-black chrome with a faint violet
+ * lean, ivory type, and one lilac accent for the one thing being done (main action, chosen look,
+ * changed values). The signature is the afterimage: a hard, unblurred lilac offset (a double
+ * exposure) on the wordmark, the main action, the chosen look and the slider thumb. No glows,
+ * no gradients, no glass. Orange is for date stamps only.
  * Roles: well (inset fields) < ground (page) < raised (cards, sheets, menus); fg..fg-4 text;
- * accent (lime fill) with accent-fg (accent as text / rings) and on-accent (text on lime).
+ * accent (lilac fill) with accent-fg (accent as text / rings) and on-accent (text on lilac).
  */
 @theme {
-  --color-well: #08080a;
-  --color-ground: #0e0e10;
-  --color-ground-2: #121215;
-  --color-raised: #18181c;
-  --color-raised-2: #1f1f24;
-  --color-control: #26262c;
-  --color-control-2: #303037;
-  --color-line-soft: #1e1e23;
-  --color-line: #2b2b32;
-  --color-line-strong: #4a4a53;
-  --color-fg: #f5f5f2;
-  --color-fg-2: #d2d2cd;
-  --color-fg-3: #a5a5a0; /* 7.9:1 on ground */
-  --color-fg-4: #8a8a85; /* 5.6:1 on ground, 4.9:1 on raised-2 */
-  --color-accent: #d4ff3f;
-  --color-accent-hi: #e2ff7a;
-  --color-accent-lo: #bfee1f;
-  --color-accent-fg: #d4ff3f;
-  --color-on-accent: #0d1003;
-  --color-selected: #d4ff3f;
+  --color-well: #08070a;
+  --color-ground: #0d0c10;
+  --color-ground-2: #111015;
+  --color-raised: #17151c;
+  --color-raised-2: #201e27;
+  --color-control: #29262f;
+  --color-control-2: #332f3a;
+  --color-line-soft: #1f1d25;
+  --color-line: #2f2c38;
+  --color-line-strong: #4c4857;
+  --color-fg: #f0ebe1; /* ivory, 16.4:1 on ground */
+  --color-fg-2: #cfcad6; /* 12.1:1 on ground */
+  --color-fg-3: #a6a1af; /* 7.7:1 on ground, 5.9:1 on control */
+  --color-fg-4: #928d9d; /* 6.0:1 on ground, 5.1:1 on raised-2, 4.6:1 on control */
+  --color-accent: #c8b8ff; /* lilac, 10.9:1 on ground; on-accent on it 10.9:1 */
+  --color-accent-hi: #d6caff;
+  --color-accent-lo: #b6a3f5;
+  --color-accent-fg: #c8b8ff;
+  --color-on-accent: #0d0c10;
+  --color-selected: #c8b8ff;
+  /* The digicam date stamp. Date stamps only, never state or actions. */
+  --color-stamp: #f2994a;
   --color-danger: #ff6f63;
   --color-success: #52e394;
-  /* The prism: light split into its colours. Signature moments only. */
-  --color-spec-1: #ff5c7a;
-  --color-spec-2: #ffb547;
-  --color-spec-3: #d4ff3f;
-  --color-spec-4: #3fe0ff;
-  --color-spec-5: #8f7dff;
+  /* Retired prism (Afterglow). Kept as lilac/ivory tones so nothing left over turns into a rainbow. */
+  --color-spec-1: #c8b8ff;
+  --color-spec-2: #f0ebe1;
+  --color-spec-3: #c8b8ff;
+  --color-spec-4: #9e8de6;
+  --color-spec-5: #c8b8ff;
   --color-frame: #000000;
 
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
-  --font-mono: 'Geist Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+  --font-mono: 'Martian Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
@@ -66,7 +68,11 @@
 
   --shadow-float: 0 28px 70px -24px rgb(0 0 0 / 0.85), 0 0 0 1px rgb(255 255 255 / 0.06);
   --shadow-lift: 0 16px 34px -16px rgb(0 0 0 / 0.9);
-  --shadow-glow: 0 0 0 1.5px var(--color-accent), 0 0 28px -6px rgb(212 255 63 / 0.55);
+  /* The afterimage: a hard lilac offset, never blurred. */
+  --shadow-offset: 3px 3px 0 rgb(200 184 255 / 0.3);
+  --shadow-offset-sm: 2px 2px 0 rgb(200 184 255 / 0.32);
+  /* The chosen look / active frame: a lilac edge plus its afterimage. */
+  --shadow-selected: 0 0 0 1.5px var(--color-accent), 4px 4px 0 1.5px rgb(200 184 255 / 0.24);
 
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
@@ -80,8 +86,8 @@
   /* The photo's surroundings: a touch deeper than the chrome, so the photo reads as lit. */
   .theme-frame {
     --color-well: #000000;
-    --color-ground: #09090a;
-    --color-ground-2: #0e0e10;
+    --color-ground: #09080b;
+    --color-ground-2: #0d0c10;
     color: var(--color-fg);
     background-color: var(--color-ground);
   }
@@ -116,7 +122,8 @@
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
-  :root:not([data-motion='full']) .lumen-sweep {
+  :root:not([data-motion='full']) .afterimage-flash,
+  :root:not([data-motion='full']) .afterimage-ghost {
     display: none;
   }
 }
@@ -127,7 +134,8 @@
   animation-iteration-count: 1 !important;
   transition-duration: 1ms !important;
 }
-:root[data-motion='reduced'] .lumen-sweep {
+:root[data-motion='reduced'] .afterimage-flash,
+:root[data-motion='reduced'] .afterimage-ghost {
   display: none;
 }
 
@@ -165,16 +173,18 @@ body {
 }
 
 ::selection {
-  background: rgb(212 255 63 / 0.35);
+  background: rgb(200 184 255 / 0.35);
   color: inherit;
 }
 
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+/* Martian Mono is wide; interface labels and readouts run at 87.5% width so they fit like before. */
 .font-mono {
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  font-stretch: 87.5%;
+  letter-spacing: -0.02em;
 }
 
 :focus-visible {
@@ -218,46 +228,30 @@ body {
     letter-spacing: -0.04em;
     line-height: 0.96;
   }
-  /* The voice: Instrument Serif italic for one word in a headline. Never for UI. */
-  .serif {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-weight: 400;
-    letter-spacing: -0.01em;
+  /* The voice: one word in a headline carries the afterimage (a hard lilac offset). Never for UI. */
+  .voice {
+    text-shadow: 0.06em 0.05em 0 rgb(200 184 255 / 0.55);
   }
-  /* Instrument readout labels: small mono caps (section heads, codes, on-photo readouts). */
+  /* The wordmark face: full-width Martian Mono, lowercase, tight. */
+  .mono-display {
+    font-family: var(--font-mono);
+    font-stretch: 100%;
+    font-weight: 400;
+    letter-spacing: -0.05em;
+  }
+  /* Small mono labels (section heads, codes, frame numbers, on-photo readouts). Lowercase. */
   .label-caps {
     font-family: var(--font-mono);
-    font-weight: 500;
+    font-stretch: 87.5%;
+    font-weight: 450;
     font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    letter-spacing: 0;
+    text-transform: lowercase;
     font-variant-numeric: tabular-nums;
   }
-  /* The prism, as a fill. */
+  /* Was the prism; now a flat lilac mark (dots, thin progress lines). */
   .spectrum {
-    background-image: linear-gradient(
-      90deg,
-      var(--color-spec-1),
-      var(--color-spec-2),
-      var(--color-spec-3),
-      var(--color-spec-4),
-      var(--color-spec-5)
-    );
-  }
-  /* The prism, as text (short words only). */
-  .spectrum-text {
-    background-image: linear-gradient(
-      90deg,
-      var(--color-spec-1),
-      var(--color-spec-2) 30%,
-      var(--color-spec-3) 55%,
-      var(--color-spec-4) 80%,
-      var(--color-spec-5)
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    background-color: var(--color-accent);
   }
   /* Floating chrome over the dark stage (phone dock, on-photo chips): solid enough to read. */
   .surface-float {
@@ -303,7 +297,7 @@ body {
   border-radius: 999px;
   background: var(--color-fg);
   border: 0;
-  box-shadow: 0 0 0 3px var(--color-ground-2), 0 2px 8px rgb(0 0 0 / 0.6);
+  box-shadow: 0 0 0 3px var(--color-ground-2), 2px 2px 0 3px rgb(200 184 255 / 0.22);
   transition: transform var(--dur-fast) var(--ease-spring), background var(--dur-fast), box-shadow var(--dur-fast);
 }
 .slider-input::-moz-range-thumb {
@@ -312,7 +306,7 @@ body {
   border-radius: 999px;
   background: var(--color-fg);
   border: 0;
-  box-shadow: 0 0 0 3px var(--color-ground-2), 0 2px 8px rgb(0 0 0 / 0.6);
+  box-shadow: 0 0 0 3px var(--color-ground-2), 2px 2px 0 3px rgb(200 184 255 / 0.22);
 }
 .slider-input:hover::-webkit-slider-thumb {
   transform: scale(1.15);
@@ -320,7 +314,7 @@ body {
 .slider-input:active::-webkit-slider-thumb {
   transform: scale(1.3);
   background: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-ground-2), 0 0 18px rgb(212 255 63 / 0.6);
+  box-shadow: 0 0 0 3px var(--color-ground-2), 2px 2px 0 3px rgb(200 184 255 / 0.3);
 }
 .slider-input:focus-visible {
   outline: none;
@@ -374,33 +368,34 @@ body {
 }
 
 /*
- * Signature: the lumen sweep. When a look loads, one soft band of light passes across the photo
- * (screen blend, ~0.9 s). Purely decorative; hidden with reduced motion.
+ * Signature: the afterimage. When a new look lands, the previous look lingers over the photo as a
+ * faint, offset ghost and fades (the ghost is a canvas the Viewport fills with the old frame), and
+ * a lilac frame edge catches up from its offset. Hidden with reduced motion.
  */
-@keyframes lumen-sweep {
-  0% { transform: translateX(-130%) skewX(-14deg); opacity: 0; }
-  12% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { transform: translateX(260%) skewX(-14deg); opacity: 0; }
+@keyframes afterimage-ghost {
+  from { opacity: 0.85; transform: translate(0, 0); }
+  to { opacity: 0; transform: translate(10px, 8px); }
 }
-.lumen-sweep {
+.afterimage-ghost {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 42%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-  mix-blend-mode: screen;
-  /* A bright core with prism fringes: visible on bright skies as well as dark scenes. */
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgb(143 125 255 / 0.16) 18%,
-    rgb(63 224 255 / 0.22) 32%,
-    rgb(255 252 235 / 0.5) 50%,
-    rgb(255 181 71 / 0.24) 66%,
-    rgb(255 92 122 / 0.16) 80%,
-    transparent
-  );
-  animation: lumen-sweep 1050ms var(--ease-in-out-soft) both;
+  animation: afterimage-ghost 520ms var(--ease-out-quint) both;
+}
+@keyframes afterimage-flash {
+  from { opacity: 0.9; transform: translate(9px, 9px); }
+  70% { opacity: 0.5; }
+  to { opacity: 0; transform: translate(0, 0); }
+}
+.afterimage-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 2px solid var(--color-accent);
+  border-radius: inherit;
+  animation: afterimage-flash 620ms var(--ease-out-quint) both;
 }
 
 /* Look readout: the chosen look's name arrives (rise and sharpen). */

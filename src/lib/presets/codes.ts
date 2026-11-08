@@ -1,7 +1,7 @@
 /**
  * Catalogue identity for preset categories: a three-letter code per category and a number per
- * look inside it (e.g. "CIN 07"), plus one tint per category from the prism, used only as a
- * small identity mark (a dot, a hairline, a faint wash behind a category tile).
+ * look inside it (e.g. "CIN 07"), plus a tint used only as a small identity mark (a dot, a
+ * faint wash behind a category tile).
  */
 import type { PresetCategoryId } from '@/lib/schema/preset';
 
@@ -24,23 +24,25 @@ export const CATEGORY_CODES: Record<PresetCategoryId, string> = {
   reference: 'REF',
 };
 
+// Afterimage: no per-category rainbow. Looks are told apart by their real previews.
+const LILAC = '#c8b8ff';
 const TINTS: Record<PresetCategoryId, string> = {
-  signature: '#d4ff3f',
-  cinematic: '#3fe0ff',
-  'pale-blue': '#9cc8ff',
-  film: '#ffb547',
-  matte: '#c9b8a3',
-  portrait: '#ff9d8a',
-  wedding: '#f4dcc6',
-  luxury: '#d98cff',
-  'golden-hour': '#ff9a3d',
-  travel: '#4fe0a0',
-  earthy: '#b9a35c',
-  street: '#ff5c7a',
-  bw: '#e8e8e8',
-  social: '#8f7dff',
-  custom: '#f5f5f2',
-  reference: '#d4ff3f',
+  signature: LILAC,
+  cinematic: LILAC,
+  'pale-blue': LILAC,
+  film: LILAC,
+  matte: LILAC,
+  portrait: LILAC,
+  wedding: LILAC,
+  luxury: LILAC,
+  'golden-hour': LILAC,
+  travel: LILAC,
+  earthy: LILAC,
+  street: LILAC,
+  bw: '#f0ebe1',
+  social: LILAC,
+  custom: '#f0ebe1',
+  reference: LILAC,
 };
 
 export function categoryCode(category: string): string {

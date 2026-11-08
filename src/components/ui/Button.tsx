@@ -13,9 +13,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const VARIANTS: Record<Variant, string> = {
   // Bright pill: strong secondary actions (Open a photo, Save, Export in dialogs).
   primary: 'bg-fg text-ground hover:bg-white active:bg-fg-2 disabled:bg-control disabled:text-fg-4',
-  // Lumen lime: the one main action on a screen (Match a look, Export).
+  // Lilac: the one main action on a screen (Match a look, Export). It carries the afterimage
+  // offset, which tucks in as the button is pressed.
   accent:
-    'bg-accent text-on-accent hover:bg-accent-hi active:bg-accent-lo hover:shadow-[0_0_28px_-6px_rgb(212_255_63/0.6)] disabled:bg-control disabled:text-fg-4 disabled:shadow-none',
+    'bg-accent text-on-accent shadow-offset hover:bg-accent-hi active:bg-accent-lo active:shadow-none disabled:bg-control disabled:text-fg-4 disabled:shadow-none',
   secondary: 'bg-raised-2 text-fg border border-line hover:bg-control hover:border-line-strong active:bg-control-2 disabled:text-fg-4 disabled:bg-raised',
   ghost: 'text-fg-2 hover:text-fg hover:bg-control active:bg-control-2 disabled:text-fg-4',
   danger: 'bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20',

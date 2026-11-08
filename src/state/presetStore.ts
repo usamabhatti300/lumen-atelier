@@ -11,6 +11,7 @@ import {
 } from '@/lib/storage/db';
 import { parsePresetFile, serializePresets, type Preset, type PresetCategoryId } from '@/lib/schema/preset';
 import type { PartialAdjustments } from '@/lib/schema/adjustments';
+import { useEditor } from './editorStore';
 
 export const ALL_CATEGORY_LABELS: Record<PresetCategoryId, string> = {
   ...CATEGORY_LABELS,
@@ -30,10 +31,16 @@ const BUILTINS: Preset[] = BUILTIN_PRESETS.map((p) => ({
   updatedAt: 0,
 }));
 
+/** How many looks "Last roll" remembers. */
+export const RECENT_LIMIT = 12;
+
 interface PresetState {
   loaded: boolean;
   user: Preset[];
   favorites: string[];
+  /** Looks applied most recently, newest first ("Last roll"). */
+  recent: string[];
+  noteApplied(id: string): void;
   load(): Promise<void>;
   all(): Preset[];
   byId(id: string): Preset | undefined;
@@ -50,11 +57,29 @@ export const usePresets = create<PresetState>((set, get) => ({
   loaded: false,
   user: [],
   favorites: [],
+  recent: [],
 
   async load() {
     if (get().loaded) return;
-    const [user, favorites] = await Promise.all([listUserPresets(), getSetting<string[]>('favorites')]);
-    set({ user, favorites: favorites ?? [], loaded: true });
+    const [user, favorites, recent] = await Promise.all([
+      listUserPresets(),
+      getSetting<string[]>('favorites'),
+      getSetting<string[]>('recentLooks'),
+    ]);
+    // Looks applied before the store finished loading stay at the front.
+    const early = get().recent;
+    set({
+      user,
+      favorites: favorites ?? [],
+      recent: [...new Set([...early, ...(recent ?? [])])].slice(0, RECENT_LIMIT),
+      loaded: true,
+    });
+  },
+
+  noteApplied(id) {
+    const next = [id, ...get().recent.filter((r) => r !== id)].slice(0, RECENT_LIMIT);
+    set({ recent: next });
+    void setSetting('recentLooks', next);
   },
 
   all() {
@@ -103,8 +128,13 @@ export const usePresets = create<PresetState>((set, get) => ({
 
   async remove(id) {
     await deletePresetRecord(id);
-    set({ user: get().user.filter((p) => p.id !== id), favorites: get().favorites.filter((f) => f !== id) });
+    set({
+      user: get().user.filter((p) => p.id !== id),
+      favorites: get().favorites.filter((f) => f !== id),
+      recent: get().recent.filter((r) => r !== id),
+    });
     void setSetting('favorites', get().favorites);
+    void setSetting('recentLooks', get().recent);
   },
 
   toggleFavorite(id) {
@@ -126,6 +156,16 @@ export const usePresets = create<PresetState>((set, get) => ({
     return serializePresets(presets);
   },
 }));
+
+// "Last roll": remember a look when it is put on the photo you are editing. Switching photos
+// (which changes the applied look without anyone choosing one) is not recorded.
+useEditor.subscribe(
+  (s) => [s.activePhotoId, s.edit.appliedPreset?.id ?? null] as const,
+  ([photo, look], [prevPhoto, prevLook]) => {
+    if (look && look !== prevLook && photo === prevPhoto) usePresets.getState().noteApplied(look);
+  },
+  { equalityFn: (a, b) => a[0] === b[0] && a[1] === b[1] },
+);
 
 export function downloadText(text: string, fileName: string, type = 'application/json') {
   const url = URL.createObjectURL(new Blob([text], { type }));

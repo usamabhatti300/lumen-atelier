@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, Copy, Download, MoreHorizontal, Pencil, Search, Star, Trash2, Wand2, X } from 'lucide-react';
+import { Check, Copy, Download, MoreHorizontal, Pencil, Search, Star, Trash2, Blend, X } from 'lucide-react';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { usePresets, ALL_CATEGORY_LABELS, downloadText } from '@/state/presetStore';
@@ -8,9 +8,15 @@ import { presetThumb, thumbSourceListeners, previewSourceId } from '@/engine/pre
 import { PRESET_CATEGORY_IDS, type Preset, type PresetCategoryId } from '@/lib/schema/preset';
 import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
-import { catalogueNumber } from '@/lib/presets/codes';
+import { rollOf } from '@/lib/presets/rolls';
 
-type Filter = 'all' | 'favorites' | PresetCategoryId;
+type Filter = 'all' | 'favorites' | 'recent' | PresetCategoryId;
+
+/** Today as a digicam date stamp: '26 11 08. */
+function dateStamp(d = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `'${p(d.getFullYear() % 100)} ${p(d.getMonth() + 1)} ${p(d.getDate())}`;
+}
 
 /**
  * `panel`: side panel grid. `page`: the preset library. `strip`: phones, one row of square
@@ -34,9 +40,10 @@ export function PresetBrowser({
   const load = usePresets((s) => s.load);
   const user = usePresets((s) => s.user);
   const favorites = usePresets((s) => s.favorites);
+  const recent = usePresets((s) => s.recent);
   const all = usePresets((s) => s.all);
   const [query, setQuery] = useState('');
-  // The Signature Collection is the first and default tab.
+  // Roll 01 (Editor's Picks, the Signature category) is the default tab.
   const [filter, setFilter] = useState<Filter>(initialFilter ?? 'signature');
   const [editing, setEditing] = useState<Preset | null>(null);
   const [deleting, setDeleting] = useState<Preset | null>(null);
@@ -50,36 +57,51 @@ export function PresetBrowser({
 
   const presets = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const matches = (p: Preset) => {
+      if (!q) return true;
+      const roll = rollOf(p.category);
+      return `${p.name} ${p.description} ${p.tags.join(' ')} ${ALL_CATEGORY_LABELS[p.category]} ${roll.name} ${roll.mood}`.toLowerCase().includes(q);
+    };
+    // Last roll keeps the order the looks were applied in, newest first.
+    if (filter === 'recent') {
+      const byId = new Map(all().map((p) => [p.id, p]));
+      return recent.map((id) => byId.get(id)).filter((p): p is Preset => !!p && matches(p));
+    }
     return all().filter((p) => {
       if (filter === 'favorites' && !favorites.includes(p.id)) return false;
       if (filter !== 'all' && filter !== 'favorites' && p.category !== filter) return false;
-      if (!q) return true;
-      return `${p.name} ${p.description} ${p.tags.join(' ')} ${ALL_CATEGORY_LABELS[p.category]}`.toLowerCase().includes(q);
+      return matches(p);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, filter, favorites, user, all]);
+  }, [query, filter, favorites, recent, user, all]);
 
-  // Catalogue numbers are stable: counted over the whole library, not the filtered view.
+  // Frame numbers ("04·07": roll 4, frame 7) are stable: counted over the whole library, not the filtered view.
   const numbers = useMemo(() => {
     const seen = new Map<string, number>();
     const out = new Map<string, string>();
     for (const p of all()) {
       const n = seen.get(p.category) ?? 0;
       seen.set(p.category, n + 1);
-      out.set(p.id, catalogueNumber(p.category, n));
+      const roll = rollOf(p.category).no;
+      const frame = String(n + 1).padStart(2, '0');
+      out.set(p.id, roll === '—' ? frame : `${roll}·${frame}`);
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, all]);
 
+  // Last roll (once you've used a look), Kept, then the numbered rolls, then everything.
   const filters: Filter[] = [
-    'signature',
-    'all',
+    ...(recent.length > 0 || filter === 'recent' ? (['recent'] as const) : []),
     'favorites',
+    'signature',
     ...PRESET_CATEGORY_IDS.filter((c) => c !== 'signature')
       .filter((c) => c !== 'reference' || user.some((p) => p.category === 'reference'))
       .filter((c) => c !== 'custom' || user.some((p) => p.category === 'custom')),
+    'all',
   ];
+  const stamp = useMemo(() => dateStamp(), []);
+  const roll = filter !== 'all' && filter !== 'favorites' && filter !== 'recent' ? rollOf(filter) : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -93,7 +115,7 @@ export function PresetBrowser({
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
-              // Search the whole library, not only the open category (Favourites stays a filter).
+              // Search the whole library, not only the open category (Kept and Last roll stay filters).
               if (e.target.value.trim() && filter !== 'all' && filter !== 'favorites') setFilter('all');
             }}
             placeholder={`Search ${all().length} looks`}
@@ -137,15 +159,53 @@ export function PresetBrowser({
                 filter === f ? 'bg-fg text-ground' : 'bg-control text-fg-2 hover:bg-control-2 hover:text-fg'
               }`}
             >
-              {f === 'all' ? 'All' : f === 'favorites' ? <span className="flex items-center gap-1.5"><Star size={12} fill="currentColor" aria-hidden /> Favourites</span> : ALL_CATEGORY_LABELS[f]}
+              {f === 'all' ? (
+                'All'
+              ) : f === 'favorites' ? (
+                <span className="flex items-center gap-1.5"><Star size={12} fill="currentColor" aria-hidden /> Kept</span>
+              ) : f === 'recent' ? (
+                'Last roll'
+              ) : (
+                <span className="flex items-baseline gap-1.5">
+                  {rollOf(f).no !== '—' && (
+                    <span aria-hidden className={`font-mono text-[10px] ${filter === f ? 'text-ground/60' : 'text-fg-4'}`}>
+                      {rollOf(f).no}
+                    </span>
+                  )}
+                  {rollOf(f).name}
+                </span>
+              )}
             </button>
           ))}
         </div>
+        {/* The open roll's title and mood (grids only; the phone strip keeps its fixed height). */}
+        {!strip && (
+          <p className="label-caps truncate text-fg-3">
+            {roll ? (
+              <>
+                {roll.no !== '—' && <span className="text-fg-2">roll {roll.no} · </span>}
+                <span className="text-fg">{roll.name.toLowerCase()}</span> · {roll.mood}
+              </>
+            ) : filter === 'recent' ? (
+              'the looks you used last, newest first'
+            ) : filter === 'favorites' ? (
+              'looks you starred'
+            ) : (
+              `every look · ${all().length}`
+            )}
+          </p>
+        )}
       </div>
       <div className={`scroll-quiet min-h-0 flex-1 ${strip ? 'overflow-hidden' : 'overflow-y-auto'} ${variant === 'panel' ? 'px-3 pb-4' : ''}`}>
         {presets.length === 0 ? (
           <p className="py-10 text-center text-sm text-fg-3">
-            {filter === 'favorites' ? 'No favourites yet. Star a preset to keep it here.' : 'No presets match your search.'}
+            {query.trim()
+              ? 'No looks match your search.'
+              : filter === 'favorites'
+                ? 'Nothing kept yet. Star a look to keep it here.'
+                : filter === 'recent'
+                  ? 'Looks you put on a photo will show up here.'
+                  : 'No looks here yet.'}
           </p>
         ) : (
           <ul
@@ -169,6 +229,7 @@ export function PresetBrowser({
                 strip={strip}
                 actionVerb={actionVerb}
                 catalogue={numbers.get(p.id)}
+                stamp={stamp}
               />
             ))}
           </ul>
@@ -215,9 +276,12 @@ const PresetCard = memo(function PresetCard({
   strip,
   actionVerb,
   catalogue,
+  stamp,
 }: {
   actionVerb: string;
   catalogue?: string;
+  /** Today's date stamp, shown on the chosen look. */
+  stamp?: string;
   strip?: boolean;
   preset: Preset;
   active: boolean;
@@ -262,7 +326,7 @@ const PresetCard = memo(function PresetCard({
 
   return (
     <li ref={item} className={`group relative ${strip ? 'w-[92px] shrink-0' : 'flex flex-col'}`}>
-      {/* A look: its preview fills the tile; the chosen look glows lime. */}
+      {/* A look: its preview fills the tile; the chosen look gets a lilac edge, its afterimage and today's date stamp. */}
       <button
         type="button"
         onClick={() => onApply?.(preset)}
@@ -272,7 +336,7 @@ const PresetCard = memo(function PresetCard({
         title={preset.description ? `${preset.name}: ${preset.description}` : preset.name}
         className={`relative block w-full overflow-hidden bg-raised-2 text-left transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] enabled:active:scale-[0.95] ${
           strip ? 'aspect-[3/4] rounded-md' : large ? 'aspect-[4/5] rounded-lg' : 'aspect-[4/5] rounded-md'
-        } ${active ? 'shadow-glow' : 'shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] enabled:hover:-translate-y-0.5'}`}
+        } ${active ? 'shadow-selected' : 'shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] enabled:hover:-translate-y-0.5'}`}
       >
         <AnimatePresence>
           {url && (
@@ -290,7 +354,7 @@ const PresetCard = memo(function PresetCard({
         {!url && <span className="skeleton absolute inset-0" />}
         <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
         {catalogue && (
-          <span className={`absolute top-0 left-0 font-mono font-medium tracking-[0.06em] text-white/75 uppercase [text-shadow:0_1px_3px_rgb(0_0_0/0.7)] ${strip ? 'p-1.5 text-[9px]' : 'p-2 text-[10px]'}`}>
+          <span className={`absolute top-0 left-0 font-mono font-medium text-white/80 [text-shadow:0_1px_3px_rgb(0_0_0/0.7)] ${strip ? 'p-1.5 text-[9px]' : 'p-2 text-[10px]'}`}>
             {catalogue}
           </span>
         )}
@@ -299,14 +363,19 @@ const PresetCard = memo(function PresetCard({
             initial={{ scale: 0, rotate: -90 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: 'spring', stiffness: 520, damping: 22 }}
-            className={`absolute flex items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_0_14px_rgb(212_255_63/0.7)] ${strip ? 'top-1.5 right-1.5 h-5 w-5' : 'top-2 right-2 h-6 w-6'}`}
+            className={`absolute flex items-center justify-center rounded-full bg-accent text-on-accent shadow-offset-sm ${strip ? 'top-1.5 right-1.5 h-5 w-5' : 'top-2 right-2 h-6 w-6'}`}
           >
             <Check size={strip ? 12 : 14} strokeWidth={3} />
           </motion.span>
         ) : preset.origin === 'reference' ? (
-          <Wand2 size={12} aria-label="Made from a reference photo" className={`absolute text-white/80 ${strip ? 'top-1.5 right-1.5' : 'top-2.5 right-2.5'}`} />
+          <Blend size={12} aria-label="Made from a reference photo" className={`absolute text-white/80 ${strip ? 'top-1.5 right-1.5' : 'top-2.5 right-2.5'}`} />
         ) : null}
-        <span className={`absolute inset-x-0 bottom-0 block ${strip ? 'px-2 pb-1.5' : 'px-2.5 pb-2'}`}>
+        {active && stamp && !strip && (
+          <span aria-hidden className="absolute right-2 bottom-2 font-mono text-[10px] text-stamp [text-shadow:0_0_6px_rgb(242_153_74/0.35)]">
+            {stamp}
+          </span>
+        )}
+        <span className={`absolute inset-x-0 bottom-0 block ${strip ? 'px-2 pb-1.5' : active ? 'px-2.5 pb-6' : 'px-2.5 pb-2'}`}>
           <span className={`line-clamp-2 block leading-[1.15] font-semibold tracking-[-0.01em] text-white ${strip ? 'text-[11.5px]' : large ? 'text-[15px]' : 'text-[13px]'}`}>{preset.name}</span>
         </span>
       </button>

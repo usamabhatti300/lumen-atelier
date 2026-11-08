@@ -9,7 +9,19 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-08 (latest): second critic pass on Afterglow** (same brief, `docs/CRITIC_BRIEF.md`; tested in
+**2026-11-08 (newest): "Afterimage" redesign** (owner's brief: no neon lime, rainbow gradients,
+glows or glass). New identity per `DESIGN.md`: lilac `#c8b8ff` on night black, ivory text, orange date
+stamps, Martian Mono + Geist, a hard lilac offset as the signature. Added (UI only, no pixel-maths change):
+rolls over the 14 categories, Last roll (recent looks) and Kept, roll covers on home, frame numbers and a
+date stamp on the chosen look, the afterimage transition on look change (`engine.snapshot()`), a
+compare readout, viewfinder crop corners with a ratio readout, and a measured info list on the match
+result. Tests run for this change: typecheck clean; lint 0 errors (the same 10 warnings as before); Vitest
+196 passed, 1 skipped (3 new readout tests); e2e `editor` + `mobile` 11 passed, `critical-journey` 1
+passed, `test:e2e:pwa` 4 passed. Not re-run: `reference-replace`, `select-object`, `remove`,
+`lens-blur`, `upscale`, `network-isolation`, `export-rotated`. Checked by hand in the running app at
+390 px and 1440 px (home, editor looks, afterimage frame, desktop rails, crop). Not checked on a real phone.
+
+**2026-11-08 (earlier): second critic pass on Afterglow** (same brief, `docs/CRITIC_BRIEF.md`; tested in
 the running app with Playwright at 390, 834 and 1440 px, real photos, frame sequences and layout-shift
 / long-task measurements). Before: 6.4/10 average (crave 6, motion 5), a fail. Verdict: the identity
 (dark, photo-led, one lime accent) is right for the category and was kept; the execution failed.

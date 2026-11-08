@@ -1,6 +1,6 @@
 /** Main editor: top bar, presets/photos panel, canvas, adjustment panels, filmstrip. */
 import { AnimatePresence, motion } from 'motion/react';
-import { Layers, Palette, SlidersHorizontal, SwatchBook, Wand2, X } from 'lucide-react';
+import { Layers, Palette, SlidersHorizontal, SwatchBook, Blend, X } from 'lucide-react';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useEditor, type PhotoMeta, type RightTab } from '@/state/editorStore';
@@ -242,7 +242,7 @@ export default function EditorScreen() {
       {dragOver && !referenceOpen && (
         <div className="pointer-events-none fixed inset-3 z-40 flex items-center justify-center rounded-xl border-2 border-dashed border-accent/70 bg-black/75 backdrop-blur-md">
           <p className="display text-4xl text-fg">
-            Drop to <span className="serif text-accent">add</span> photos
+            Drop to <span className="voice text-accent">add</span> photos
           </p>
         </div>
       )}
@@ -275,11 +275,10 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
       <nav className="surface-float mx-auto flex h-[68px] max-w-lg items-stretch rounded-[26px] px-1 shadow-float land:h-12 land:rounded-full" aria-label="Editing tools">
         <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={SwatchBook} label="Looks" />
         <CompactTab active={sheet === 'adjust'} onClick={() => open('adjust')} icon={SlidersHorizontal} label="Light" />
-        {/* The featured action, not a tab: a lime lens, so it never reads as the selected tab. */}
+        {/* The featured action, not a tab: a lilac lens with its afterimage, so it never reads as the selected tab. */}
         <button type="button" onClick={onOpenReference} className="group flex flex-1 flex-col items-center justify-center gap-1">
-          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-accent land:h-9 land:w-9 text-on-accent shadow-[0_0_24px_-4px_rgb(212_255_63/0.7)] transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-active:scale-90">
-            <span aria-hidden className="spectrum absolute -inset-[3px] -z-10 rounded-full opacity-60 blur-[6px]" />
-            <Wand2 size={18} strokeWidth={2.2} />
+          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-accent land:h-9 land:w-9 text-on-accent shadow-offset-sm transition-transform duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] group-active:scale-90">
+            <Blend size={18} strokeWidth={2.2} />
           </span>
           <span className="text-[11px] font-medium text-fg land:sr-only">Match look</span>
         </button>

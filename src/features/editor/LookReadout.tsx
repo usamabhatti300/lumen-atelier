@@ -15,7 +15,7 @@ export function LookReadout() {
         className={`readout-in flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-2 text-[13px] ${preset ? 'bg-raised-2 text-fg' : 'text-fg-4'}`}
         aria-live="polite"
       >
-        <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${preset ? 'spectrum shadow-[0_0_10px_rgb(212_255_63/0.6)]' : 'bg-fg-4/50'}`} />
+        <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${preset ? 'spectrum shadow-offset-sm' : 'bg-fg-4/50'}`} />
         <span className="truncate font-medium">{preset ? preset.name : 'Original'}</span>
         {preset && <span className="font-mono text-xs text-accent-fg">{Math.round(preset.amount)}%</span>}
       </span>

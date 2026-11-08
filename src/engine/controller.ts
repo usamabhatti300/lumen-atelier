@@ -93,6 +93,38 @@ class EngineController {
     return this.canvas;
   }
 
+  /**
+   * A small copy of what the editor is showing right now (the last rendered "after" image), for UI
+   * transitions such as the afterimage when a new look lands. Read-only: it does not render. Call it
+   * before the next frame is presented (renders are deferred to the next animation frame). Returns
+   * null when nothing has been rendered yet.
+   */
+  snapshot(maxSide = 720): HTMLCanvasElement | null {
+    const out = document.createElement('canvas');
+    out.style.width = '100%';
+    out.style.height = '100%';
+    out.style.display = 'block';
+    try {
+      if (this.renderer) {
+        if (!this.renderer.hasTarget('after')) return null;
+        const img = this.renderer.readTargetScaled('after', maxSide);
+        out.width = img.width;
+        out.height = img.height;
+        out.getContext('2d')?.putImageData(img, 0, 0);
+        return out;
+      }
+      const c = this.canvas;
+      if (!c || !c.width || !c.height) return null;
+      const k = Math.min(1, maxSide / Math.max(c.width, c.height));
+      out.width = Math.max(1, Math.round(c.width * k));
+      out.height = Math.max(1, Math.round(c.height * k));
+      out.getContext('2d')?.drawImage(c, 0, 0, out.width, out.height);
+      return out;
+    } catch {
+      return null;
+    }
+  }
+
   onCanvasReplaced(fn: () => void) {
     this.listeners.add(fn);
     return () => {

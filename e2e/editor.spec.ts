@@ -96,26 +96,26 @@ test.describe('editor', () => {
     await page.goto('/');
     await page.getByTestId('gallery-file-input').setInputFiles({ name: 'a.jpg', mimeType: 'image/jpeg', buffer: await makeImage(page, 'target') });
     await waitForRender(page);
-    // The Signature Collection is the first and default tab.
+    // Roll 01, Editor's Picks, is the default tab; Kept comes first (Last roll joins once a look is used).
     const tabs = page.getByRole('tablist', { name: 'Preset categories' }).getByRole('tab');
-    await expect(tabs.first()).toHaveText('Signature Collection');
-    await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
+    await expect(tabs.first()).toHaveText('Kept');
+    await expect(page.getByRole('tab', { name: "Editor's Picks" })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(51);
     await page.getByRole('button', { name: 'Apply Velvet Slide' }).click();
     await expect(page.getByText(/^Applied /)).toBeVisible();
     await setRange(page, 'Amount', 40);
     await expect(page.getByRole('slider', { name: 'Amount' })).toHaveValue('40');
     await page.getByRole('button', { name: 'Add Velvet Slide to favourites' }).click();
-    await page.getByRole('tab', { name: 'Favourites' }).click();
+    await page.getByRole('tab', { name: 'Kept' }).click();
     await expect(page.getByRole('button', { name: 'Apply Velvet Slide' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(1);
     // Search covers the whole library, not just the open tab.
-    await page.getByRole('tab', { name: 'Signature Collection' }).click();
+    await page.getByRole('tab', { name: "Editor's Picks" }).click();
     await page.getByRole('searchbox', { name: 'Search presets' }).fill('bleach');
     await expect(page.getByRole('button', { name: 'Apply Bleach Bypass' })).toBeVisible();
-    // Category tabs filter (Black & White holds the four new monochrome recipes).
+    // Roll tabs filter (Monochrome Diary, the black & white roll, holds the four monochrome recipes).
     await page.getByRole('searchbox', { name: 'Search presets' }).fill('');
-    await page.getByRole('tab', { name: 'Black & White' }).click();
+    await page.getByRole('tab', { name: 'Monochrome Diary' }).click();
     await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(4);
     await expect(page.getByRole('button', { name: 'Apply Platinum Noir' })).toBeVisible();
   });

@@ -201,34 +201,43 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     setUi({ zoom: next });
     return true;
   };
-  const lookId = useEditor((s) => s.edit.appliedPreset?.id ?? null);
-  const [sweep, setSweep] = useState(0);
-  const lastLook = useRef<{ photo: string | null; look: string | null } | null>(null);
-  const pendingSweep = useRef(false);
+  // Signature, the afterimage: when a new look lands on the same photo, the previous image lingers
+  // over it as an offset ghost and fades. The old image is copied the moment the look changes
+  // (synchronously, before the engine's next frame replaces it); the ghost appears on the first
+  // frame rendered with the new look.
+  const look = useEditor((s) => s.edit.appliedPreset);
+  const [ghost, setGhost] = useState<{ key: number; canvas: HTMLCanvasElement } | null>(null);
+  const pendingGhost = useRef<HTMLCanvasElement | null>(null);
   const frame = useEngine((s) => s.frame);
+  useEffect(
+    () =>
+      useEditor.subscribe(
+        (s) => [s.activePhotoId, s.edit.appliedPreset?.id ?? null] as const,
+        ([photo, id], [prevPhoto, prevId]) => {
+          // Only a new look on the same photo; opening a photo with a look already applied doesn't count.
+          if (!id || id === prevId || photo !== prevPhoto || motionReduced()) return;
+          if (useEditor.getState().compare !== 'off') return;
+          pendingGhost.current = engine.snapshot();
+        },
+        { equalityFn: (a, b) => a[0] === b[0] && a[1] === b[1] },
+      ),
+    [],
+  );
   useEffect(() => {
-    const prev = lastLook.current;
-    lastLook.current = { photo: activePhotoId, look: lookId };
-    // Only a new look on the same photo sweeps; opening a photo with a look already applied doesn't.
-    if (prev && prev.photo === activePhotoId && lookId && prev.look !== lookId) pendingSweep.current = true;
-  }, [lookId, activePhotoId]);
-  // The sweep waits for the first frame rendered with the new look, so the light passes over the
-  // look itself rather than over the old render.
-  useEffect(() => {
-    if (!pendingSweep.current) return;
-    pendingSweep.current = false;
-    setSweep((n) => n + 1);
-    // The photo lands: a breath of light and scale (skipped when motion is reduced).
-    if (!motionReduced()) {
-      land.current?.animate(
-        [
-          { transform: 'scale(0.985)', filter: 'brightness(1.14) saturate(1.08)' },
-          { transform: 'scale(1)', filter: 'none' },
-        ],
-        { duration: 650, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
-      );
-    }
+    const snap = pendingGhost.current;
+    if (!snap) return;
+    pendingGhost.current = null;
+    setGhost((g) => ({ key: (g?.key ?? 0) + 1, canvas: snap }));
+    // The photo settles as it lands (skipped when motion is reduced).
+    land.current?.animate([{ transform: 'scale(0.99)' }, { transform: 'scale(1)' }], { duration: 520, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
   }, [frame]);
+  const mountGhost = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el || !ghost) return;
+      el.replaceChildren(ghost.canvas);
+    },
+    [ghost],
+  );
   const land = useRef<HTMLDivElement>(null);
 
   const onTouchUp = (e: React.PointerEvent) => {
@@ -286,28 +295,41 @@ export function Viewport({ onImport }: { onImport: () => void }) {
         <div ref={land} className="h-full w-full">
           <div ref={attachCanvas} className="h-full w-full shadow-[0_40px_90px_-30px_rgba(0,0,0,0.95)] [&>canvas]:h-full [&>canvas]:w-full" />
         </div>
-        {/* Signature: a band of light passes over the photo when a new look loads. */}
-        {sweep > 0 && (
-          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-            <span key={sweep} className="lumen-sweep" />
+        {ghost && compare === 'off' && (
+          <div
+            key={ghost.key}
+            aria-hidden
+            className="afterimage-ghost"
+            onAnimationEnd={() => setGhost((g) => (g?.key === ghost.key ? null : g))}
+          >
+            <div ref={mountGhost} className="h-full w-full" />
           </div>
         )}
         {activePhotoId && !loading && compare === 'split' && tool !== 'crop' && <SplitDivider box={box} />}
         {compare === 'split' && tool !== 'crop' && (
           <div className="pointer-events-none absolute top-2.5 flex w-full justify-between px-2.5">
-            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">Before</span>
-            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">After</span>
+            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium text-fg">Before</span>
+            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium text-fg">After</span>
           </div>
         )}
         {compare === 'side' && (
           <div className="pointer-events-none absolute top-2.5 flex w-full px-2.5">
-            <span className="w-1/2"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">Before</span></span>
-            <span className="w-1/2 text-right"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">After</span></span>
+            <span className="w-1/2"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium text-fg">Before</span></span>
+            <span className="w-1/2 text-right"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium text-fg">After</span></span>
           </div>
         )}
+        {/* Holding the photo: a camera-style readout says what you're looking at, and what you'll return to. */}
         {compare === 'before' && (
-          <span className="pointer-events-none absolute top-2.5 left-2.5 surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium tracking-[0.1em] text-fg uppercase">
-            Before
+          <span className="pointer-events-none absolute top-2.5 left-2.5 flex flex-col items-start gap-1 font-mono text-[10px] text-fg [text-shadow:0_1px_2px_rgb(0_0_0/0.8)]">
+            <span className="surface-float flex items-center gap-1.5 rounded-full px-2.5 py-1">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-fg" />
+              original
+            </span>
+            {look && (
+              <span className="px-2.5 text-fg-2">
+                let go for {look.name.toLowerCase()} · {Math.round(look.amount)}
+              </span>
+            )}
           </span>
         )}
       </motion.div>

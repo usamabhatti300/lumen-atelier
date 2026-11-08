@@ -69,15 +69,14 @@ export default function PresetLibraryScreen() {
       </AppBar>
       <main className="screen-enter mx-auto w-full max-w-7xl px-4 sm:px-8">
         <div className="relative pt-8 pb-7 sm:pt-12 sm:pb-9">
-          <div aria-hidden className="pointer-events-none absolute -top-10 -left-20 h-56 w-56 rounded-full bg-accent/[0.06] blur-3xl" />
           <p className="label-caps relative text-fg-4">
             {BUILTIN_PRESETS.length} original looks{user.length > 0 ? ` · ${user.length} of yours` : ''} · all free
           </p>
           <h1 className="display relative mt-3 text-[3.2rem] text-fg sm:text-[5rem]">
-            The <span className="serif text-[1.08em]">shelf</span>
+            Every <span className="voice text-accent">roll</span>
           </h1>
           <p className="relative mt-4 max-w-2xl text-[15px] leading-relaxed text-fg-3">
-            Led by the Signature Collection, plus the presets you save or build from references. Previews here use a built-in test scene; in
+            Fourteen rolls of looks, starting with Editor's Picks, plus the looks you save or match from references. Previews here use a built-in test scene; in
             a project they show your photo.
           </p>
         </div>

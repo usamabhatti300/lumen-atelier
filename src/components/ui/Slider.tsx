@@ -183,6 +183,14 @@ export const Slider = memo(function Slider({
         onPointerCancel={onTouchEnd}
         data-testid="slider-track"
       >
+        {!lg && !track && (
+          // Afterimage: a printed LCD tick scale sits above the continuous rail (exact values, segment look).
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-1/2 h-[5px] -translate-y-[7px] opacity-80"
+            style={{ background: 'repeating-linear-gradient(90deg, var(--color-line) 0 2px, transparent 2px 5%)' }}
+          />
+        )}
         {lg && (
           <div
             aria-hidden
@@ -196,7 +204,7 @@ export const Slider = memo(function Slider({
         />
         {!track && (
           <div
-            className="pointer-events-none absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-accent shadow-[0_0_10px_rgb(212_255_63/0.55)] transition-[left,width] duration-75"
+            className="pointer-events-none absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-accent transition-[left,width] duration-75"
             style={fillStyle}
           />
         )}

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, Loader2, Plus, Wand2, X } from 'lucide-react';
+import { ArrowRight, Loader2, Plus, Blend, X } from 'lucide-react';
 import { useState } from 'react';
 import { PresetBrowser, PresetFields } from '@/features/presets/PresetBrowser';
 import { Slider } from '@/components/ui/Slider';
@@ -40,17 +40,17 @@ export function LeftPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className={`shrink-0 p-3 ${compact ? 'hidden' : ''}`}>
-        {/* The editor's signature entry: a card edged with the prism. */}
+        {/* The editor's signature entry: a card whose edge turns lilac on hover. */}
         <button
           type="button"
           onClick={onOpenReference}
           className="group relative block w-full overflow-hidden rounded-lg p-px text-left transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 active:scale-[0.98]"
           data-testid="open-reference"
         >
-          <span aria-hidden className="spectrum absolute inset-0 opacity-55 transition-opacity duration-300 group-hover:opacity-100" />
+          <span aria-hidden className="absolute inset-0 bg-line transition-colors duration-300 group-hover:bg-accent/70" />
           <span className="relative flex items-center gap-3 rounded-[21px] bg-raised px-3 py-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent shadow-[0_0_20px_-4px_rgb(212_255_63/0.7)] transition-transform duration-500 group-hover:rotate-[-14deg]">
-              <Wand2 size={17} />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent shadow-offset-sm transition-transform duration-500 group-hover:rotate-[-14deg]">
+              <Blend size={17} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[15px] leading-tight font-semibold tracking-[-0.01em] text-fg">Match a look</span>
@@ -158,7 +158,7 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
       className={`flex shrink-0 items-center gap-1.5 rounded-full text-xs font-medium text-fg-2 transition-colors hover:bg-control hover:text-fg disabled:text-fg-4 ${compact ? 'h-8 bg-control px-3' : 'mb-1 h-8 px-2.5'}`}
       data-testid="match-preset-to-photo"
     >
-      {matching ? <Loader2 size={11} className="animate-spin" /> : <Wand2 size={11} />}
+      {matching ? <Loader2 size={11} className="animate-spin" /> : <Blend size={11} />}
       {matching
         ? matching.pass === 0
           ? 'Matching…'
@@ -191,7 +191,7 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
               className="pt-2"
             >
               <div className="flex h-8 items-center gap-2">
-                <span aria-hidden className="spectrum h-2 w-2 shrink-0 rounded-full shadow-[0_0_10px_rgb(212_255_63/0.5)]" />
+                <span aria-hidden className="spectrum h-2 w-2 shrink-0 rounded-full shadow-offset-sm" />
                 <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-fg">{applied.name}</p>
                 {matchButton}
                 <button type="button" onClick={clear} aria-label="Remove preset" title="Remove preset" className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-3 transition-colors hover:bg-control hover:text-fg">

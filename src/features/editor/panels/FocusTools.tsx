@@ -237,7 +237,7 @@ const ToolChip = memo(function ToolChip({ path, label, selected, onSelect }: { p
   return (
     <ModeChip selected={selected} onSelect={onSelect}>
       {label}
-      {changed && <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-on-accent' : 'bg-accent shadow-[0_0_6px_rgb(212_255_63/0.8)]'}`} />}
+      {changed && <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-on-accent' : 'bg-accent shadow-offset-sm'}`} />}
       {changed && <span className="sr-only">(edited)</span>}
     </ModeChip>
   );

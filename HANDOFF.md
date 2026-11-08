@@ -1,6 +1,6 @@
 # Handoff: read this first in a new session
 
-_Last updated: 2026-11-08 (latest). Owner: Usama (usama@doppellabs.ai)._
+_Last updated: 2026-11-08 (newest: Afterimage redesign). Owner: Usama (usama@doppellabs.ai)._
 
 ## What this project is
 
@@ -32,7 +32,25 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
 
 ## State as of the last session
 
-- **2026-11-08 (latest): second critic pass on Afterglow.** Scored in the running app at 390/834/1440 px:
+- **2026-11-08 (newest): third redesign, "Afterimage" (built, committed).** The owner's new brief banned
+  neon lime, rainbow gradients, champagne gold, glassmorphism and glows (so Afterglow's lime and prism are
+  gone). Three directions were explored (https://claude.ai/artifact/EiMuAQQsWDAyBroGwmHvN2); the owner
+  picked "Afterimage" (digital nostalgia), refined on https://claude.ai/artifact/9EZchzYhzszRsEGsVCw24E,
+  and chose the **Lilac** accent `#c8b8ff` and the **Offset** wordmark. `DESIGN.md` describes it
+  (night-black chrome, ivory text, lilac, orange date stamp, Martian Mono + Geist, the hard lilac offset,
+  the Three Props Rule). Built in this pass, all UI only (no pixel-maths change):
+  tokens/fonts/wordmark/icons; hybrid slider (continuous rail + tick scale); rolls
+  (`src/lib/presets/rolls.ts`, an editorial layer over the 14 categories) with **Last roll** (recent looks,
+  `presetStore.recent`, IndexedDB setting `recentLooks`) and **Kept** (favourites); roll covers on home
+  rendered on your last photo; frame numbers and a date stamp on the chosen look; the **afterimage**
+  transition on look change (`engine.snapshot()` = a read-only copy of the last "after" render; GL
+  readback comes back the right way up, verified); a camera-style compare readout; viewfinder crop corners
+  with a ratio readout; a camera-style info list on the match result (`src/lib/analysis/readout.ts`,
+  tested). Match a look uses the Lucide `Blend` icon (no wand).
+  **Next, agreed with the owner (second step):** opt-in date stamp burned into exports and a "contact
+  sheet" share image (both need exporter changes). Still open from the shared UX plan: sheet detents,
+  export size presets, labelled desktop top bar; not yet checked on a real phone.
+- **2026-11-08 (earlier): second critic pass on Afterglow.** Scored in the running app at 390/834/1440 px:
   6.4 → 7.4 average. Kept the identity, fixed the execution (details and the list of problems in
   `PROJECT_STATUS.md`). Scorecard before → after: crave 6→7, identity/colour 6.5→7.5, type 7→7, layout
   5.5→7.5, motion 5→7.5, beginner on phone 6→8, enthusiast on desktop 7.5→7.5, consistency 7→7.5,
@@ -158,4 +176,4 @@ licence notes in README/Settings and must disclose download size.
 
 Read `AGENTS.md`. Key rules: change pixel maths in **both** `pixel.ts` and `shaders.ts` with tests;
 the AI returns only categorical descriptions (`shared/ai-schema.ts`); no fake progress; report only
-tests actually run; follow DESIGN.md (role tokens, the photo stage is `.theme-frame`, one lime action per screen, prism only at signature moments).
+tests actually run; follow DESIGN.md (role tokens, the photo stage is `.theme-frame`, one lilac action per screen, the hard lilac offset instead of glows, orange only for date stamps, at most three analog props).

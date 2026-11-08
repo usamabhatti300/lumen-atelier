@@ -68,7 +68,7 @@ test('offline: gallery, editor, presets, settings and export work without a conn
   await page.keyboard.press('Escape');
 
   await page.goto('/presets');
-  await expect(page.getByRole('heading', { name: 'The shelf' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Every roll' })).toBeVisible();
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await expect(page.getByText('The editor is saved on this device')).toBeVisible();

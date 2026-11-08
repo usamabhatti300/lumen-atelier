@@ -333,7 +333,7 @@ function ExportFinish({ result, share, ok }: { result: { done: number; cancelled
         className={`relative flex h-16 w-16 items-center justify-center rounded-full p-[3px] ${ok ? '' : 'bg-control-2'}`}
         style={
           ok
-            ? { background: 'conic-gradient(from 200deg, var(--color-spec-1), var(--color-spec-2), var(--color-spec-3), var(--color-spec-4), var(--color-spec-5), var(--color-spec-1))' }
+            ? { background: 'var(--color-accent)', boxShadow: 'var(--shadow-offset)' }
             : undefined
         }
         aria-hidden

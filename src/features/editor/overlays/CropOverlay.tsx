@@ -77,6 +77,12 @@ export function CropOverlay({ box }: { box: ViewBox }) {
   };
 
   const style = { left: box.left + c.x * box.width, top: box.top + c.y * box.height, width: c.w * box.width, height: c.h * box.height };
+  const FINDER: Record<string, string> = {
+    nw: 'top-1/2 left-1/2 border-t-[2.5px] border-l-[2.5px]',
+    ne: 'top-1/2 right-1/2 border-t-[2.5px] border-r-[2.5px]',
+    se: 'right-1/2 bottom-1/2 border-r-[2.5px] border-b-[2.5px]',
+    sw: 'bottom-1/2 left-1/2 border-b-[2.5px] border-l-[2.5px]',
+  };
   const handles: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
   const pos: Record<string, string> = {
     nw: 'left-0 top-0 cursor-nwse-resize',
@@ -90,7 +96,7 @@ export function CropOverlay({ box }: { box: ViewBox }) {
   };
 
   return (
-    <div className="absolute inset-0 overflow-hidden" onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+    <div className="absolute inset-0 overflow-hidden" onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} data-testid="crop-overlay">
       <div
         className="absolute cursor-move touch-none shadow-[0_0_0_9999px_rgba(13,12,11,0.62)] outline outline-1 outline-fg/90"
         style={style}
@@ -121,13 +127,38 @@ export function CropOverlay({ box }: { box: ViewBox }) {
             className={`absolute h-4 w-4 -translate-1/2 touch-none coarse:h-11 coarse:w-11 ${pos[h]}`}
             aria-hidden
           >
-            <span className={`absolute top-1/2 left-1/2 -translate-1/2 bg-fg ${h.length === 2 ? 'h-2.5 w-2.5' : h === 'n' || h === 's' ? 'h-1 w-4' : 'h-4 w-1'}`} />
+            {h.length === 2 ? (
+              // Viewfinder corners: a lilac bracket whose outer corner sits on the crop corner.
+              <span className={`absolute h-5 w-5 border-accent coarse:h-6 coarse:w-6 ${FINDER[h]}`} />
+            ) : (
+              <span className={`absolute top-1/2 left-1/2 -translate-1/2 bg-fg ${h === 'n' || h === 's' ? 'h-1 w-4' : 'h-4 w-1'}`} />
+            )}
           </div>
         ))}
         <span className="tabular pointer-events-none absolute -bottom-6 left-0 font-mono text-[10px] text-fg/80">
-          {Math.round(c.w * frame.width)} × {Math.round(c.h * frame.height)}
+          {Math.round(c.w * frame.width)} × {Math.round(c.h * frame.height)} · {ratioLabel(c.w * frame.width, c.h * frame.height)}
         </span>
       </div>
     </div>
   );
+}
+
+const RATIOS: [number, string][] = [
+  [1, '1:1'],
+  [4 / 5, '4:5'],
+  [5 / 4, '5:4'],
+  [3 / 4, '3:4'],
+  [4 / 3, '4:3'],
+  [2 / 3, '2:3'],
+  [3 / 2, '3:2'],
+  [9 / 16, '9:16'],
+  [16 / 9, '16:9'],
+];
+
+/** The crop's aspect ratio as a viewfinder would print it: a common ratio when it is within 1%, else "1.62:1". */
+function ratioLabel(w: number, h: number): string {
+  if (!(w > 0 && h > 0)) return '';
+  const r = w / h;
+  const hit = RATIOS.find(([v]) => Math.abs(r / v - 1) < 0.01);
+  return hit ? hit[1] : r >= 1 ? `${r.toFixed(2)}:1` : `1:${(1 / r).toFixed(2)}`;
 }

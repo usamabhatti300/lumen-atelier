@@ -23,7 +23,7 @@ export function Filmstrip({ onImport, compact = false }: { onImport: () => void;
               aria-current={p.id === activeId ? 'true' : undefined}
               aria-label={`Open ${p.name}`}
               className={`relative block h-[52px] overflow-hidden rounded-sm transition-[box-shadow,opacity,transform] duration-200 active:scale-95 ${
-                p.id === activeId ? 'opacity-100 shadow-glow' : 'opacity-55 ring-1 ring-line hover:opacity-100'
+                p.id === activeId ? 'opacity-100 shadow-selected' : 'opacity-55 ring-1 ring-line hover:opacity-100'
               }`}
               style={{ width: Math.max(40, Math.min(92, (52 * p.width) / p.height)) }}
             >

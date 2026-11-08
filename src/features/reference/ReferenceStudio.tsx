@@ -20,7 +20,7 @@ import {
   Save,
   SlidersHorizontal,
   Sparkles,
-  Wand2,
+  Blend,
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -39,6 +39,7 @@ import { MATCH, type MatchResult } from '@/lib/analysis/match';
 import { adaptToTarget, suggestRefinements, type Adaptation, type Suggestion } from '@/lib/analysis/adapt';
 import type { ImageStats } from '@/lib/analysis/stats';
 import type { MappingResult } from '@/lib/analysis/mapping';
+import { cameraReadout } from '@/lib/analysis/readout';
 import { blendPreset } from '@/lib/presets/blend';
 import { defaultAdjustments, getPath, leafPaths, setPath, type PartialAdjustments } from '@/lib/schema/adjustments';
 import { createCanvas, canvasToBlob } from '@/lib/image/decode';
@@ -123,7 +124,7 @@ export default function ReferenceStudio({ onClose, onImportTarget }: { onClose: 
       >
         <header className="flex h-16 shrink-0 items-center gap-3 border-b border-line-soft px-4 sm:px-6">
           <h2 id="ref-title" className="display text-[1.65rem] text-fg sm:text-[1.9rem]">
-            Match a <span className="serif spectrum-text pr-1 text-[1.18em]">look</span>
+            Match a <span className="voice text-accent pr-1 text-[1.18em]">look</span>
           </h2>
           <ol className="ml-auto hidden items-center gap-1.5 md:flex" aria-label="Progress">
             {STEPS.map((label, i) => {
@@ -217,31 +218,18 @@ function EmptyState({ dragOver, onChoose, onPaste, message }: { dragOver: boolea
       <div className="m-auto w-full max-w-xl px-4 py-6 sm:py-10">
         <div
           className={`relative flex flex-col items-center overflow-hidden rounded-xl border px-5 pt-12 pb-8 text-center transition-[border-color,box-shadow] duration-300 sm:px-10 sm:pt-16 ${
-            dragOver ? 'border-accent shadow-glow' : 'border-line-soft'
+            dragOver ? 'border-accent shadow-selected' : 'border-line-soft'
           } bg-well`}
         >
-          {/* A slow aurora of split light behind the promise (static with reduced motion). */}
-          {/* Soft radial blobs (no filter), turned slowly on the compositor. */}
-          <div aria-hidden className="pointer-events-none absolute -top-1/3 left-1/2 aspect-square w-[150%] -translate-x-1/2 opacity-30">
-            <div
-              className="h-full w-full animate-[spin_60s_linear_infinite]"
-              style={{
-                background:
-                  'radial-gradient(circle at 30% 32%, var(--color-spec-1), transparent 34%), radial-gradient(circle at 70% 30%, var(--color-spec-4), transparent 34%), radial-gradient(circle at 62% 70%, var(--color-spec-3), transparent 30%), radial-gradient(circle at 28% 66%, var(--color-spec-5), transparent 34%)',
-              }}
-            />
-          </div>
-          <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-well/60 to-well" />
-
           <motion.span
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.05 }}
             className="relative mb-6 flex h-20 w-20 items-center justify-center rounded-full p-[3px]"
-            style={{ background: 'conic-gradient(from 210deg, var(--color-spec-1), var(--color-spec-2), var(--color-spec-3), var(--color-spec-4), var(--color-spec-5), var(--color-spec-1))' }}
+            style={{ background: 'var(--color-accent)', boxShadow: 'var(--shadow-offset)' }}
           >
             <span className="flex h-full w-full items-center justify-center rounded-full bg-well text-accent">
-              <Wand2 size={28} strokeWidth={1.8} />
+              <Blend size={28} strokeWidth={1.8} />
             </span>
           </motion.span>
           <h3 className="display relative text-[2.1rem] text-fg sm:text-[2.6rem]">Add a reference photo</h3>
@@ -396,14 +384,14 @@ function ReferencePane({ onReplace }: { onReplace: () => void }) {
               >
                 <div className="absolute inset-0 bg-black/30" />
                 <div className="absolute inset-0 [background-image:linear-gradient(rgb(255_255_255/0.05)_1px,transparent_1px),linear-gradient(90deg,rgb(255_255_255/0.05)_1px,transparent_1px)] [background-size:28px_28px]" />
-                <div className="animate-scan absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-transparent via-[rgb(212_255_63/0.12)] to-transparent">
-                  <div className="spectrum absolute inset-x-0 bottom-1/2 h-[2px] shadow-[0_0_18px_rgb(212_255_63/0.8)]" />
+                <div className="animate-scan absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-transparent via-[rgb(200_184_255/0.12)] to-transparent">
+                  <div className="spectrum absolute inset-x-0 bottom-1/2 h-[2px] shadow-offset-sm" />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
           {/* The look is ready: one sweep of light across the reference. */}
-          {result && !running && <div key={result.description} className="lumen-sweep" aria-hidden />}
+          {result && !running && <div key={result.description} className="afterimage-flash" aria-hidden />}
           {cropping && draft && draft.w > 0.01 && draft.h > 0.01 && (
             <div
               className="pointer-events-none absolute rounded-xs shadow-[0_0_0_9999px_rgb(0_0_0/0.62)] outline-2 outline-accent"
@@ -573,6 +561,8 @@ function StageRow({ label, stage, detail, action, last }: { label: string; stage
 /** `result` is a prop (not read from the store) so the card keeps its data while it animates out after a reset. */
 function LookCard({ result }: { result: MappingResult }) {
   const aiModel = useReference((s) => s.aiModel);
+  const stats = useReference((s) => s.stats);
+  const readout = useMemo(() => (stats ? cameraReadout(stats) : []), [stats]);
   const [showWhy, setShowWhy] = useState(false);
   return (
     <div className="p-4 pb-0 sm:p-6 sm:pb-0">
@@ -592,6 +582,17 @@ function LookCard({ result }: { result: MappingResult }) {
             <p className="mt-2.5 text-xs text-fg-4">
               {result.descriptionSource === 'ai' ? `Interpreted by ${aiModel ?? 'the vision model'}, grounded in measurements` : 'Written from measurements (no AI)'}
             </p>
+            {/* What was measured, read out like a camera's info screen. */}
+            {readout.length > 0 && (
+              <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-md bg-well px-3.5 py-3 font-mono text-[11px]" data-testid="look-readout">
+                {readout.map((r) => (
+                  <div key={r.label} className="contents">
+                    <dt className="text-fg-4">{r.label}</dt>
+                    <dd className="text-right text-fg">{r.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <ConfidenceBadge level={result.confidence} />
               <span className="rounded-full bg-control px-2.5 py-1 text-xs text-fg-2">
@@ -919,7 +920,7 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
         <>
           <div className="theme-frame relative mt-4 overflow-hidden rounded-xl bg-well ring-1 ring-line-soft">
             <canvas ref={canvas} className="block max-h-[380px] w-full object-contain" aria-label={`Preview of ${target.name}`} />
-            {isApplied && <div key={`${applied?.name}`} className="lumen-sweep" aria-hidden />}
+            {isApplied && <div key={`${applied?.name}`} className="afterimage-flash" aria-hidden />}
             {/* The reference, inset, so the two can be compared at a glance. */}
             <motion.img
               src={working.url}
@@ -968,7 +969,7 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
           )}
           {/* While matching runs, its status above is the whole story; no disabled button under it. */}
           {!isApplied ? (
-            effectiveMode === 'matched' && matching ? null : <Button variant="primary" className="mt-4 w-full" icon={<Wand2 size={16} />} disabled={!ready} onClick={() => apply(100)} data-testid="apply-reference">
+            effectiveMode === 'matched' && matching ? null : <Button variant="primary" className="mt-4 w-full" icon={<Blend size={16} />} disabled={!ready} onClick={() => apply(100)} data-testid="apply-reference">
               {ready ? 'Re-apply look to photo' : 'Measuring photo…'}
             </Button>
           ) : (

@@ -42,4 +42,4 @@ The product specification is `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`; progress is 
 - Don't fake progress: show percentages only for measurable work.
 - Keep the app runnable; run `npm run typecheck && npm test` before finishing a change, and the
   e2e suite for workflow changes. Report only tests you actually ran.
-- UI: follow `DESIGN.md` (Afterglow). Use the role tokens in `src/styles/index.css` (never raw colours); the photo stage is `.theme-frame`, secondary screens open with `AppBar`; lumen lime is the one main action per screen, the prism is for signature moments only, `danger` is for errors only.
+- UI: follow `DESIGN.md` (Afterimage). Use the role tokens in `src/styles/index.css` (never raw colours); the photo stage is `.theme-frame`, secondary screens open with `AppBar`; lilac is the one main action per screen, the hard lilac offset is the only coloured shadow (no glows, gradients or glass), orange is for date stamps only, `danger` is for errors only, and the three analog props (frame numbers, date stamp, offset) stay in their places.

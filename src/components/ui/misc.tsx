@@ -125,7 +125,7 @@ export function Indeterminate({ className = '' }: { className?: string }) {
       <div
         className="absolute inset-0 animate-shimmer"
         style={{
-          backgroundImage: 'linear-gradient(90deg, transparent 0%, var(--color-spec-4) 30%, var(--color-accent) 50%, var(--color-spec-1) 70%, transparent 100%)',
+          backgroundImage: 'linear-gradient(90deg, transparent 0%, var(--color-accent) 50%, transparent 100%)',
           backgroundSize: '50% 100%',
           backgroundRepeat: 'no-repeat',
         }}
@@ -145,7 +145,7 @@ export function Progress({ value, label }: { value: number; label?: string }) {
         aria-valuenow={Math.round(value * 100)}
         aria-label={label}
       >
-        <div className="h-full rounded-full bg-accent shadow-[0_0_12px_rgb(212_255_63/0.6)] transition-[width] duration-300 ease-out" style={{ width: `${Math.round(value * 100)}%` }} />
+        <div className="h-full rounded-full bg-accent transition-[width] duration-300 ease-out" style={{ width: `${Math.round(value * 100)}%` }} />
       </div>
     </div>
   );

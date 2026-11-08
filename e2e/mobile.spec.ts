@@ -19,8 +19,8 @@ test('mobile: compact controls, presets sheet and reference entry point', async 
   const nav = page.getByRole('navigation', { name: 'Editing tools' });
   await expect(nav).toBeVisible();
   await nav.getByRole('button', { name: 'Looks' }).click();
-  // The Signature Collection is the default tab in the mobile presets sheet too.
-  await expect(page.getByRole('tab', { name: 'Signature Collection' })).toHaveAttribute('aria-selected', 'true');
+  // Roll 01, Editor's Picks, is the default tab in the mobile looks sheet too.
+  await expect(page.getByRole('tab', { name: "Editor's Picks" })).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('button', { name: 'Apply Golden Hour Glow', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Apply Golden Hour Glow', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Close panel' }).click();
@@ -103,9 +103,9 @@ test('mobile: every editor feature is reachable by touch', async ({ page }) => {
 
   // Press and hold the photo to see the original; letting go returns to the edit.
   await touch(page, [{ type: 'pointerdown', id: 5, x: 180, y: 200 }]);
-  await expect(page.getByTestId('viewport').getByText('Before', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('viewport').getByText('original', { exact: true })).toBeVisible();
   await touch(page, [{ type: 'pointerup', id: 5, x: 180, y: 200 }]);
-  await expect(page.getByTestId('viewport').getByText('Before', { exact: true })).toBeHidden();
+  await expect(page.getByTestId('viewport').getByText('original', { exact: true })).toBeHidden();
 
   // Remove: Shift's job is an on-screen mode on touch screens; Done leaves the tool.
   await nav.getByRole('button', { name: 'More' }).click();

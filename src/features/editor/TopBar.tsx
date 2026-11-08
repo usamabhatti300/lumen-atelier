@@ -256,7 +256,7 @@ function MenuItem({ icon, children, onClick, disabled, checked }: { icon: ReactN
     >
       <span className={checked ? 'text-accent-fg' : 'text-fg-3'}>{icon}</span>
       <span className="flex-1">{children}</span>
-      {checked && <span className="h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_rgb(212_255_63/0.8)]" aria-hidden />}
+      {checked && <span className="h-2 w-2 rounded-full bg-accent shadow-offset-sm" aria-hidden />}
     </button>
   );
 }

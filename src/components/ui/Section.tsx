@@ -32,7 +32,7 @@ export function Section({
             className={`text-fg-4 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
           />
           {title}
-          {modified && <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_8px_rgb(212_255_63/0.8)]" aria-label="modified" />}
+          {modified && <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-offset-sm" aria-label="modified" />}
         </button>
         {aside}
         {onReset && modified && (

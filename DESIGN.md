@@ -1,31 +1,27 @@
 ---
 name: Lumen Atelier
-description: A free, private, on-device photo editor; a dark instrument where the only light is your photo and the look you give it.
+description: A free, private, on-device photo editor; the early digicam and the contact sheet, seen from now. Night-black chrome, ivory type, one lilac accent, and an afterimage.
 colors:
-  well: "#08080a"
-  ground: "#0e0e10"
-  ground-2: "#121215"
-  raised: "#18181c"
-  raised-2: "#1f1f24"
-  control: "#26262c"
-  control-2: "#303037"
-  line-soft: "#1e1e23"
-  line: "#2b2b32"
-  line-strong: "#4a4a53"
-  fg: "#f5f5f2"
-  fg-2: "#d2d2cd"
-  fg-3: "#a5a5a0"
-  fg-4: "#8a8a85"
-  lumen-lime: "#d4ff3f"
-  lumen-lime-hi: "#e2ff7a"
-  lumen-lime-lo: "#bfee1f"
-  on-lime: "#0d1003"
-  spec-1-rose: "#ff5c7a"
-  spec-2-amber: "#ffb547"
-  spec-3-lime: "#d4ff3f"
-  spec-4-cyan: "#3fe0ff"
-  spec-5-violet: "#8f7dff"
-  stage: "#09090a"
+  well: "#08070a"
+  ground: "#0d0c10"
+  ground-2: "#111015"
+  raised: "#17151c"
+  raised-2: "#201e27"
+  control: "#29262f"
+  control-2: "#332f3a"
+  line-soft: "#1f1d25"
+  line: "#2f2c38"
+  line-strong: "#4c4857"
+  fg: "#f0ebe1"
+  fg-2: "#cfcad6"
+  fg-3: "#a6a1af"
+  fg-4: "#928d9d"
+  lilac: "#c8b8ff"
+  lilac-hi: "#d6caff"
+  lilac-lo: "#b6a3f5"
+  on-lilac: "#0d0c10"
+  stamp: "#f2994a"
+  stage: "#09080b"
   danger: "#ff6f63"
   success: "#52e394"
 typography:
@@ -36,29 +32,28 @@ typography:
     lineHeight: 0.96
     letterSpacing: "-0.04em"
   voice:
-    fontFamily: "Instrument Serif, ui-serif, Georgia, serif"
-    fontStyle: italic
+    note: "one word per headline carries the afterimage (.voice: a hard lilac text offset), usually in lilac. Never UI."
+  wordmark:
+    fontFamily: "Martian Mono Variable"
+    fontStretch: "100%"
     fontWeight: 400
-    note: "one emphasised word in a headline, never UI"
-  title:
-    fontFamily: "Geist Variable, ui-sans-serif, sans-serif"
-    fontSize: "15px"
-    fontWeight: 600
-    letterSpacing: "-0.01em"
+    letterSpacing: "-0.05em"
+    note: "lowercase 'lumen' with a 0.07em/0.05em lilac offset; 'atelier' small in mono beside it"
   body:
     fontFamily: "Geist Variable, ui-sans-serif, system-ui, sans-serif"
     fontSize: "15px"
     fontWeight: 400
     lineHeight: 1.6
-  label-caps:
-    fontFamily: "Geist Mono Variable, ui-monospace, monospace"
+  label:
+    fontFamily: "Martian Mono Variable, ui-monospace, monospace"
     fontSize: "11px"
-    fontWeight: 500
-    letterSpacing: "0.08em"
-    textTransform: uppercase
+    fontStretch: "87.5%"
+    textTransform: lowercase
+    note: ".label-caps: section heads, roll titles, frame numbers, on-photo readouts"
   readout:
-    fontFamily: "Geist Mono Variable, ui-monospace, monospace"
+    fontFamily: "Martian Mono Variable, ui-monospace, monospace"
     fontSize: "12px"
+    fontStretch: "87.5%"
     fontFeature: "tnum"
 rounded:
   xs: "6px"
@@ -67,6 +62,10 @@ rounded:
   lg: "22px"
   xl: "28px"
   full: "999px"
+shadows:
+  offset: "3px 3px 0 rgb(200 184 255 / 0.3)"
+  offset-sm: "2px 2px 0 rgb(200 184 255 / 0.32)"
+  selected: "0 0 0 1.5px lilac, 4px 4px 0 1.5px rgb(200 184 255 / 0.24)"
 spacing:
   gutter-phone: "16px"
   gutter-desktop: "32px"
@@ -74,11 +73,10 @@ spacing:
   dock: "68px"
 components:
   button-accent:
-    backgroundColor: "{colors.lumen-lime}"
-    textColor: "{colors.on-lime}"
+    backgroundColor: "{colors.lilac}"
+    textColor: "{colors.on-lilac}"
     rounded: "{rounded.full}"
-    height: "40px (48px lg)"
-    hover: "lime-hi + 28px lime glow"
+    shadow: "{shadows.offset} (tucks in while pressed)"
   button-primary:
     backgroundColor: "{colors.fg}"
     textColor: "{colors.ground}"
@@ -87,195 +85,171 @@ components:
     backgroundColor: "{colors.raised-2}"
     border: "1px {colors.line}"
     rounded: "{rounded.full}"
-  chip:
-    backgroundColor: "{colors.control}"
-    textColor: "{colors.fg-2}"
-    rounded: "{rounded.full}"
-    height: "32px (36px touch)"
   chip-selected:
     backgroundColor: "{colors.fg}"
     textColor: "{colors.ground}"
   look-tile:
-    backgroundColor: "{colors.raised-2}"
-    rounded: "{rounded.md} (lg in the library)"
-    selected: "1.5px lime ring + lime glow + lime check"
-  dock:
-    surface: "surface-float (rgb(24 24 28 / 0.86), blur 18px)"
-    rounded: "26px"
-    height: "{spacing.dock}"
+    selected: "{shadows.selected} + lilac check + orange date stamp"
 ---
 
 # Design System: Lumen Atelier
 
 ## Overview
 
-**Creative North Star: "Afterglow".** Lumen means light. The interface is a dark, quiet instrument;
-the only light in it is your photo and what you are doing to it. Neutral graphite chrome keeps colour
-judgement honest; a single electric-lime **lumen** marks the one thing you are doing (the main action,
-the value you changed, the look you chose); and the **prism** (light split into rose, amber, lime, cyan,
-violet) appears only at signature moments: a look loading, an analysis running, the brand mark.
+**Creative North Star: "Afterimage".** The early-2000s digicam and the contact sheet, seen from 2026.
+Night-black chrome with a faint violet lean, ivory type, one muted-bright **lilac** accent, and one
+signature idea: the **afterimage**, a hard, unblurred lilac offset like a double exposure or a screen
+slightly out of register. Analog details are allowed only in three fixed places (see the Three Props
+Rule), so the product reads as a modern editor with a memory, not as vintage packaging.
 
-Why this direction (2026-11-08 review): the previous "Film Stock Box" world (yellow carton bar, paper
-chrome, condensed caps) read as vintage packaging, sat close to a film brand's trade dress, and put bright
-paper next to the photo. The category's best apps (Darkroom, Lightroom Mobile, VSCO) and the Gen Z apps the
-owner benchmarks (Arc, Linear, BeReal, Retro) are dark, tactile and photo-led, with one confident accent and
-real motion. Afterglow takes that, with its own signature: lime light and the prism.
+Why this direction (2026-11-08, chosen by the owner from three explored directions, then refined):
+the brief bans neon lime, rainbow gradients, champagne gold, glassmorphism and glows, which retired
+Afterglow's lime and prism. Afterimage keeps what worked (dark, photo-led, one accent, real motion)
+and gives the brand an ownable, Gen Z-native signature. Exploration pages: see HANDOFF.md.
 
 **Key characteristics:**
-- Dark graphite chrome; the photo stage is a touch deeper (`.theme-frame`) so the photo reads as lit.
-- Soft, generous shapes: pills for every action and chip, 16–28px cards and sheets.
-- Geist for the interface, Geist Mono for numbers and readouts, Instrument Serif italic as the voice on one
-  word per headline ("Made *yours.*", "Start from a *look*").
-- One lime action per screen; lime also marks changed values, the chosen look and active tools.
-- Motion with springs: things settle, glow and sweep rather than slide flatly.
+- Night-black chrome; the photo stage (`.theme-frame`) is a touch deeper and neutral.
+- Pills for actions and chips; 16–28px cards and sheets.
+- Geist for everything you read or tap; Martian Mono for the wordmark, short labels, frame numbers and
+  readouts (at 87.5% width in the UI so it fits).
+- One lilac action per screen, with its offset; lilac also marks the chosen look and changed values.
+- No glow, gradient or blur anywhere. Depth comes from surface steps and the hard offset.
 
 ## Colors
 
-### Lumen (accent)
-- **Lumen Lime** `#d4ff3f`: the one main action per screen (Match a look; Export in the export sheet),
-  the chosen look's ring and check, changed slider values and fills, the active tool tab's icon, the Match
-  look lens in the phone dock. **Not** for: panel and view toggles (white), secondary text actions such as
-  *Save look* or *New mask* (fg-2), warnings (fg-3 icon), confidence levels (neutral; only *high* is green). Text on lime is **On-lime** `#0d1003`. Lime is readable as text on the dark ground
-  (16:1), so `accent-fg` is the same lime.
-- Lime glows: `shadow-glow` (1.5px ring + 28px bloom) on chosen looks and the active filmstrip frame;
-  a soft bloom on the accent button's hover. Nothing else glows.
+### Lilac (accent)
+- **Lilac** `#c8b8ff` (10.9:1 on ground; on-lilac text `#0d0c10` on it 10.9:1, so one value works as
+  fill and as text). Used for: the one main action per screen (Match a look; Export in the export
+  sheet), the chosen look's edge, check and offset, changed slider values and fills, the active tool's
+  icon, the Match lens in the phone dock, the crop's viewfinder corners, the voice word.
+  **Not** for: view toggles (ivory), secondary text actions (fg-2), warnings (fg-3), links.
 
-### Prism (signature only)
-`spec-1` rose, `spec-2` amber, `spec-3` lime, `spec-4` cyan, `spec-5` violet. Used for: the brand mark's
-ring, the "Match a look" card edge on desktop, the look readout's dot, the lens halo in the dock, the
-analysis scan and indeterminate progress, the lumen sweep. Never as a background for text, never for state.
+### Stamp
+- **Stamp** `#f2994a`: the digicam date stamp on the chosen look (`'26 11 08`). Nothing else.
 
 ### Neutrals
-- **Ground** `#0e0e10` (page) < **Raised** `#18181c` (cards, sheets, rails) < **Raised 2** `#1f1f24`
-  (inner cards, tiles) < **Control** `#26262c` (chips, icon-button hover) < **Control 2** `#303037`.
-  **Well** `#08080a` for inputs and the histogram; **Stage** `#09090a` around the photo.
-- Lines: `line-soft` `#1e1e23` (section dividers), `line` `#2b2b32` (borders), `line-strong` `#4a4a53`.
-- Text: `fg` `#f5f5f2`, `fg-2` `#d2d2cd`, `fg-3` `#a5a5a0` (7.9:1), `fg-4` `#8a8a85` (5.6:1 on ground,
-  4.9:1 on raised-2). All text roles pass AA on every surface they're used on.
-- **Danger** `#ff6f63` (errors, destructive) and **Success** `#52e394` (saved) only.
-
-### Category tints
-`src/lib/presets/codes.ts` gives each preset category a three-letter code (SIG, CIN, PBL, FLM, MAT, POR, WED,
-LUX, GLD, TRV, ERT, STR, B/W, SOC; OWN and REF) and one tint, used only as a small dot or a faint wash on
-category tiles. Looks are identified by their real preview, not by colour.
+- **Ground** `#0d0c10` < **Raised** `#17151c` < **Raised 2** `#201e27` < **Control** `#29262f` <
+  **Control 2** `#332f3a`. **Well** `#08070a` for inputs and the histogram; **Stage** `#09080b`.
+- Lines: `line-soft` `#1f1d25`, `line` `#2f2c38`, `line-strong` `#4c4857`.
+- Text: `fg` `#f0ebe1` (ivory), `fg-2` `#cfcad6`, `fg-3` `#a6a1af` (7.7:1), `fg-4` `#928d9d` (6.0:1 on
+  ground, 4.6:1 on control). All text roles pass AA on every surface they're used on.
+- **Danger** `#ff6f63` (errors) and **Success** `#52e394` (saved) only.
+- The old prism tokens (`spec-1..5`) still exist but hold lilac/ivory tones, so nothing left over can
+  render as a rainbow. Category tints are lilac (ivory for black & white): looks are told apart by
+  their real previews.
 
 ### Named rules
-**The Scoped Theme Rule.** Components use role tokens (`ground`, `raised`, `fg`, `accent`…), never raw
-values. `.theme-frame` deepens the ground for the photo stage.
+**The Scoped Theme Rule.** Components use role tokens (`ground`, `raised`, `fg`, `accent`…), never
+raw values. `.theme-frame` deepens the ground for the photo stage.
 
-**The One Lumen Rule.** One lime action per screen. Everything else is white (primary), raised (secondary)
-or ghost.
+**The One Lilac Rule.** One filled lilac action per screen. Everything else is ivory (primary),
+raised (secondary) or ghost.
 
-**The Photo Leads Rule.** On editing screens nothing is brighter or more saturated than the photo: no
-coloured panels, no gradients behind it. The prism appears at the edges, briefly.
+**The Photo Leads Rule.** On editing screens nothing is brighter or more saturated than the photo. No
+frames, stamps or offsets on the photo while editing; the afterimage ghost is the only thing that
+crosses it, for half a second when a look lands.
+
+**The Three Props Rule.** Only three analog details exist, each with one home:
+1. **Frame numbers** (`04·07`: roll 4, frame 7) on look tiles; roll numbers on roll chips and covers.
+2. **The date stamp**, orange, on the chosen look only (and, later, an opt-in export stamp).
+3. **The offset**: wordmark, app icon, the voice word, the main action, the chosen look, the slider
+   thumb, the match lens.
+No sprocket borders on photos, scan lines, VHS noise, grain overlays, light leaks, pixel fonts or
+film-brand colours in the UI. Do not add a fourth prop.
 
 ## Typography
 
-- **Display** (Geist 640, tight −0.04em, 0.96): screen titles and the home headline
-  (`clamp(2.75rem, 12vw, 5.5rem)`), section titles 1.75–2.5rem, sheet titles 19px, dialog titles 23px.
-- **Voice** (Instrument Serif italic): exactly one word in a headline, often in lime. Never in controls.
-- **Body** (Geist 400, 15px, 1.6): descriptions and help; 13px for secondary help in panels.
-- **Label caps** (Geist Mono 500, 11px, 0.08em, uppercase): section heads in rails ("WHITE BALANCE"),
-  eyebrows over titles ("PREVIEWED ON YOUR LAST PHOTO"), catalogue codes on look tiles ("SIG 26").
-- **Readout** (Geist Mono, tabular): slider values, percentages, pixel sizes, histogram footer.
+- **Display** (Geist 640, −0.04em, 0.96): screen titles and headlines.
+- **Voice** (`.voice`): one word per headline gets the lilac afterimage ("Made *yours.*", "Every
+  *roll*"), usually in lilac. Never in controls.
+- **Wordmark** (`.mono-display`, Martian Mono 400 at full width, −0.05em): lowercase "lumen".
+- **Body** (Geist 400, 15px, 1.6); 13px for help in panels.
+- **Labels** (`.label-caps`, Martian Mono 11px, 87.5% width, lowercase): section heads ("white
+  balance"), roll titles ("roll 04 · basement summer · warm, faded film"), eyebrows.
+- **Readouts** (`font-mono`, Martian Mono at 87.5% width, tabular): slider values, sizes, the crop
+  ratio, the compare readout, the match info screen.
+- Look names, sentences and buttons are always Geist: monospace is slow to read in long strings.
 
-Self-hosted via Fontsource (OFL): `@fontsource-variable/geist`, `@fontsource-variable/geist-mono`,
-`@fontsource/instrument-serif` (latin italic only).
+Self-hosted via Fontsource (OFL): `@fontsource-variable/geist`, `@fontsource-variable/martian-mono`
+(`wdth.css`, both axes).
 
 ## Layout
 
-Phone first. Pages use a 16px gutter (32px from `sm`), max width 1280px, a 56px sticky blurred app bar
-(`AppBar`) with a round back button and the wordmark.
+Unchanged from the previous system (phone first; 16px gutter, 32px from `sm`; 56px app bar).
 
-**Editor, phone/tablet (<1024px):** top bar (round back, import, undo/redo, compare, ⋮, white Export
-pill) → the photo stage → the look readout (pill: prism dot, look name, lime amount) → a raised sheet
-that docks under the photo when a tool is open (rounded top, grab handle, display title, round close) →
-the floating **dock** (Looks, Light, *Match look* lens, Colour, More). A fresh photo opens with the
-**Looks sheet already showing**, so the first step is obvious. The dock is a tab bar: tapping the open
-tab keeps it open (close with ×, a drag down or Escape). The Looks sheet is: Looks/Photos switch, Save, ×
-→ category chips → the strip of looks → the **amount row**, which has a fixed height whether or not a
-look is on (a one-line hint without one), so choosing a look never moves the photo. The active dock tab gets a soft
-white pill (shared-layout spring) and a lime icon; Match look is a lime lens with a prism halo, never a tab.
+**Editor, phone/tablet (<1024px):** top bar → photo stage → look readout pill → docked sheet → the
+floating dock (Looks, Light, *Match look* lilac lens with offset, Colour, More). A fresh photo opens
+on the Looks sheet. The amount row has a fixed height, so choosing a look never moves the photo.
 
-**Editor, desktop (≥1024px):** 52px top bar (mark, project name, save state; the tool cluster in a raised
-pill; Save; Export) → left rail 284px (prism-edged *Match a look* card, Looks/Photos, applied-look card,
-look grid) | stage | right rail 320px (histogram in a well, seven tool tabs in a raised segmented strip
-with a sliding pill, sections) → filmstrip.
+**Editor, desktop (≥1024px):** 52px top bar (the "lu" mark, project name, tools, Save, Export) → left
+rail (Match a look card whose edge turns lilac on hover, Looks/Photos, applied look, looks grid) |
+stage | right rail (histogram, tool tabs, sections) → filmstrip.
+
+## Looks and rolls
+
+The 14 preset categories are presented as numbered **rolls** (`src/lib/presets/rolls.ts`, a display
+layer only; presets keep their category ids): 01 Editor's Picks, 02 Late Showing, 03 Blue Hour Tapes,
+04 Basement Summer, 05 Soft Static, 06 Close Up, 07 Something Borrowed, 08 Front Row, 09 Golden
+Minutes, 10 Postcards, 11 Moss & Clay, 12 Flash at Midnight, 13 Monochrome Diary, 14 Feed Ready; plus
+**Yours** and **Matched**. Each has a two-word mood that also feeds search.
+
+The browser's chips: **Last roll** (the last 12 looks applied, newest first; shown once you've used
+one), **Kept** (favourites), the numbered rolls, **All**. Grids show the open roll's title and mood
+under the chips; the phone strip doesn't (fixed height). Home shows one cover per roll, rendered with
+its first look on your last photo.
 
 ## Elevation & depth
 
-Surfaces step up in lightness (ground → raised → raised-2 → control), not in shadow. Shadows are for things
-that float: `shadow-float` (sheets, dialogs, menus, dock, toasts) and `shadow-lift`. Floating chrome over
-the stage uses `.surface-float` (86% raised + 18px backdrop blur + 7% white hairline).
-
-## Shapes
-
-Pills (`rounded-full`) for every button, chip, segmented control, toggle and the look readout. Cards 16px
-(`rounded-md`) to 22px (`rounded-lg`); sheets and dialogs 28px (`rounded-xl`, top corners only on phone
-sheets). Look tiles 16px in rails, 22px in the library. Inputs 10px; search fields are pills.
+Surfaces step up in lightness. `shadow-float` / `shadow-lift` only for things that float. The lilac
+offset (`shadow-offset`, `shadow-offset-sm`, `shadow-selected`) is the only coloured shadow. App bars
+keep a light backdrop blur for legibility; nothing else uses glass.
 
 ## Components
 
-- **Buttons** (`Button`): accent (lime), primary (white), secondary (raised + line), ghost, danger
-  (tinted), accent-outline. Sizes sm 32 / md 40 / lg 48 (touch +4–8px). Press scales to 0.97.
-- **Icon buttons**: 36px round (40px touch); active is `control-2` with a lime icon; tooltips are raised
-  pills that scale in after 500ms (not rendered on touch screens).
-- **Look tile** (`PresetBrowser`): the real preview fills the tile (fades and settles in from 1.06×; a
-  shimmer skeleton while it renders), a bottom scrim with the name in white, the catalogue code in mono at
-  the top left. Chosen: lime ring + glow + a lime check that spins in. Favourite / more actions are round
-  blurred buttons (always visible on touch, on hover with a mouse).
-- **Slider**: 3px graphite track, lime fill from the default (from zero for amounts and intensities,
-  `fillFrom="min"`) with a soft glow, a white thumb that grows on
-  hover and turns lime with a bloom while dragged; mono value turns lime when changed. The phone "one
-  slider at a time" view adds a fading tick ruler and a round reset.
-- **Section**: label-caps head with a glowing lime dot when modified; round reset that spins on press.
-- **Dialog**: a bottom sheet on phones, a centred 28px card on larger screens; spring in; blurred scrim.
-- **Toasts**: `surface-float` pills that spring up.
-- **Masks**: with no masks, the ways to make one are shown as tiles (Select object first, with a white
-  icon disc; it is featured by position, not by lime).
-- **Match result**: your photo wearing the look leads (with the reference inset in its corner), then the
-  look's description, then the analysis; on phones this column moves above the reference.
-- **Home, first visit on touch screens**: a three-step *How it works* card joined by a prism line replaces
-  the drop zone (which would only repeat the Open button). Mouse screens keep the drop zone.
-- **Touch targets**: 44px on coarse pointers for sheet close, Save and remove buttons.
+- **Buttons** (`Button`): accent (lilac + offset; the offset tucks in while pressed), primary (ivory),
+  secondary, ghost, danger, accent-outline. Sizes sm 32 / md 40 / lg 48 (touch +4–8px).
+- **Slider**: a continuous rail with a printed LCD tick scale above it (exact values, segment look);
+  lilac fill from the default; ivory thumb with a small lilac offset, lilac while dragged. The phone's
+  one-slider view keeps its larger tick ruler.
+- **Look tile**: the real preview fills the tile; frame number top-left; name in Geist. Chosen:
+  `shadow-selected`, a lilac check, and today's date stamp bottom-right (grids only).
+- **Roll chip**: mono roll number + name; selected is ivory.
+- **Crop**: lilac viewfinder brackets at the corners, ivory edge bars, and a readout with size and
+  ratio ("1200 × 1500 · 4:5").
+- **Compare (press and hold)**: an "original" chip with an ivory dot, and under it "let go for
+  {look} · {amount}".
+- **Match result**: your photo leads; the look card adds a camera-style info list of what was measured
+  (`src/lib/analysis/readout.ts`: exposure, contrast, white balance, colour, grain, vignette), using
+  the mapping's own thresholds.
+- **Icons**: Lucide. Match a look uses `Blend` (two overlapping circles: a double exposure), never a
+  magic wand.
 
 ## Motion
 
-Durations: instant 80ms (press), fast 140ms (hover), base 220ms (panels), slow 420ms (reveals).
-Easing `cubic-bezier(0.22, 1, 0.36, 1)`; springs (`stiffness ~420–520, damping ~22–40`) for things that
-settle: dock pill, tab pill, segmented thumb, dialogs, toasts, the chosen look's check.
+Durations: instant 80ms, fast 140ms, base 220ms, slow 420ms. Easing `cubic-bezier(0.22, 1, 0.36, 1)`;
+springs for things that settle.
 
-Signature moments:
-- **Loading a look**: the tile's lime check spins in and (on Android) a 12ms haptic tick fires. The
-  **lumen sweep** waits for the first frame rendered with the new look (`engineStore.frame`), so the light
-  passes over the look itself: a bright core with prism fringes, 1050ms, screen blend. At the same moment
-  the photo **lands** (0.985→1 scale with a brightness breath, 650ms, Web Animations API) and the look
-  readout rises in sharp (`readout-in`).
-- **Sheets** open and resize with a critically damped spring (stiffness 420, damping 40); dock tab
-  switches tick on Android (`src/lib/haptics.ts`, skipped with reduced motion).
-- **Opening a photo**: the photo develops in (fade + 0.97→1 scale, 700ms).
-- **Home**: a GSAP timeline stages hero → stage → rail once; the empty stage's prism ring turns slowly.
-- **Screens** arrive with `screen-enter` (fade + 10px rise).
+Signature moment, **the afterimage**: when a new look lands on the same photo, the Viewport copies the
+previous image the moment the look changes (`engine.snapshot()`, a read-only copy of the last "after"
+render, taken before the next frame) and, on the first frame rendered with the new look, shows it over
+the photo as a ghost that drifts 10/8px and fades in 520ms (`.afterimage-ghost`) while the photo
+settles (0.99→1). `.afterimage-flash` (a lilac frame edge catching up from its offset) marks results
+in the reference studio. Both are removed with `prefers-reduced-motion` or the in-app reduced setting.
 
-All of it is skipped with `prefers-reduced-motion` or the in-app *Animations: reduced* setting (the sweep
-is removed entirely, the landing and haptics are skipped via `motionReduced()`, other animations collapse
-to 1ms).
-
-Layout stability is part of motion: nothing the user taps may shift the photo (CLS on applying a look is
-0, measured; it was 0.19 before the 2026-11-08 critic pass).
+Layout stability is part of motion: nothing the user taps may shift the photo.
 
 ## Do's and don'ts
 
 **Do**
-- Put the photo first; let the chrome recede into graphite.
-- Use one lime action per screen and lime for "this is what changed".
-- Use the prism only at the signature moments listed above.
-- Use real previews for looks; show a shimmer while they render; never fake progress.
+- Put the photo first; keep the chrome night-black and quiet.
+- Use one filled lilac action per screen.
+- Keep the offset hard-edged (no blur), 2–4px, about 30% lilac.
+- Use Geist for names and sentences, Martian Mono for short labels and numbers.
 - Keep touch targets ≥44px on coarse pointers.
 
 **Don't**
-- Don't add coloured panels, gradients or glows behind the photo.
-- Don't use lime for decoration or more than one lime button per screen.
-- Don't use the serif for UI text or more than one word per headline.
+- Don't add glows, gradients, blur or glass.
+- Don't add a fourth analog prop, or put props on the photo.
+- Don't use orange for anything but date stamps.
 - Don't use emoji or Unicode glyphs as icons; use Lucide.
-- Don't imitate other apps' or film brands' trade dress.
+- Don't imitate a specific camera's, film brand's or other app's trade dress.
