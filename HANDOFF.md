@@ -40,8 +40,9 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   `.mcp.json`. shadcn is set up (`components.json`, `cn()` in `src/lib/utils.ts`) but `shadcn init` was not
   run, so it doesn't overwrite the theme; restyle any added component to the role tokens.
 - All spec stages are implemented; see `PROJECT_STATUS.md` for the checklist and limitations.
-- Tests: 83 Vitest tests pass; 9 Playwright e2e tests (the critical journey passes, ~5 min under
-  SwiftShader software GL in headless Chrome). Type-check, lint (0 errors) and production build are clean.
+- Tests (2026-11-08, after the Afterglow redesign): 193 Vitest pass; e2e `editor` + `mobile` (11),
+  `test:e2e:pwa` (4, production build), `critical-journey` and `reference-replace` pass (slow under
+  SwiftShader software GL in headless Chrome). Type-check and lint (0 errors) are clean.
 - Last change the user asked for (done 2026-10-11): an **installable PWA with every feature, fully
   mobile responsive**, so they can use it on their phone. Manifest + icons (`public/`,
   `scripts/generate-icons.mjs`), service worker (`src/pwa/sw-template.js`, generated into `dist/sw.js` by
