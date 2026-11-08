@@ -4,7 +4,7 @@ import { Slider } from '@/components/ui/Slider';
 import { Button } from '@/components/ui/Button';
 import { useEditor } from '@/state/editorStore';
 import { useEngine } from '@/engine/engineStore';
-import { ensurePortraitAnalysis, usePortrait, usePortraitStore } from '@/features/portrait/portraitState';
+import { cancelPortraitAnalysis, ensurePortraitAnalysis, redetectPortrait, usePortrait, usePortraitStore } from '@/features/portrait/portraitState';
 import { RETOUCH_RANGES, type Retouch } from '@/lib/schema/adjustments';
 import { newId } from '@/lib/storage/db';
 
@@ -58,7 +58,7 @@ export function PortraitPanel() {
         {p.status === 'idle' && (
           <>
             <p className="mb-3 text-xs leading-relaxed text-fg-3">
-              Finds faces, eyes, lips and the person in this photo with on-device models. Nothing is uploaded.
+              {p.message || 'Finds faces, eyes, lips and the person in this photo with on-device models. Nothing is uploaded.'}
             </p>
             <Button variant="secondary" size="sm" icon={<ScanFace size={14} />} onClick={() => void ensurePortraitAnalysis()}>
               Detect faces &amp; subject
@@ -66,16 +66,26 @@ export function PortraitPanel() {
           </>
         )}
         {p.status === 'running' && (
-          <p className="flex items-center gap-2 text-xs text-fg-3" role="status">
-            <Loader2 size={13} className="animate-spin" /> Detecting faces and subject…
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-xs text-fg-3" role="status">
+              <Loader2 size={13} className="animate-spin" /> Finding faces and the person, on this device…
+            </p>
+            <Button variant="ghost" size="sm" onClick={() => cancelPortraitAnalysis()}>
+              Stop
+            </Button>
+          </div>
         )}
         {p.status === 'ready' && (
-          <p className="text-xs text-fg-2" role="status">
-            <UserRound size={12} className="mr-1 inline text-accent-fg" />
-            {p.faces === 0 ? 'No face found' : p.faces === 1 ? '1 face found' : `${p.faces} faces found`}
-            {p.person ? ' · person detected' : ''}
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-fg-2" role="status">
+              <UserRound size={12} className="mr-1 inline text-accent-fg" />
+              {p.faces === 0 ? 'No face found' : p.faces === 1 ? '1 face found' : `${p.faces} faces found`}
+              {p.person ? ' · person detected' : ''}
+            </p>
+            <Button variant="ghost" size="sm" icon={<ScanFace size={14} />} onClick={() => void redetectPortrait()}>
+              Detect again
+            </Button>
+          </div>
         )}
         {(p.status === 'missing-models' || p.status === 'error') && (
           <div role="alert" className="rounded-xs border border-danger/40 p-2.5 text-xs leading-relaxed text-fg-2">
@@ -99,7 +109,11 @@ export function PortraitPanel() {
       <Section title="Retouch">
         {!faceTools && (
           <p className="mb-2 text-[11px] leading-relaxed text-fg-4">
-            {ready ? 'These controls need a detected face.' : 'Run face detection to enable these controls.'}
+            {ready
+              ? 'These controls need a detected face.'
+              : p.status === 'running'
+                ? 'These controls turn on when detection finishes.'
+                : 'Run face detection to enable these controls.'}
           </p>
         )}
         {CONTROLS.map(([key, label, hint]) => (

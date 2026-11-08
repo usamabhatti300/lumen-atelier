@@ -117,7 +117,7 @@ test('offline AI: saved models run portrait detection and the AI runtime with no
   await waitForRender(page);
   await page.getByRole('navigation', { name: 'Editing tools' }).getByRole('button', { name: 'More' }).click();
   await page.getByRole('button', { name: 'Portrait', exact: true }).click();
-  await page.getByRole('button', { name: 'Detect faces & subject' }).click();
+  // Detection starts by itself once the photo is up, offline too.
   await expect(page.getByText(/face(s)? found|No face found/)).toBeVisible({ timeout: 180_000 });
   await context.setOffline(false);
 });

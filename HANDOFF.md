@@ -38,7 +38,11 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   the top of the export dialog, with an opt-in date stamp (capture date, else today) and a contact-sheet
   share image (this project's photos, up to 12). **1.1 HEIC: skipped for now by the owner** (asked
   about libheif-js). **1.2 done**: adaptive looks (Settings toggle, on by default). See
-  PROJECT_STATUS.md for tests. **Next: 1.3 auto face detection.**
+  PROJECT_STATUS.md for tests. **1.3 done**: automatic face detection, now in a Web Worker
+  (it froze the page for ~11 s on the main thread). **Next: 1.4 sample photo for first visit** (needs a
+  licence-clear photo: ask the owner where it comes from). **The C: drive is nearly full** (≈270 MB
+  free): an e2e run failed with ENOSPC. Old Playwright temp profiles in %TEMP% (~77 MB) and `dist/`
+  (265 MB, rebuildable) could go, but ask the owner first.
 
 - **2026-11-08 (newest): third redesign, "Afterimage" (built, committed).** The owner's new brief banned
   neon lime, rainbow gradients, champagne gold, glassmorphism and glows (so Afterglow's lime and prism are

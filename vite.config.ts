@@ -22,7 +22,8 @@ export default defineConfig({
   cacheDir: process.env.VITE_CACHE_DIR ?? 'node_modules/.vite',
   // Pre-bundle the ML runtime at startup; discovered later (it is only imported by the ML worker),
   // its large optimisation finished mid-session and forced a full page reload.
-  optimizeDeps: { include: ['onnxruntime-web/wasm', 'onnxruntime-web/webgpu', '@huggingface/transformers'] },
+  // MediaPipe too: it is now also imported by the portrait worker.
+  optimizeDeps: { include: ['onnxruntime-web/wasm', 'onnxruntime-web/webgpu', '@huggingface/transformers', '@mediapipe/tasks-vision'] },
   server: {
     port: 5173,
     headers: isolation,

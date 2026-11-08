@@ -79,6 +79,13 @@ export default function SettingsScreen() {
           />
           <Divider />
           <Toggle
+            checked={s.autoDetectFaces}
+            onChange={(v) => s.update({ autoDetectFaces: v })}
+            label="Detect faces automatically"
+            description="When a photo opens, faces and the person are found in the background with on-device models, so portrait tools are ready when you need them. Turn off to save battery; the Portrait tool can still run it."
+          />
+          <Divider />
+          <Toggle
             checked={s.forceCpu}
             onChange={(v) => s.update({ forceCpu: v })}
             label="Use CPU renderer"

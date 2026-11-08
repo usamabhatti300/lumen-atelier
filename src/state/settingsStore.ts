@@ -22,6 +22,8 @@ export interface Settings {
   lastProjectId: string | null;
   /** Even out a photo's exposure and white balance toward a library look's intent before applying it. */
   adaptiveLooks: boolean;
+  /** Find faces and the person in the background when a photo opens (on-device). */
+  autoDetectFaces: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -33,6 +35,7 @@ const DEFAULTS: Settings = {
   exportQuality: 92,
   lastProjectId: null,
   adaptiveLooks: true,
+  autoDetectFaces: true,
 };
 
 interface SettingsState extends Settings {

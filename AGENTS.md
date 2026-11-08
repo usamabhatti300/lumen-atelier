@@ -24,6 +24,7 @@ The product specification is `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`; progress is 
 | API server | `server/*` (Node http + Anthropic SDK; runs TS natively, so use erasable syntax and `.ts` imports) |
 | State | `src/state/*` (Zustand). Engine status in `src/engine/engineStore.ts` |
 | Storage | `src/lib/storage/db.ts` (IndexedDB via idb) |
+| Portrait detection (MediaPipe) | `src/lib/portrait/*`: `portrait.worker.ts` runs segmentation + face landmarks off the main thread (CPU delegate; ES-module WASM glue loaded per model with `?instance=n`, blob URL in dev), `portraitClient.ts` (main-thread fallback), state and auto-run in `src/features/portrait/portraitState.ts` |
 | On-device ML (ONNX Runtime Web, Transformers.js) | `src/lib/ml/*`: `registry.ts` (every model: pinned URL, size, SHA-256, licence), `verify.ts` (same-origin, checksum-verified downloads), `ml.worker.ts` + `client.ts` (WebGPU → WASM sessions, progress, cancel), `transformers.ts` (local-only config). Settings UI in `src/features/settings/AiModels.tsx` |
 
 ## Rules

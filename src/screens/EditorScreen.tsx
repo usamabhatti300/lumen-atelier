@@ -10,6 +10,7 @@ import { initLensBlurAutoload } from '@/features/depth/depthState';
 import { startAutosave, saveNow } from '@/engine/autosave';
 import { importFiles } from '@/engine/importer';
 import { setPreviewSource } from '@/engine/presetThumbs';
+import { autoDetectPortrait, cancelPortraitAnalysis } from '@/features/portrait/portraitState';
 import { useEngine } from '@/engine/engineStore';
 import { getPhotos, getProject, saveProject } from '@/lib/storage/db';
 import type { EditState } from '@/lib/schema/adjustments';
@@ -107,6 +108,18 @@ export default function EditorScreen() {
     const bmp = engine.getPreviewBitmap();
     void setPreviewSource(bmp ? engine.getActivePhotoId() : null, bmp);
   }, [previewSize, activePhotoId]);
+
+  // Faces and the person are found in the background once the photo is on screen (roadmap 1.3).
+  const loadingPhoto = useEngine((s) => s.loadingPhoto);
+  useEffect(() => {
+    if (!activePhotoId || loadingPhoto || !previewSize || engine.getActivePhotoId() !== activePhotoId) return;
+    return autoDetectPortrait(activePhotoId);
+  }, [activePhotoId, loadingPhoto, previewSize]);
+  // Leaving a photo stops its detection (its result would be thrown away).
+  useEffect(() => {
+    if (!activePhotoId) return;
+    return () => cancelPortraitAnalysis(activePhotoId, false);
+  }, [activePhotoId]);
 
   const runImport = useCallback(
     async (files: File[]) => {

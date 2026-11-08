@@ -3,6 +3,10 @@
  * the WASM runtime is served from /mediapipe/wasm (copied from node_modules
  * on install) and models from /models (downloaded by `npm run setup:models`).
  * No image data leaves the browser.
+ *
+ * Normally runs inside `portrait.worker.ts` (so model start-up never freezes the page); there it
+ * loads MediaPipe's ES-module WASM glue and gives the GPU delegate an OffscreenCanvas. The same code
+ * runs on the main thread as a fallback.
  */
 import type { FaceLandmarker, ImageSegmenter } from '@mediapipe/tasks-vision';
 import type { SegmentationMaps } from '../masks/rasterize';
@@ -12,6 +16,9 @@ import { faceSearchCrops, fromCrop, landmarkBox, mergeFaces } from './faceRegion
 export const FACE_MODEL_URL = '/models/face_landmarker.task';
 export const SEGMENT_MODEL_URL = '/models/selfie_multiclass_256x256.tflite';
 const WASM_BASE = '/mediapipe/wasm';
+/** In a worker there is no document: use the ES-module WASM glue and an OffscreenCanvas for the GPU. */
+const IN_WORKER = typeof document === 'undefined';
+const gpuCanvas = (delegate: 'GPU' | 'CPU') => (IN_WORKER && delegate === 'GPU' ? { canvas: new OffscreenCanvas(1, 1) } : {});
 
 export class ModelsMissingError extends Error {}
 
@@ -35,10 +42,17 @@ async function vision() {
 
 async function createWithFallback<T>(make: (delegate: 'GPU' | 'CPU') => Promise<T>): Promise<T> {
   let task: T;
-  try {
-    task = await make('GPU');
-  } catch {
+  if (IN_WORKER) {
+    // In the worker the CPU delegate (XNNPACK) is used: a GPU delegate shares the browser's GPU
+    // process with the editor's own WebGL and stalls the page while it compiles (measured: 5–6 s
+    // main-thread blocks on phones), which defeats running in the background.
     task = await make('CPU');
+  } else {
+    try {
+      task = await make('GPU');
+    } catch {
+      task = await make('CPU');
+    }
   }
   disableUsageLogging(task);
   return task;
@@ -77,8 +91,9 @@ function disableUsageLogging(task: unknown) {
 async function makeFaceLandmarker(delegate: 'GPU' | 'CPU'): Promise<FaceLandmarker> {
   await assertModel(FACE_MODEL_URL);
   const { FilesetResolver, FaceLandmarker } = await vision();
-  const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
+  const fileset = await FilesetResolver.forVisionTasks(WASM_BASE, IN_WORKER);
   return FaceLandmarker.createFromOptions(fileset, {
+    ...gpuCanvas(delegate),
     baseOptions: { modelAssetPath: FACE_MODEL_URL, delegate },
     runningMode: 'IMAGE',
     numFaces: 6,
@@ -123,9 +138,10 @@ export function getSegmenter(): Promise<ImageSegmenter> {
     segPromise = (async () => {
       await assertModel(SEGMENT_MODEL_URL);
       const { FilesetResolver, ImageSegmenter } = await vision();
-      const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
+      const fileset = await FilesetResolver.forVisionTasks(WASM_BASE, IN_WORKER);
       return createWithFallback((delegate) =>
         ImageSegmenter.createFromOptions(fileset, {
+          ...gpuCanvas(delegate),
           baseOptions: { modelAssetPath: SEGMENT_MODEL_URL, delegate },
           runningMode: 'IMAGE',
           outputCategoryMask: false,

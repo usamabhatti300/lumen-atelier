@@ -9,7 +9,35 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-08 (newest): roadmap 1.2, adaptive looks** (1.1 HEIC skipped for now by the owner).
+**2026-11-09 (newest): roadmap 1.3, automatic face detection.** When a photo opens, faces and the
+person are found in the background (on-device MediaPipe), so portrait tools are ready without the
+"Detect faces & subject" step. It starts at an idle moment after the photo is on screen, can be
+stopped (Stop in Portrait; a stopped photo isn't re-run automatically), stops when you leave the
+photo, and Settings → "Detect faces automatically" (on by default) turns it off. The button stays as
+the retry ("Detect again").
+**Found while checking, and fixed:** running detection automatically froze the page for ~11 s after
+opening a photo (one main-thread long task, measured at 390/834/1440 px). MediaPipe now runs in a
+Web Worker (`src/lib/portrait/portrait.worker.ts`) on its CPU delegate: a GPU delegate in the worker
+still stalled the page 5–6 s on phones by sharing the GPU process with the editor's WebGL. Longest
+main-thread task after opening a photo, detection on → off: 390 px 0.63 s → 0.45 s, 834 px 0.59 →
+0.52 s, 1440 px 1.0 → 0.58 s (was 10.7–11.1 s with detection on; SwiftShader numbers). Two
+production-only issues were found by testing the built app and fixed: MediaPipe's ES-module glue
+must be re-run per model (unique `?instance=n` URL; the service worker matches runtime files
+ignoring the query), and Vite dev can't `import()` files in public/ (blob URL in dev only). The
+worker falls back to the main thread if it can't start (then for the session). Batch export also
+uses the worker.
+Tests run: typecheck clean; lint 0 errors (same 10 warnings); Vitest 227 passed, 1 skipped (5 new in
+`portraitState.test.ts`: auto start, setting/ready/photo-change guards, stop, quiet stop on leaving,
+retry); e2e `portrait-auto` (2, new), `editor`, `mobile`, `lens-blur` passed; `test:e2e:pwa` 4
+passed (production build, offline detection); `network-isolation` passed on the third run (first: ENOSPC, disk full; second: the Select object
+step found the page back on its default tab after ~12 min, consistent with Vite re-bundling a
+late-found dependency; `@mediapipe/tasks-vision` is now in `optimizeDeps.include` and the run took
+1.7 min). With detection off the main thread, `portrait-auto` went from ~1.1 min to 13 s per test. Production
+build checked by hand: detection runs in the worker with no fallback. Not re-run: `critical-journey`,
+`select-object`, `remove`, `upscale`, `reference-replace`.
+**The C: drive is full** (≈270 MB free of 138 GB) and one e2e run failed with ENOSPC; see HANDOFF.md.
+
+**2026-11-08: roadmap 1.2, adaptive looks** (1.1 HEIC skipped for now by the owner).
 Applying a library look first evens out the photo's exposure and white balance toward what the look
 was made for (`src/lib/analysis/lookAdapt.ts`, rules in `docs/AI_ARCHITECTURE.md`): the look's intent
 is measured on a neutral grey ramp, the photo's on a 2,500-pixel sample with the matcher's CPU

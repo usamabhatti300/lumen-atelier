@@ -85,7 +85,8 @@ async function navigate(req) {
 
 async function cacheFirst(event, req, cacheName) {
   const cache = await caches.open(cacheName);
-  const hit = await cache.match(req);
+  // Runtime files are versioned by path; a query (MediaPipe's per-load `?instance=n`) names the same file.
+  const hit = await cache.match(req, { ignoreSearch: cacheName === RUNTIME });
   if (hit) return isolated(hit);
   const res = await fetch(req);
   // Only complete, same-origin, successful bodies; never the SPA's HTML fallback for a missing file.

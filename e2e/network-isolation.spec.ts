@@ -31,8 +31,8 @@ test('AI features make no requests to other hosts', async ({ page, context, base
   // MediaPipe face landmarks + person segmentation.
   await page.getByTestId('gallery-file-input').setInputFiles({ name: 'a.jpg', mimeType: 'image/jpeg', buffer: await makeImage(page, 'target') });
   await waitForRender(page);
+  // Detection starts by itself once the photo is up (roadmap 1.3).
   await page.locator('#tab-portrait').click();
-  await page.getByRole('button', { name: 'Detect faces & subject' }).click();
   await expect(page.getByText(/face(s)? found|No face found/)).toBeVisible({ timeout: 120_000 });
   const mediapipeReadyAt = Date.now();
 
