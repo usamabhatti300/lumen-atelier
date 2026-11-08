@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
+import { isoDate, stampText } from '@/lib/finish/stamp';
 import { Check, Copy, Download, MoreHorizontal, Pencil, Search, Star, Trash2, Blend, X } from 'lucide-react';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -21,10 +22,7 @@ const MODES: { id: Mode; label: string }[] = [
 ];
 
 /** Today as a digicam date stamp: '26 11 08. */
-function dateStamp(d = new Date()): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `'${p(d.getFullYear() % 100)} ${p(d.getMonth() + 1)} ${p(d.getDate())}`;
-}
+const dateStamp = () => stampText(isoDate());
 
 /**
  * `panel`: side panel grid. `page`: the preset library. `strip`: phones, one row of square

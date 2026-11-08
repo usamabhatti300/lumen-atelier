@@ -1,4 +1,7 @@
-/** Export dialog: format, quality, output size, optional AI upscale, real progress, cancellation. */
+/**
+ * Export dialog: the Finish step first (share format, date stamp, live preview), then format,
+ * quality, output size, optional AI upscale, real progress and cancellation.
+ */
 import { create } from 'zustand';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
@@ -10,7 +13,10 @@ import { Slider } from '@/components/ui/Slider';
 import { useEditor } from '@/state/editorStore';
 import { useSettings } from '@/state/settingsStore';
 import { downloadBlob } from '@/state/presetStore';
-import { exportMany, editFor, type BatchProgress } from '@/engine/batch';
+import { exportContactSheet, exportMany, editFor, stampDateFor, type BatchProgress } from '@/engine/batch';
+import { MAX_SHEET_FRAMES, sheetSize, type SheetRatio } from '@/lib/finish/contactSheet';
+import type { StampPlacement } from '@/lib/finish/stamp';
+import { FinishPreview, SheetControls, StampControls, type FinishMode } from './Finish';
 import { exportPlanProblem, plannedRenderSize, upscaleTileCount, type ExportFormat } from '@/engine/exporter';
 import { UPSCALE_MODEL_ID } from '@/engine/aiUpscale';
 import { installedModelFiles, modelInstallState } from '@/lib/ml/client';
@@ -74,6 +80,19 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
   const [sizes, setSizes] = useState<{ name: string; w: number; h: number; tiles: number; problem: string | null }[]>([]);
   const ac = useRef<AbortController | null>(null);
   const open = !!ids;
+  // Finish step. The stamp is opt-in each time; a contact sheet needs at least two photos.
+  const [mode, setMode] = useState<FinishMode>('photo');
+  const [stampOn, setStampOn] = useState(false);
+  const [placement, setPlacement] = useState<StampPlacement>('bottom-right');
+  const [stampDate, setStampDate] = useState<string | null>(null);
+  const [ratio, setRatio] = useState<SheetRatio>('4:5');
+  const [sheetIds, setSheetIds] = useState<string[]>(() => {
+    const pick = ids && ids.length > 1 ? new Set(ids) : null;
+    return photos.filter((p) => !pick || pick.has(p.id)).map((p) => p.id).slice(0, MAX_SHEET_FRAMES);
+  });
+  const canSheet = photos.length >= 2;
+  const sheet = mode === 'sheet' && canSheet;
+  const stamp = stampOn ? { placement, date: stampDate } : null;
 
   useEffect(() => {
     if (!ids) return;
@@ -126,10 +145,19 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
     // On phones, keep the files for the share sheet (Save to Photos) instead of dropping them in Downloads.
     const share = ids.length <= SHARE_MAX_FILES && canShareImages(format);
     const kept: File[] = [];
-    const r = await exportMany(ids, { format, quality, scale: aiUpscale ? 1 : Number(scale), aiUpscale }, ac.current.signal, setProgress, (file) => {
+    const deliver = (file: { name: string; blob: Blob }) => {
       if (share) kept.push(new File([file.blob], file.name, { type: file.blob.type || format }));
       else downloadBlob(file.blob, file.name);
-    });
+    };
+    let r: { done: number; errors: string[]; cancelled: boolean };
+    if (sheet) {
+      setProgress({ index: 0, total: sheetIds.length + 1, name: '', fraction: 0, stage: 'Starting' });
+      const s = await exportContactSheet(sheetIds, { ratio, format, quality, stamp: stamp ?? undefined }, ac.current.signal, setProgress);
+      if (s.file) deliver(s.file);
+      r = { done: s.file ? 1 : 0, errors: s.errors, cancelled: s.cancelled };
+    } else {
+      r = await exportMany(ids, { format, quality, scale: aiUpscale ? 1 : Number(scale), aiUpscale, stamp: stamp ?? undefined }, ac.current.signal, setProgress, deliver);
+    }
     setShareFiles(kept);
     setResult(r);
     if (r.errors.length) showToast(r.errors.join(' '), 'error');
@@ -141,6 +169,7 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
     (ai && modelMissing ? `The AI upscaler model is not installed. Run "npm run setup:models" in the project folder, then reload.` : undefined);
   const tiles = sizes.reduce((n, s) => n + s.tiles, 0);
   const many = (ids?.length ?? 0) > 1;
+  const sheetPx = sheetSize(ratio);
 
   const first = ids ? photos.find((p) => p.id === ids[0]) : undefined;
   const fraction = progress ? Math.min(1, (progress.index + progress.fraction) / Math.max(1, progress.total)) : 0;
@@ -154,7 +183,7 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
         close();
       }}
       dismissible
-      title={many ? `Export ${ids?.length} photos` : 'Export photo'}
+      title={sheet ? 'Export contact sheet' : many ? `Export ${ids?.length} photos` : 'Export photo'}
       footer={
         busy ? (
           <Button variant="secondary" onClick={() => ac.current?.abort()}>
@@ -194,7 +223,7 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
               variant="accent"
               className="min-w-32"
               icon={<Download size={15} />}
-              disabled={!!problem || sizes.length === 0}
+              disabled={sheet ? sheetIds.length === 0 : !!problem || sizes.length === 0}
               onClick={() => void start()}
               data-testid="export-start"
             >
@@ -205,9 +234,50 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
       }
     >
       <div className="space-y-5 px-5 pb-5">
+        {/* Finish: what goes on the exported image, previewed as it will come out. */}
+        {!progress && (
+          <section aria-label="Finish" className="space-y-3" data-testid="finish">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="label-caps text-fg-3">finish</h3>
+              {canSheet && (
+                <Segmented
+                  label="Share format"
+                  value={mode}
+                  onChange={setMode}
+                  options={[
+                    { value: 'photo', label: many ? 'Photos' : 'This photo' },
+                    { value: 'sheet', label: 'Contact sheet', title: 'Several edits on one image, as numbered, dated frames' },
+                  ]}
+                />
+              )}
+            </div>
+            <FinishPreview mode={sheet ? 'sheet' : 'photo'} photoId={ids?.[0]} sheetIds={sheetIds} stamp={stamp} ratio={ratio} />
+            {sheet && <SheetControls ratio={ratio} setRatio={setRatio} selected={sheetIds} setSelected={setSheetIds} />}
+            <StampControls
+              on={stampOn}
+              setOn={setStampOn}
+              placement={placement}
+              setPlacement={setPlacement}
+              date={stampDate}
+              setDate={setStampDate}
+              shownDate={!sheet && !many && ids?.[0] ? stampDateFor(ids[0], null) : ''}
+            />
+          </section>
+        )}
         {/* What comes out: the photo, its name and the output size. */}
+        {sheet ? (
+          <p className="flex items-baseline justify-between gap-3 rounded-lg border border-line-soft bg-well px-3 py-2.5 text-[13px]" data-testid="export-size">
+            <span className="text-fg">
+              Contact sheet · {sheetIds.length} frame{sheetIds.length === 1 ? '' : 's'}
+            </span>
+            <span className="shrink-0 font-mono text-xs text-fg-3">
+              {sheetPx.width} × {sheetPx.height}px
+            </span>
+          </p>
+        ) : (
         <div className="flex items-center gap-3.5 rounded-lg border border-line-soft bg-well p-2.5">
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-raised-2">
+          {/* The Finish preview shows the photo; the thumbnail stays only while exporting (preview hidden). */}
+          <div className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-raised-2 ${progress ? '' : 'hidden'}`}>
             {first?.thumbUrl && <img src={first.thumbUrl} alt="" className="h-full w-full object-cover" />}
             {many && (
               <span className="absolute right-1 bottom-1 rounded-full bg-black/70 px-1.5 font-mono text-[10px] text-white">+{(ids?.length ?? 1) - 1}</span>
@@ -225,6 +295,7 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
             {sizes.length === 0 && <li className="skeleton h-4 w-2/3 rounded-full" aria-hidden />}
           </ul>
         </div>
+        )}
 
         {progress ? (
           <div role="status" aria-live="polite">
@@ -269,6 +340,8 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
             {format !== 'image/png' && (
               <Slider label="Quality" value={quality} range={{ min: 40, max: 100, default: 92, step: 1 }} onChange={setQuality} />
             )}
+            {!sheet && (
+            <>
             <Field label="Size">
               {ai ? (
                 <p className="flex h-9 items-center text-[13px] text-fg-2">Full size, then AI upscale</p>
@@ -294,7 +367,9 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
                 </p>
               )}
             </Field>
-            {problem && (
+            </>
+            )}
+            {problem && !sheet && (
               <p className="flex gap-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-[13px] text-fg" role="alert">
                 <AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />
                 {problem}

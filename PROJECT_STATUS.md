@@ -9,7 +9,24 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-08 (newest): "Afterimage" redesign** (owner's brief: no neon lime, rainbow gradients,
+**2026-11-08 (newest): roadmap 1.0, export date stamp and contact sheet** (Finish step, DESIGN.md).
+The export dialog opens with **finish**: a live preview drawn by the same code as the export, an
+opt-in orange date stamp (capture date from EXIF, else today; editable; four corners) burned in after
+any AI upscale, and a **Contact sheet** share format (up to 12 of the project's photos, each with its
+own edit, numbered and dated, 4:5 or 9:16 at 2160 px wide). Code: `src/lib/finish/` (stamp, sheet
+layout and drawing, palette mirrored from the CSS tokens), `exportEdited({ stamp })`,
+`exportContactSheet` in `src/engine/batch.ts`, `src/features/export/Finish.tsx`. No new library.
+Also committed first: the leftover phone pass (Photos in the More grid, the look chip on the stage).
+Tests run: typecheck clean; lint 0 errors (same 10 warnings); Vitest 213 passed, 1 skipped (17 new in
+`src/lib/finish/finish.test.ts`); e2e `finish` (2, new), `mobile-finish` (1, new), `editor`, `mobile`,
+`export-rotated` 15 passed; `test:e2e:pwa` 4 passed. Not re-run: `critical-journey`,
+`reference-replace`, `select-object`, `remove`, `lens-blur`, `upscale`, `network-isolation`. Checked
+in the running app with Playwright at 390, 834 and 1440 px (stamp preview, contact sheet, frame
+picker). Not checked on a real phone. Known limits: the contact-sheet preview uses thumbnails for
+photos other than the open one (the export renders them fully); stamp settings are not remembered
+between exports.
+
+**2026-11-08 (earlier that day): "Afterimage" redesign** (owner's brief: no neon lime, rainbow gradients,
 glows or glass). New identity per `DESIGN.md`: lilac `#c8b8ff` on night black, ivory text, orange date
 stamps, Martian Mono + Geist, a hard lilac offset as the signature. Added (UI only, no pixel-maths change):
 rolls over the 14 categories, Last roll (recent looks) and Kept, roll covers on home, frame numbers and a

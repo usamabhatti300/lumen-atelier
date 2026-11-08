@@ -29,6 +29,7 @@ import { upscaleSizeProblem, upscaleTileCount, type UpscaleFactor } from '@/lib/
 import { aiUpscale, loadUpscaler } from './aiUpscale';
 import { activeRemovals } from '@/lib/removal/removal';
 import { applyRemovalsToBitmap } from '@/lib/removal/inpaint';
+import { drawStamp, loadFinishFonts, type StampPlacement } from '@/lib/finish/stamp';
 
 export type ExportFormat = 'image/jpeg' | 'image/png' | 'image/webp';
 
@@ -52,6 +53,8 @@ export interface ExportOptions {
   forceCpu?: boolean;
   /** Cache scope for filled removal patches (the photo id); without it nothing is reused. */
   removalScope?: string;
+  /** Finish step: burn the date stamp into the exported image (after any AI upscale, so it stays crisp). */
+  stamp?: { placement: StampPlacement; date: string };
 }
 
 export class ExportCancelled extends Error {
@@ -212,6 +215,11 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
       const bctx = encodeFrom.getContext('2d') as CanvasRenderingContext2D | null;
       if (!bctx) throw new Error('This browser could not allocate an image of this size. Choose a smaller AI upscale.');
       bctx.putImageData(new ImageData(big.data as Uint8ClampedArray<ArrayBuffer>, big.width, big.height), 0, 0);
+    }
+    if (opts.stamp) {
+      await loadFinishFonts();
+      const sctx = encodeFrom.getContext('2d') as CanvasRenderingContext2D | null;
+      if (sctx) drawStamp(sctx, { x: 0, y: 0, w: encodeFrom.width, h: encodeFrom.height }, opts.stamp.date, opts.stamp.placement);
     }
     report?.(0.97, 'Encoding');
     const q = opts.format === 'image/png' ? undefined : Math.min(1, Math.max(0.01, opts.quality / 100));

@@ -1,6 +1,6 @@
 # Handoff: read this first in a new session
 
-_Last updated: 2026-11-08 (newest: Afterimage redesign). Owner: Usama (usama@doppellabs.ai)._
+_Last updated: 2026-11-08 (newest: roadmap 1.0, Finish step: export date stamp and contact sheet). Owner: Usama (usama@doppellabs.ai)._
 
 ## What this project is
 
@@ -31,6 +31,13 @@ i7-8665U with 16 GB RAM and Intel UHD 620, so local inference is CPU-only (slow)
 To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run dev`. Never use `VITE_` for secrets.
 
 ## State as of the last session
+
+- **2026-11-08 (newest): building `docs/ROADMAP.md` Phase 1 in order, one item per commit.** Owner's
+  rules for this run: ask before any library/model ([ask] items), before naming new rolls; stop at the
+  end of Phase 1 for review. **1.0 done**: the **Finish** step (wording agreed, now in DESIGN.md) at
+  the top of the export dialog, with an opt-in date stamp (capture date, else today) and a contact-sheet
+  share image (this project's photos, up to 12). See PROJECT_STATUS.md for tests. **Next: 1.1 HEIC
+  import, which needs the owner's OK for libheif-js (LGPL, WASM).**
 
 - **2026-11-08 (newest): third redesign, "Afterimage" (built, committed).** The owner's new brief banned
   neon lime, rainbow gradients, champagne gold, glassmorphism and glows (so Afterglow's lime and prism are

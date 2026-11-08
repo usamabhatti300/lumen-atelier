@@ -13,8 +13,11 @@ import { depthForPhoto } from '@/features/depth/depthState';
 import { engine } from './controller';
 import { objectComponentsOf, objectMasks } from './objectMasks';
 import { OBJECT_MASK_SIDE } from '@/lib/masks/objectMask';
-import { ExportCancelled, exportEdited, exportFileName, type ExportFormat } from './exporter';
+import { ExportCancelled, exportEdited, exportFileName, plannedRenderSize, type ExportFormat } from './exporter';
 import type { UpscaleFactor } from '@/lib/ml/upscale';
+import { canvasToBlob, createCanvas } from '@/lib/image/decode';
+import { defaultStampDate, isoDate, loadFinishFonts, type StampOptions } from '@/lib/finish/stamp';
+import { contactSheetLayout, drawContactSheet, MAX_SHEET_FRAMES, sheetFrameLongSide, type SheetFrame, type SheetRatio } from '@/lib/finish/contactSheet';
 
 export interface ExportSettings {
   format: ExportFormat;
@@ -22,6 +25,15 @@ export interface ExportSettings {
   scale: number;
   /** On-device AI upscale after rendering (works in batch too: each photo is upscaled in turn). */
   aiUpscale?: UpscaleFactor;
+  /** Finish step: the date stamp (a null date means each photo's own date). */
+  stamp?: StampOptions;
+}
+
+/** The date a photo's stamp shows: the chosen date, else its capture date, else today. */
+export function stampDateFor(id: string, chosen: string | null): string {
+  if (chosen) return chosen;
+  const meta = useEditor.getState().photos.find((p) => p.id === id);
+  return defaultStampDate(meta?.exif?.dateTime);
 }
 
 export async function editFor(id: string): Promise<EditState | null> {
@@ -112,6 +124,7 @@ export async function exportPhoto(
       depth,
       signal,
       onProgress,
+      stamp: opts.stamp ? { placement: opts.stamp.placement, date: stampDateFor(id, opts.stamp.date) } : undefined,
     });
     return { name: exportFileName(name, opts.format), blob };
   } finally {
@@ -143,6 +156,70 @@ export async function exportMany(
     }
   }
   return { done, errors, cancelled: false };
+}
+
+export interface ContactSheetSettings {
+  ratio: SheetRatio;
+  format: ExportFormat;
+  quality: number;
+  /** Stamp each frame (null date: each photo's own date). */
+  stamp?: StampOptions;
+}
+
+/**
+ * Renders each photo with its own edit at the size its frame needs, then lays them out as one
+ * contact-sheet image. Progress is per photo; a photo that fails is left out and reported.
+ */
+export async function exportContactSheet(
+  ids: string[],
+  opts: ContactSheetSettings,
+  signal: AbortSignal,
+  onProgress: (p: BatchProgress) => void,
+): Promise<{ file: { name: string; blob: Blob } | null; errors: string[]; cancelled: boolean }> {
+  const list = ids.slice(0, MAX_SHEET_FRAMES);
+  const longSide = sheetFrameLongSide(list.length, opts.ratio);
+  const frames: SheetFrame[] = [];
+  const errors: string[] = [];
+  const total = list.length + 1;
+  try {
+    for (let i = 0; i < list.length; i++) {
+      if (signal.aborted) return { file: null, errors, cancelled: true };
+      const id = list[i];
+      const meta = useEditor.getState().photos.find((p) => p.id === id);
+      const name = meta?.name ?? 'photo';
+      try {
+        const edit = await editFor(id);
+        if (!meta || !edit) throw new Error(`${name}: edit data not found.`);
+        const out = plannedRenderSize({ width: meta.width, height: meta.height }, edit, 1);
+        const scale = Math.min(1, longSide / Math.max(out.width, out.height));
+        const { blob } = await exportPhoto(id, { format: 'image/png', quality: 100, scale }, signal, (fraction, stage) =>
+          onProgress({ index: i, total, name, fraction, stage }),
+        );
+        const image = await createImageBitmap(blob);
+        frames.push({ image, width: image.width, height: image.height, look: edit.appliedPreset?.name, date: stampDateFor(id, opts.stamp?.date ?? null) });
+      } catch (e) {
+        if (e instanceof ExportCancelled) return { file: null, errors, cancelled: true };
+        errors.push(e instanceof Error ? e.message : `${name}: export failed.`);
+      }
+    }
+    if (!frames.length) return { file: null, errors, cancelled: false };
+    onProgress({ index: list.length, total, name: 'Contact sheet', fraction: 0, stage: 'Laying out the contact sheet' });
+    await loadFinishFonts();
+    const layout = contactSheetLayout(frames.length, opts.ratio, undefined, frames.map((f) => f.width / f.height));
+    const canvas = createCanvas(layout.width, layout.height);
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
+    if (!ctx) throw new Error('This browser could not allocate the contact sheet.');
+    drawContactSheet(ctx, layout, frames, { stamp: opts.stamp?.placement ?? null, today: isoDate() });
+    const q = opts.format === 'image/png' ? undefined : Math.min(1, Math.max(0.01, opts.quality / 100));
+    const blob = await canvasToBlob(canvas, opts.format, q);
+    canvas.width = 1;
+    canvas.height = 1;
+    onProgress({ index: list.length, total, name: 'Contact sheet', fraction: 1, stage: 'Done' });
+    const project = useEditor.getState().projectName || 'lumen';
+    return { file: { name: exportFileName(`${project} contact sheet`, opts.format).replace('-edited', ''), blob }, errors, cancelled: false };
+  } finally {
+    for (const f of frames) (f.image as ImageBitmap).close?.();
+  }
 }
 
 /** Applies `mutate` to each photo's edit, saves it, and refreshes its thumbnail. */

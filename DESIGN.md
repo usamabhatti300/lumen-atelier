@@ -153,7 +153,7 @@ the photo a row.
 
 **The Three Props Rule.** Only three analog details exist, each with one home:
 1. **Frame numbers** (`04·07`: roll 4, frame 7) on look tiles; roll numbers on roll chips and covers.
-2. **The date stamp**, orange, on the chosen look only (and, later, an opt-in export stamp).
+2. **The date stamp**, orange, on the chosen look and, opt-in, burned into exports (Finish).
 3. **The offset**: wordmark, app icon, the voice word, the main action, the chosen look, the slider
    thumb, the match lens.
 No sprocket borders on photos, scan lines, VHS noise, grain overlays, light leaks, pixel fonts or
@@ -207,6 +207,24 @@ on. Photos moved to the More grid. Don't add rows to the Looks sheet.
 **Editor, desktop (≥1024px):** 52px top bar (the "lu" mark, project name, tools, Save, Export) → left
 rail (Match a look card whose edge turns lilac on hover, Looks/Photos, applied look, looks grid) |
 stage | right rail (histogram, tool tabs, sections) → filmstrip.
+
+## Finish
+
+**Finish** is the step between editing and export, at the top of the export sheet (phones) and the
+export dialog (desktop). The user's own additions to the photo live here and only here: the date
+stamp now; frames, text and stickers later (roadmap 2.6, 2.7). They are shown on a preview of the
+exported image, never on the editing view. (Agreed with the owner, 2026-11-08.)
+
+- One lilac action: Export. A share-format switch (This photo · Contact sheet) sits beside the
+  lowercase mono "finish" head when the project has two or more photos.
+- The preview is drawn by the same code as the export (`src/lib/finish/`), so it matches the file.
+- **Date stamp**: off by default. Orange `'26 11 08` in Martian Mono with a faint bleed, sized from the
+  photo's short side; the date defaults to the capture date (EXIF), else today, and is editable; four
+  corners. The only place orange reaches a photo.
+- **Contact sheet**: up to 12 of the project's photos (tap frames to leave them out), each rendered
+  with its own edit, on night black with the wordmark, "n frames · date", and per frame its number,
+  look name and mm·dd date; rows shrink to their frames and the grid is centred. 4:5 (2160 × 2700) or
+  9:16 (2160 × 3840). No sprocket holes, film-edge text or brand look-alikes.
 
 ## Looks and rolls
 
