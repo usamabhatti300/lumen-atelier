@@ -147,7 +147,9 @@ raised (secondary) or ghost.
 
 **The Photo Leads Rule.** On editing screens nothing is brighter or more saturated than the photo. No
 frames, stamps or offsets on the photo while editing; the afterimage ghost is the only thing that
-crosses it, for half a second when a look lands.
+crosses it, for half a second when a look lands. One exception, on phones only: the look readout is a
+small chip (look name · amount) in the stage's bottom-left corner while a look is on, so it never costs
+the photo a row.
 
 **The Three Props Rule.** Only three analog details exist, each with one home:
 1. **Frame numbers** (`04·07`: roll 4, frame 7) on look tiles; roll numbers on roll chips and covers.
@@ -186,12 +188,12 @@ lowercase mono. No paragraphs, eyebrows, step cards or drop-zone art: dropping f
 The install suggestion is one quiet mono row.
 
 **Editor, phone/tablet (<1024px):** top bar (plain back chevron, undo, redo, then ⋮ and an ivory
-Export pill; Add photos and the split view live in ⋮) → photo stage → look readout pill → docked sheet
+Export pill; Add photos and the split view live in ⋮) → photo stage (with the look chip in its corner) → docked sheet
 → the dock: a raised bar with plain icon + label tabs (Looks = contact-sheet icon, Light = sun, Colour =
 drop, More = dots; the open one ivory, the rest fg-4, no pill) and the Match lens in the middle (a
 lilac circle with the offset, two overlapping circles, no label). Sheet titles are lowercase mono
 ("light", "colour", "more tools"). **More** opens a 2-column grid of named tools with one-line
-descriptions (Crop, Masks, Remove, Portrait, Detail, Lens blur); each tool's header has a back chevron
+descriptions (Photos, Crop, Masks, Remove, Portrait, Detail, Lens blur); each tool's header has a back chevron
 to the grid. On phones the looks strip shows **film frames** (sprocket edge, preview, frame number).
 A fresh photo opens on the Looks sheet.
 
