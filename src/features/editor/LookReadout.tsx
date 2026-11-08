@@ -1,13 +1,31 @@
 /**
- * The readout under the photo: which look is loaded and at what amount, with the photo's pixel
- * size on larger screens. The look name rises in (readout-in) whenever the look changes.
+ * The readout of which look is loaded and at what amount. Desktop: a row under the photo, with the
+ * photo's pixel size. Phones (`overlay`): a small chip floating in the stage's bottom-left corner,
+ * shown only while a look is on, so it never costs the photo a row. The name rises in (readout-in)
+ * whenever the look changes.
  */
 import { useEditor } from '@/state/editorStore';
 
-export function LookReadout() {
+export function LookReadout({ overlay = false }: { overlay?: boolean }) {
   const photo = useEditor((s) => s.photos.find((p) => p.id === s.activePhotoId));
   const preset = useEditor((s) => s.edit.appliedPreset);
   if (!photo) return null;
+  if (overlay) {
+    if (!preset) return null;
+    return (
+      <div className="pointer-events-none absolute bottom-2 left-2 z-10 max-w-[70%]" data-testid="edge-print">
+        <span
+          key={preset.id}
+          className="readout-in surface-float flex min-w-0 items-center gap-1.5 rounded-full py-1 pr-2.5 pl-2 text-[12px] text-fg"
+          aria-live="polite"
+        >
+          <span aria-hidden className="spectrum h-1.5 w-1.5 shrink-0 rounded-full" />
+          <span className="truncate font-medium">{preset.name}</span>
+          <span className="font-mono text-[11px] text-accent-fg">{Math.round(preset.amount)}%</span>
+        </span>
+      </div>
+    );
+  }
   return (
     <div className="flex h-11 shrink-0 items-center gap-3 overflow-hidden px-3 whitespace-nowrap sm:px-4" data-testid="edge-print">
       <span

@@ -38,7 +38,10 @@ export function PresetBrowser({
   canApply = true,
   actionVerb = 'Apply',
   initialFilter,
+  trailing,
 }: {
+  /** Extra control at the end of the switch row (the phone sheet's close button). */
+  trailing?: ReactNode;
   variant?: 'panel' | 'page' | 'strip';
   onApply?: (p: Preset) => void;
   canApply?: boolean;
@@ -177,6 +180,7 @@ export function PresetBrowser({
               <Search size={16} />
             </button>
           )}
+          {trailing}
         </div>
         {/* Rolls: a slim mono row of the numbered rolls, then "all". */}
         {mode === 'rolls' && (

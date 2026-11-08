@@ -92,9 +92,9 @@ test('share target: photos shared from another app open in a new project', async
   await page.goto('/?share=1');
   await page.waitForURL(/\/project\//);
   await waitForRender(page);
-  // Phones hide the filmstrip for a single photo; the Photos tab lists the project's photos.
-  await page.getByRole('navigation', { name: 'Editing tools' }).getByRole('button', { name: 'Looks' }).click();
-  await page.getByTestId('compact-sheet').getByRole('radio', { name: 'Photos' }).click();
+  // Phones hide the filmstrip for a single photo; More → Photos lists the project's photos.
+  await page.getByRole('navigation', { name: 'Editing tools' }).getByRole('button', { name: 'More' }).click();
+  await page.getByTestId('compact-sheet').getByRole('button', { name: 'Photos', exact: true }).click();
   await expect(page.getByRole('list', { name: 'Photos in this project' })).toContainText('shared.jpg');
 });
 

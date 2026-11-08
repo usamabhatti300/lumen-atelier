@@ -62,13 +62,13 @@ test('mobile: every editor feature is reachable by touch', async ({ page }) => {
     })
     .toBe(true);
 
-  // Presets sheet: the full left panel, including the Photos tab and the preset amount.
+  // Looks sheet: the strip and the preset amount; the project's photos are in More → Photos.
   await nav.getByRole('button', { name: 'Looks' }).click();
   await page.getByRole('button', { name: 'Apply Velvet Slide', exact: true }).click();
   await expect(sheet.getByRole('slider', { name: 'Amount' })).toBeVisible();
-  await sheet.getByRole('radio', { name: 'Photos' }).click();
+  await nav.getByRole('button', { name: 'More' }).click();
+  await sheet.getByRole('button', { name: 'Photos', exact: true }).click();
   await expect(page.getByRole('list', { name: 'Photos in this project' })).toBeVisible();
-  await sheet.getByRole('radio', { name: 'Looks' }).click();
   await page.getByRole('button', { name: 'Close panel' }).click();
 
   // Top-bar actions hidden on phones live in the "More actions" menu.

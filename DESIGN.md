@@ -192,9 +192,15 @@ drop, More = dots; the open one ivory, the rest fg-4, no pill) and the Match len
 lilac circle with the offset, two overlapping circles, no label). Sheet titles are lowercase mono
 ("light", "colour", "more tools"). **More** opens a 2-column grid of named tools with one-line
 descriptions (Crop, Masks, Remove, Portrait, Detail, Lens blur); each tool's header has a back chevron
-to the grid. On phones the looks strip shows **film frames** (sprocket edge, preview, frame number)
-with the name under each. A fresh photo opens on the Looks sheet. The amount row has a fixed height,
-so choosing a look never moves the photo.
+to the grid. On phones the looks strip shows **film frames** (sprocket edge, preview, frame number).
+A fresh photo opens on the Looks sheet.
+
+**Photo size on phones (2026-11-08, checked on the owner's phone):** the photo must stay big while a
+panel is open. So: a 10px margin around the fitted photo below 700px wide (28px on desktop); the look's
+name and amount float as a small chip in the stage's bottom-left corner (no row of its own); the Looks
+sheet has a single header row (Rolls · Kept · Last roll · Yours, search, ×), then the roll row, the
+strip, and a one-line amount row (Amount · value · save + · remove ×) that appears only while a look is
+on. Photos moved to the More grid. Don't add rows to the Looks sheet.
 
 **Editor, desktop (≥1024px):** 52px top bar (the "lu" mark, project name, tools, Save, Export) → left
 rail (Match a look card whose edge turns lilac on hover, Looks/Photos, applied look, looks grid) |

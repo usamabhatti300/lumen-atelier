@@ -15,6 +15,7 @@ import { getPhotos, getProject, saveProject } from '@/lib/storage/db';
 import type { EditState } from '@/lib/schema/adjustments';
 import { TopBar } from '@/features/editor/TopBar';
 import { LeftPanel } from '@/features/editor/LeftPanel';
+import { PhotosPanel } from '@/features/editor/PhotosPanel';
 import { RightPanel, PanelContent } from '@/features/editor/RightPanel';
 import { FocusTools } from '@/features/editor/panels/FocusTools';
 import { selectRightTab } from '@/features/editor/rightTabs';
@@ -215,8 +216,8 @@ export default function EditorScreen() {
             <main className="theme-frame relative flex min-w-0 flex-1 flex-col">
               <div className="relative min-h-0 flex-1">
                 <Viewport onImport={openImport} />
+                <LookReadout overlay />
               </div>
-              <LookReadout />
             </main>
             {landscape && <CompactSheet sheet={sheet} setSheet={setSheet} side />}
           </>
@@ -260,7 +261,7 @@ export default function EditorScreen() {
 }
 
 /** `tools`: the More grid, which leads to one of the right-panel tabs. */
-type Sheet = 'presets' | 'tools' | RightTab;
+type Sheet = 'presets' | 'tools' | 'photos' | RightTab;
 
 /**
  * The dock steps aside while you work directly on the photo or a control: pressing and holding,
@@ -304,7 +305,7 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
   // A tab bar: tapping the open tab keeps it (close with ×, a drag down, or Escape).
   const open = (id: Sheet) => {
     if (sheet === id || (id === 'tools' && isMore)) return;
-    if (id !== 'presets' && id !== 'tools') selectRightTab(id);
+    if (id !== 'presets' && id !== 'tools' && id !== 'photos') selectRightTab(id);
     tick();
     setSheet(id);
   };
@@ -339,7 +340,7 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
 /** Sheets with a compact view that sizes itself: the preset strip and the one-slider tools. */
 const focusable = (s: Sheet) => s === 'presets' || s === 'adjust' || s === 'color' || s === 'tools';
 
-const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Looks', adjust: 'Light', color: 'Colour', tools: 'More tools' };
+const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Looks', adjust: 'Light', color: 'Colour', tools: 'More tools', photos: 'Photos' };
 
 /**
  * The open panel: docked under the photo (portrait) or beside it (phone landscape), so edits
@@ -438,10 +439,12 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
             ) : sheet === 'tools' ? (
               <ToolGrid
                 onPick={(t) => {
-                  selectRightTab(t);
+                  if (t !== 'photos') selectRightTab(t);
                   setSheet(t);
                 }}
               />
+            ) : sheet === 'photos' ? (
+              <PhotosPanel />
             ) : (
               <>
                 {/* Full histogram costs ~110 px; the short sheet gets a slim one. */}
@@ -505,7 +508,8 @@ function CompactTab({
 }
 
 /** The More grid: every other tool, named and explained, one tap away. */
-const TOOLS: { id: RightTab; label: string; body: string }[] = [
+const TOOLS: { id: RightTab | 'photos'; label: string; body: string }[] = [
+  { id: 'photos', label: 'Photos', body: 'Every photo in this edit' },
   { id: 'geometry', label: 'Crop', body: 'Straighten and frame' },
   { id: 'masks', label: 'Masks', body: 'Select an object or paint an area' },
   { id: 'remove', label: 'Remove', body: "Brush out what you don't want" },
@@ -514,7 +518,7 @@ const TOOLS: { id: RightTab; label: string; body: string }[] = [
   { id: 'detail', label: 'Lens blur', body: 'Soften the background' },
 ];
 
-function ToolGrid({ onPick }: { onPick: (t: RightTab) => void }) {
+function ToolGrid({ onPick }: { onPick: (t: RightTab | 'photos') => void }) {
   return (
     <div className="grid grid-cols-2 gap-2 px-3 pb-3">
       {TOOLS.map((t) => (

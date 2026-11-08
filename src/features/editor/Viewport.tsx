@@ -25,7 +25,8 @@ export interface ViewBox {
   height: number;
 }
 
-const MARGIN = 28;
+/** Breathing room around the fitted photo: generous on desktop, slim on phones so the photo stays big. */
+const marginFor = (width: number) => (width < 700 ? 10 : 28);
 
 export function Viewport({ onImport }: { onImport: () => void }) {
   const container = useRef<HTMLDivElement>(null);
@@ -100,7 +101,7 @@ export function Viewport({ onImport }: { onImport: () => void }) {
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   const fitScale =
     canvasSize.w && size.w
-      ? Math.min((size.w - MARGIN * 2) / canvasSize.w, (size.h - MARGIN * 2) / canvasSize.h)
+      ? Math.min((size.w - marginFor(size.w) * 2) / canvasSize.w, (size.h - marginFor(size.w) * 2) / canvasSize.h)
       : 1;
   const previewToFull = canvasSize.w ? shownFullWidth / canvasSize.w : 1;
   const scale = zoom === 'fit' ? fitScale : (zoom * previewToFull) / dpr;

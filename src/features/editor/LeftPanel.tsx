@@ -31,7 +31,9 @@ export function LeftPanel({
   expanded?: boolean;
   onClose?: () => void;
 }) {
-  const tab = useEditor((s) => s.leftTab);
+  // Phones show only looks here (Photos is in the More grid).
+  const storedTab = useEditor((s) => s.leftTab);
+  const tab = compact ? 'presets' : storedTab;
   const setUi = useEditor((s) => s.setUi);
   const hasPhoto = useEditor((s) => !!s.activePhotoId);
   const applyPreset = useEditor((s) => s.applyPreset);
@@ -60,7 +62,7 @@ export function LeftPanel({
           </span>
         </button>
       </div>
-      <div className={`flex shrink-0 items-center justify-between gap-2 ${compact ? 'pr-2 pl-4' : 'px-3 pt-1'}`}>
+      <div className={`flex shrink-0 items-center justify-between gap-2 px-3 pt-1 ${compact ? 'hidden' : ''}`}>
         <h2 className="sr-only">{tab === 'photos' ? 'Your photos' : 'Pick a look'}</h2>
         <Segmented
           label="Left panel"
@@ -94,19 +96,30 @@ export function LeftPanel({
         {tab === 'photos' ? (
           <PhotosPanel />
         ) : (
-          <PresetBrowser variant={compact && !expanded ? 'strip' : 'panel'} onApply={(p) => {
+          <PresetBrowser
+            variant={compact && !expanded ? 'strip' : 'panel'}
+            onApply={(p) => {
               tick(12);
               applyPreset(p, 100);
-            }} canApply={hasPhoto} />
+            }}
+            canApply={hasPhoto}
+            trailing={
+              compact && onClose ? (
+                <button type="button" aria-label="Close panel" onClick={onClose} className="-mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 transition-transform hover:text-fg active:scale-90 coarse:h-11 coarse:w-10">
+                  <X size={16} />
+                </button>
+              ) : undefined
+            }
+          />
         )}
       </div>
-      {tab !== 'photos' && compact && <AppliedPresetBar compact />}
+      {tab !== 'photos' && compact && <AppliedPresetBar compact onSave={() => setSaving(true)} />}
       <SavePresetDialog open={saving} onClose={() => setSaving(false)} />
     </div>
   );
 }
 
-function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
+function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSave?: () => void }) {
   const applied = useEditor((s) => s.edit.appliedPreset);
   const setAmount = useEditor((s) => s.setPresetAmount);
   const clear = useEditor((s) => s.clearAppliedPreset);
@@ -175,41 +188,41 @@ function AppliedPresetBar({ compact = false }: { compact?: boolean }) {
       ? `${applied.overrides.length} hand-edited setting${applied.overrides.length === 1 ? '' : 's'} kept when the amount changes.`
       : undefined;
 
-  // Phones: the amount row exists only while a look is on (no hint line taking space). It opens and
-  // folds away with a spring, so the photo re-fits smoothly instead of jumping.
+  // Phones: one line, only while a look is on (Amount · value · save · remove). The look's name is
+  // on the chip over the photo. It springs open and folds away, so the photo re-fits smoothly.
   if (compact)
     return (
       <motion.div
         initial={false}
-        animate={{ height: applied ? 86 : 0, opacity: applied ? 1 : 0 }}
+        animate={{ height: applied ? 48 : 0, opacity: applied ? 1 : 0 }}
         transition={{ type: 'spring', stiffness: 420, damping: 40 }}
-        className="relative mx-4 shrink-0 overflow-hidden"
+        className="relative mx-3 shrink-0 overflow-hidden"
         title={overridesNote}
       >
-        <div className="h-[86px] border-t border-line-soft">
-        <AnimatePresence initial={false} mode="popLayout">
-          {applied && (
-            <motion.div
-              key="amount"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ type: 'spring', stiffness: 520, damping: 38 }}
-              className="pt-2"
-            >
-              <div className="flex h-8 items-center gap-2">
-                <span aria-hidden className="spectrum h-2 w-2 shrink-0 rounded-full shadow-offset-sm" />
-                <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-fg">{applied.name}</p>
-                {matchButton}
-                <button type="button" onClick={clear} aria-label="Remove preset" title="Remove preset" className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg-3 transition-colors hover:bg-control hover:text-fg">
-                  <X size={15} />
-                </button>
-              </div>
-              {amount}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        </div>
+        {applied && (
+          <div className="flex h-12 items-center gap-1 border-t border-line-soft pt-1">
+            <div className="min-w-0 flex-1">
+              <Slider
+                label="Amount"
+                size="row"
+                value={applied.amount}
+                range={{ min: 0, max: 100, default: 100, step: 1 }}
+                fillFrom="min"
+                format={(v) => `${Math.round(v)}%`}
+                onGestureStart={() => begin('Preset amount')}
+                onGestureEnd={end}
+                onChange={setAmount}
+              />
+            </div>
+            {matchButton}
+            <button type="button" onClick={onSave} aria-label="Save look" title="Save as your own look" className="flex h-10 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 transition-colors hover:text-fg">
+              <Plus size={16} />
+            </button>
+            <button type="button" onClick={clear} aria-label="Remove preset" title="Remove look" className="-mr-1 flex h-10 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 transition-colors hover:text-fg">
+              <X size={15} />
+            </button>
+          </div>
+        )}
       </motion.div>
     );
 
