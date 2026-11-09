@@ -106,7 +106,9 @@ export default function EditorScreen() {
   const activePhotoId = useEditor((s) => s.activePhotoId);
   useEffect(() => {
     const bmp = engine.getPreviewBitmap();
-    void setPreviewSource(bmp ? engine.getActivePhotoId() : null, bmp);
+    const id = bmp ? engine.getActivePhotoId() : null;
+    // The preview bitmap is the photo's original, so its look previews may be kept between visits.
+    void setPreviewSource(id, bmp, id ?? undefined);
   }, [previewSize, activePhotoId]);
 
   // Faces and the person are found in the background once the photo is on screen (roadmap 1.3).

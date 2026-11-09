@@ -21,7 +21,8 @@ import { clearPatches } from '../removal/cache';
 import { clearDepthCache, deleteCachedDepth } from './depthCache';
 
 export const DB_NAME = 'lumen-atelier';
-export const DB_VERSION = 1;
+/** 2: adds `thumbs` (look-preview cache per photo, roadmap 1.5). */
+export const DB_VERSION = 2;
 export const PROJECT_SCHEMA_VERSION = 1;
 
 export interface ProjectRecord {
@@ -66,22 +67,43 @@ interface AtelierDB extends DBSchema {
   presets: { key: string; value: Preset };
   luts: { key: string; value: LutRecord };
   settings: { key: string; value: { key: string; value: unknown } };
+  thumbs: { key: string; value: ThumbRecord; indexes: { byAt: number; bySource: string } };
 }
+
+/** A cached look preview (JPEG) for one source photo; `key` covers the photo, size, look and pipeline. */
+export interface ThumbRecord {
+  key: string;
+  /** The photo id (or 'sample' / 'scene') the preview was rendered from, so deleting a photo deletes its previews. */
+  source: string;
+  blob: Blob;
+  /** Last written or read (ms), for eviction. */
+  at: number;
+}
+
+/** At most this many cached previews (~15–25 KB each); the oldest fifth goes when it's exceeded. */
+export const THUMB_CACHE_MAX = 2000;
 
 let dbPromise: Promise<IDBPDatabase<AtelierDB>> | null = null;
 
 export function getDb(): Promise<IDBPDatabase<AtelierDB>> {
   if (!dbPromise) {
     dbPromise = openDB<AtelierDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        const projects = db.createObjectStore('projects', { keyPath: 'id' });
-        projects.createIndex('byUpdated', 'updatedAt');
-        const photos = db.createObjectStore('photos', { keyPath: 'id' });
-        photos.createIndex('byProject', 'projectId');
-        db.createObjectStore('originals', { keyPath: 'id' });
-        db.createObjectStore('presets', { keyPath: 'id' });
-        db.createObjectStore('luts', { keyPath: 'id' });
-        db.createObjectStore('settings', { keyPath: 'key' });
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          const projects = db.createObjectStore('projects', { keyPath: 'id' });
+          projects.createIndex('byUpdated', 'updatedAt');
+          const photos = db.createObjectStore('photos', { keyPath: 'id' });
+          photos.createIndex('byProject', 'projectId');
+          db.createObjectStore('originals', { keyPath: 'id' });
+          db.createObjectStore('presets', { keyPath: 'id' });
+          db.createObjectStore('luts', { keyPath: 'id' });
+          db.createObjectStore('settings', { keyPath: 'key' });
+        }
+        if (oldVersion < 2) {
+          const thumbs = db.createObjectStore('thumbs', { keyPath: 'key' });
+          thumbs.createIndex('byAt', 'at');
+          thumbs.createIndex('bySource', 'source');
+        }
       },
     });
   }
@@ -157,6 +179,7 @@ export async function deleteProject(id: string): Promise<void> {
   ]);
   for (const p of photos) await clearPatches(p.id);
   await deleteCachedDepth(photos.map((p) => p.id));
+  await deleteCachedThumbs(photos.map((p) => p.id));
 }
 
 // --- Photos ------------------------------------------------------------------
@@ -217,6 +240,7 @@ export async function deletePhoto(id: string): Promise<void> {
   await Promise.all([tx.objectStore('photos').delete(id), tx.objectStore('originals').delete(id), tx.done]);
   await clearPatches(id);
   await deleteCachedDepth([id]);
+  await deleteCachedThumbs([id]);
 }
 
 // --- Presets -----------------------------------------------------------------
@@ -284,4 +308,55 @@ export async function clearAllData(): Promise<void> {
   await Promise.all([...stores.map((s) => tx.objectStore(s).clear()), tx.done]);
   await clearPatches();
   await clearDepthCache();
+  await db.clear('thumbs');
+}
+
+// ---------------------------------------------------------------------------
+// Look-preview cache (roadmap 1.5). Best effort: failures just mean a re-render.
+// ---------------------------------------------------------------------------
+
+export async function getCachedThumb(key: string): Promise<Blob | null> {
+  try {
+    const db = await getDb();
+    const rec = await db.get('thumbs', key);
+    if (!rec) return null;
+    void db.put('thumbs', { ...rec, at: Date.now() }).catch(() => undefined);
+    return rec.blob;
+  } catch {
+    return null;
+  }
+}
+
+export async function putCachedThumb(key: string, source: string, blob: Blob): Promise<void> {
+  try {
+    const db = await getDb();
+    await db.put('thumbs', { key, source, blob, at: Date.now() });
+    const count = await db.count('thumbs');
+    if (count > THUMB_CACHE_MAX) {
+      const tx = db.transaction('thumbs', 'readwrite');
+      let cursor = await tx.store.index('byAt').openCursor();
+      let drop = Math.ceil(THUMB_CACHE_MAX / 5) + (count - THUMB_CACHE_MAX);
+      while (cursor && drop-- > 0) {
+        await cursor.delete();
+        cursor = await cursor.continue();
+      }
+      await tx.done;
+    }
+  } catch {
+    /* storage full or unavailable: previews still render, they just aren't kept */
+  }
+}
+
+/** Previews show the photo, so they go with it. */
+export async function deleteCachedThumbs(sources: string[]): Promise<void> {
+  try {
+    const db = await getDb();
+    const tx = db.transaction('thumbs', 'readwrite');
+    for (const src of sources) {
+      for (const key of await tx.store.index('bySource').getAllKeys(src)) await tx.store.delete(key);
+    }
+    await tx.done;
+  } catch {
+    /* best effort */
+  }
 }

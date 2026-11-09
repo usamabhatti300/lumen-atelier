@@ -9,7 +9,42 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-09 (newest): roadmap 1.4, sample photo for a first visit.** A CC0 photo chosen by the owner
+**2026-11-09 (newest): roadmap 1.5, fast look previews.** Measured first (production build,
+SwiftShader, CPU profile): the 2–4 s stalls when a look is applied came from **synchronous GPU
+readback**, not from where previews render. The histogram (320 px), the autosave thumbnail and each
+preview tile read pixels with `readPixels`, and encoding JPEGs from GPU-backed 2D canvases did the
+same, so the page waited for the full-size render every time. Changed: a fenced pixel-buffer read
+(`readTargetAsync` / `readTargetScaledAsync` in the GL renderer) for the histogram, autosave
+thumbnail, preview tiles and the afterimage snapshot; CPU-backed (`willReadFrequently`) canvases for
+JPEG encoding; up to 4 previews in flight; and an IndexedDB cache of previews per photo (DB v2 store
+`thumbs`, keyed by photo, tile size, look and a hash of the rendering code; capped at 2,000 with
+oldest-first eviction; deleted with the photo and by "delete all data"; only for sources that never
+change). **Deviation from the roadmap text:** previews still render on the main thread's GL context,
+not in an OffscreenCanvas worker. A worker's GL context shares the GPU process and stalled the page
+the same way in 1.3 (MediaPipe's GPU delegate), and the measured cause was the readback, which a
+worker would not have removed for the histogram, autosave and snapshot reads.
+Long tasks, before → after (two runs each; `perf15.mjs` method in the 1.5 notes):
+
+| | 390 px | 1440 px |
+| --- | --- | --- |
+| Applying 3 looks: longest | 3.8–4.0 s → 0.54–0.67 s | 2.0–2.2 s → 0.30–1.48 s |
+| Applying 3 looks: total | 7.2–7.6 s → 1.4 s | 6.8–7.4 s → 2.2–3.9 s |
+| Previews filling: longest | 0.63–0.69 s → 0.71–0.93 s | 1.3–1.5 s → 0.79–0.80 s |
+| First 6 previews (fresh) | 1.5–1.8 s → 1.7–1.8 s | 2.9–3.8 s → 3.5–4.3 s |
+| First 6 previews (reopened) | (re-rendered) → 7–50 ms | (re-rendered) → 35–135 ms |
+
+Still open: the remaining ~0.7–0.9 s tasks while a photo opens (decode and first render, not
+previews), and one 1.48 s outlier on desktop in one apply run (SwiftShader is noisy).
+Tests run: typecheck clean; lint 0 errors (same 10 warnings); Vitest 234 passed, 1 skipped (4 new in
+`thumbCache.test.ts`, the first IndexedDB tests: v1 → v2 upgrade keeps data, round trip, eviction,
+deletion with the photo and on clear-all); e2e `preview-cache` and `afterimage` (new; the ghost
+holds the previous frame's pixels after the async read), `editor`, `home-sample`, `adaptive-looks`,
+`finish`, `mobile`, `mobile-finish`, `mobile-home-sample` passed; `test:e2e:pwa` 4 passed;
+`critical-journey` failed once at the reference-analysis step (the same flake seen on older commits),
+then passed twice in a row (45 s, was ~2.5 min). Long tasks measured at 390 and 1440 px; previews
+checked by eye at 834 px on the production build.
+
+**2026-11-09: roadmap 1.4, sample photo for a first visit.** A CC0 photo chosen by the owner
 ("Perspective view of a narrow uphill street leading to A Coruña City Hall" by diaz827, WordPress.org
 Photo Directory, CC0 1.0; no identifiable people) ships in `public/samples/` at 2048 px (480 KB) and
 480 px (36 KB), re-encoded without EXIF; source and original SHA-256 in `src/lib/samples.ts`, credit

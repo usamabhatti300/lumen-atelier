@@ -58,7 +58,8 @@ async function refreshThumbnail() {
   thumbTimer = 0;
   const { activePhotoId } = useEditor.getState();
   if (!activePhotoId || engine.getActivePhotoId() !== activePhotoId) return;
-  const img = engine.readRendered(360);
+  const img = await engine.readRenderedAsync(360);
+  if (engine.getActivePhotoId() !== activePhotoId) return;
   if (!img) return;
   try {
     const blob = await makeThumbnail(img, 360);

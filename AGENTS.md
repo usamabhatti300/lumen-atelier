@@ -41,6 +41,12 @@ The product specification is `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`; progress is 
   `fetchVerified`/`guardedFetch` (same origin, no remote models); keep `e2e/network-isolation.spec.ts`
   exercising every AI feature.
 - Don't fake progress: show percentages only for measurable work.
+- Never read pixels back from the GPU synchronously on an interactive path (`readTarget`,
+  `readTargetScaled`, encoding a GPU-backed 2D canvas): it makes the page wait for every queued render
+  (2–4 s freezes measured in roadmap 1.5). Use `readTargetAsync` / `readTargetScaledAsync` and
+  `willReadFrequently` canvases for encoding. Export and batch work may stay synchronous.
+- Background work must be measured: record main-thread long tasks (PerformanceObserver `longtask`)
+  before and after at 390 and 1440 px, on a production build (`vite preview`).
 - Keep the app runnable; run `npm run typecheck && npm test` before finishing a change, and the
   e2e suite for workflow changes. Report only tests you actually ran.
 - UI: follow `DESIGN.md` (Afterimage). Use the role tokens in `src/styles/index.css` (never raw colours); the photo stage is `.theme-frame`, secondary screens open with `AppBar`; lilac is the one main action per screen, the hard lilac offset is the only coloured shadow (no glows, gradients or glass), orange is for date stamps only, `danger` is for errors only, and the three analog props (frame numbers, date stamp, offset) stay in their places.

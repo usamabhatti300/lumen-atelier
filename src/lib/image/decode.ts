@@ -134,12 +134,14 @@ export async function makeThumbnail(source: ImageBitmap | ImageData, maxSide = 3
   const k = Math.min(1, maxSide / Math.max(w, h));
   const tw = Math.max(1, Math.round(w * k));
   const th = Math.max(1, Math.round(h * k));
+  // CPU-backed canvases (willReadFrequently): encoding a GPU-backed one waits for every queued
+  // render on the page's GPU (measured 1.7 s on look changes, roadmap 1.5).
   const canvas = createCanvas(tw, th);
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   ctx.imageSmoothingQuality = 'high';
   if (source instanceof ImageData) {
     const tmp = createCanvas(w, h);
-    (tmp.getContext('2d') as CanvasRenderingContext2D).putImageData(source, 0, 0);
+    (tmp.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D).putImageData(source, 0, 0);
     ctx.drawImage(tmp as CanvasImageSource, 0, 0, tw, th);
   } else {
     ctx.drawImage(source, 0, 0, tw, th);

@@ -567,6 +567,79 @@ export class GLRenderer {
     return new ImageData(data, t.w, t.h);
   }
 
+  /**
+   * Reads a target without blocking: the pixels are copied into a pixel-pack buffer on the GPU, and
+   * fetched once a fence says the GPU has finished. `readPixels` into client memory instead makes the
+   * main thread wait for every queued render (seconds on slow GPUs; roadmap 1.5 measured 2–4 s stalls
+   * when a look was applied, from the histogram and thumbnail reads).
+   */
+  readTargetAsync(name: string): Promise<ImageData> {
+    const t = this.targets.get(name);
+    if (!t) return Promise.reject(new Error(`No target ${name}`));
+    const gl = this.gl;
+    const bytes = t.w * t.h * 4;
+    const pbo = gl.createBuffer();
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+    gl.bufferData(gl.PIXEL_PACK_BUFFER, bytes, gl.STREAM_READ);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, t.fbo);
+    gl.readPixels(0, 0, t.w, t.h, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+    gl.flush();
+    const { w, h } = t;
+    return new Promise((resolve, reject) => {
+      const done = () => {
+        gl.deleteSync(sync);
+        gl.deleteBuffer(pbo);
+      };
+      const poll = () => {
+        if (this.isLost) {
+          reject(new Error('The GPU context was lost.'));
+          return;
+        }
+        const s = gl.clientWaitSync(sync!, 0, 0);
+        if (s === gl.WAIT_FAILED) {
+          done();
+          reject(new Error('GPU readback failed.'));
+          return;
+        }
+        if (s === gl.TIMEOUT_EXPIRED) {
+          setTimeout(poll, 4);
+          return;
+        }
+        const data = new Uint8ClampedArray(bytes);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, pbo);
+        gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, data);
+        gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+        done();
+        resolve(new ImageData(data, w, h));
+      };
+      setTimeout(poll, 0);
+    });
+  }
+
+  /** Size of a target, or null. */
+  targetSize(name: string): { w: number; h: number } | null {
+    const t = this.targets.get(name);
+    return t ? { w: t.w, h: t.h } : null;
+  }
+
+  /** Downsampled, non-blocking read of a target (see `readTargetAsync`). */
+  readTargetScaledAsync(name: string, maxSide: number): Promise<ImageData> {
+    const t = this.targets.get(name);
+    if (!t) return Promise.reject(new Error(`No target ${name}`));
+    const k = Math.min(1, maxSide / Math.max(t.w, t.h));
+    const w = Math.max(1, Math.round(t.w * k));
+    const h = Math.max(1, Math.round(t.h * k));
+    // GL runs commands in order, so the copy into the pixel buffer happens before any later pass reuses this target.
+    const smallName = `${name}_a${w}x${h}`; // one per size, so the histogram and the snapshot don't keep resizing it
+    const small = this.ensureTarget(smallName, w, h, false);
+    this.gl.bindVertexArray(this.vao);
+    this.pass('copy', copyFrag(this.floatFbo), small, { u_src: t.tex });
+    return this.readTargetAsync(smallName);
+  }
+
   /** Downsampled read of a target for histograms/analysis. */
   readTargetScaled(name: string, maxSide: number): ImageData {
     const t = this.targets.get(name);

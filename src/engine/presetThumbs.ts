@@ -1,7 +1,15 @@
 /**
  * Real preset previews: each preset is rendered through the same pipeline on
  * a small copy of the active photo (or a procedural test scene when no photo
- * is open). Renders are queued, one per animation frame, and cached.
+ * is open). Renders are queued, one per idle moment, and cached in memory and,
+ * for sources that never change (a photo's original, the sample, the test
+ * scene), in IndexedDB, so reopening a photo shows its previews at once.
+ *
+ * Roadmap 1.5: the pixels come back from the GPU asynchronously (a fenced
+ * pixel-buffer read), so a preview never makes the page wait for a render.
+ * Rendering stays on the main thread's GL context on purpose: a worker's GL
+ * context shares the browser's GPU process and stalled the page the same way
+ * (measured with MediaPipe's GPU delegate in 1.3).
  */
 import { GLRenderer } from '@/lib/engine/gl/renderer';
 import { deriveDevelopParams } from '@/lib/engine/params';
@@ -10,22 +18,38 @@ import { blendPreset } from '@/lib/presets/blend';
 import { createCanvas, canvasToBlob } from '@/lib/image/decode';
 import { defaultAdjustments, defaultEditState, type PartialAdjustments } from '@/lib/schema/adjustments';
 import { linearToSrgb } from '@/lib/color/srgb';
+import { getCachedThumb, putCachedThumb } from '@/lib/storage/db';
+import * as shaders from '@/lib/engine/gl/shaders';
+import * as params from '@/lib/engine/params';
 
 // Sharp on high-density phone screens (larger cards there), unchanged on standard desktop screens.
 const THUMB_SIDE = typeof window === 'undefined' ? 220 : Math.round(Math.min(360, Math.max(220, 150 * (window.devicePixelRatio || 1))));
 
 interface Job {
   key: string;
+  /** IndexedDB key and source name, when the source may be kept. */
+  stored: string | null;
+  persist: string | null;
   values: PartialAdjustments;
   resolve: (url: string) => void;
   reject: (e: unknown) => void;
 }
 
 let renderer: GLRenderer | null | undefined;
-let source: { id: string; bitmap: ImageBitmap; data: ImageData } | null = null;
+/** `persist`: the cache name for sources whose pixels never change (photo id, 'sample', 'scene'). */
+let source: { id: string; persist: string | null; bitmap: ImageBitmap; data: ImageData } | null = null;
+
+/**
+ * Changes whenever the rendering code does (shader text, parameter derivation, preset blending), so
+ * cached previews from an older build are never shown.
+ */
+const PIPELINE_ID = hash(
+  [...Object.values(shaders), ...Object.values(params), blendPreset]
+    .map((v) => (typeof v === 'function' ? v.toString() : JSON.stringify(v)))
+    .join('|'),
+).toString(36);
 const cache = new Map<string, string>();
 const queue: Job[] = [];
-let pumping = false;
 
 function getRenderer(): GLRenderer | null {
   if (renderer === undefined) {
@@ -38,8 +62,12 @@ function getRenderer(): GLRenderer | null {
   return renderer;
 }
 
-/** Sets the photo used for previews (null = test scene). Clears the cache when it changes. */
-export async function setPreviewSource(id: string | null, bitmap: ImageBitmap | null) {
+/**
+ * Sets the photo used for previews (null = test scene). Clears the memory cache when it changes.
+ * `persist` names a source whose pixels never change, so its previews may be kept in IndexedDB
+ * (the test scene always is); omit it for sources such as an edited thumbnail.
+ */
+export async function setPreviewSource(id: string | null, bitmap: ImageBitmap | null, persist?: string) {
   const key = id ?? 'scene';
   if (source?.id === key) return;
   let bmp: ImageBitmap;
@@ -57,7 +85,7 @@ export async function setPreviewSource(id: string | null, bitmap: ImageBitmap | 
   const ctx = c.getContext('2d') as CanvasRenderingContext2D;
   ctx.drawImage(bmp, 0, 0);
   source?.bitmap.close();
-  source = { id: key, bitmap: bmp, data: ctx.getImageData(0, 0, bmp.width, bmp.height) };
+  source = { id: key, persist: bitmap ? (persist ?? null) : 'scene', bitmap: bmp, data: ctx.getImageData(0, 0, bmp.width, bmp.height) };
   for (const url of cache.values()) URL.revokeObjectURL(url);
   cache.clear();
   thumbSourceListeners.forEach((fn) => fn(key));
@@ -74,12 +102,22 @@ export function previewSourceId(): string {
  * drop the request if the tile goes away before its turn, so visible tiles never wait behind
  * tiles nobody is looking at any more.
  */
-export function presetThumb(presetId: string, values: PartialAdjustments, signal?: AbortSignal): Promise<string> {
-  const key = `${source?.id}:${presetId}:${JSON.stringify(values).length}:${hash(JSON.stringify(values))}`;
+export async function presetThumb(presetId: string, values: PartialAdjustments, signal?: AbortSignal): Promise<string> {
+  const json = JSON.stringify(values);
+  const key = `${source?.id}:${presetId}:${json.length}:${hash(json)}`;
   const hit = cache.get(key);
-  if (hit) return Promise.resolve(hit);
+  if (hit) return hit;
+  const persist = source?.persist ?? null;
+  const stored = persist ? `${persist}:${THUMB_SIDE}:${PIPELINE_ID}:${json.length}:${hash(json)}` : null;
+  if (stored) {
+    const blob = await getCachedThumb(stored);
+    if (blob && !cache.has(key)) cache.set(key, URL.createObjectURL(blob));
+    const now = cache.get(key);
+    if (now) return now;
+  }
+  if (signal?.aborted) throw new DOMException('Preview no longer needed', 'AbortError');
   return new Promise((resolve, reject) => {
-    const job: Job = { key, values, resolve, reject };
+    const job: Job = { key, stored, persist, values, resolve, reject };
     queue.push(job);
     signal?.addEventListener(
       'abort',
@@ -96,24 +134,35 @@ export function presetThumb(presetId: string, values: PartialAdjustments, signal
   });
 }
 
+/**
+ * Up to this many previews in flight: their GPU renders and reads queue back to back (GL runs them in
+ * order, so reusing the 'thumb' target is safe), instead of each waiting for the previous fence.
+ * One at a time on the CPU fallback, where each render is a synchronous chunk of work.
+ */
+const IN_FLIGHT = 4;
+let inFlight = 0;
+let scheduled = false;
+
 function pump() {
-  if (pumping) return;
-  pumping = true;
-  const step = async () => {
-    const job = queue.shift();
-    if (!job) {
-      pumping = false;
-      return;
-    }
-    try {
-      if (!source) await setPreviewSource(null, null);
-      job.resolve(await renderJob(job));
-    } catch (e) {
-      job.reject(e);
-    }
-    schedule(() => void step());
-  };
-  schedule(() => void step());
+  if (scheduled) return;
+  scheduled = true;
+  schedule(() => void fill());
+}
+
+async function fill() {
+  scheduled = false;
+  if (!source) await setPreviewSource(null, null);
+  const max = getRenderer() ? IN_FLIGHT : 1;
+  while (inFlight < max && queue.length) {
+    const job = queue.shift()!;
+    inFlight++;
+    renderJob(job)
+      .then(job.resolve, job.reject)
+      .finally(() => {
+        inFlight--;
+        if (queue.length) pump();
+      });
+  }
 }
 
 /** Thumbnails are background work: run them when the main thread is idle. */
@@ -134,14 +183,17 @@ async function renderJob(job: Job): Promise<string> {
   if (r) {
     r.setSource(src.bitmap, size);
     r.render({ edit, params: deriveDevelopParams(adjustments), fullSize: size, out: size, target: 'thumb' });
-    img = r.readTarget('thumb');
+    img = await r.readTargetAsync('thumb');
   } else {
     const out = cpuRender({ source: src.data, fullSize: size, edit, out: size });
     img = new ImageData(new Uint8ClampedArray(out.data), out.width, out.height);
   }
+  // CPU-backed, so encoding never waits for the GPU (see makeThumbnail).
   const c = createCanvas(img.width, img.height);
-  (c.getContext('2d') as CanvasRenderingContext2D).putImageData(img, 0, 0);
-  const url = URL.createObjectURL(await canvasToBlob(c, 'image/jpeg', 0.85));
+  (c.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D).putImageData(img, 0, 0);
+  const blob = await canvasToBlob(c, 'image/jpeg', 0.85);
+  if (job.stored && job.persist && source?.persist === job.persist) void putCachedThumb(job.stored, job.persist, blob);
+  const url = URL.createObjectURL(blob);
   cache.set(job.key, url);
   return url;
 }

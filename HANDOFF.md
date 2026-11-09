@@ -41,7 +41,9 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   PROJECT_STATUS.md for tests. **1.3 done**: automatic face detection, now in a Web Worker
   (it froze the page for ~11 s on the main thread). **1.4 done**: a CC0 sample photo
   (owner picked the A Coruña street) for roll covers and a "try a sample" frame on first visit.
-  **Next: 1.5 fast look previews** (OffscreenCanvas worker + IndexedDB cache; measure long tasks).
+  **1.5 done**: the look-change freezes were synchronous GPU readback; now async (fenced PBO reads)
+  plus a per-photo IndexedDB preview cache (DB v2). Previews stay on the main GL context on purpose
+  (see PROJECT_STATUS.md). **Next: 1.6 name the matched look.**
   **The C: drive is nearly full** (≈0.6 GB free after clearing test leftovers with the owner's OK):
   run long e2e suites with `--trace off`.
 

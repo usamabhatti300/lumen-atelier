@@ -546,7 +546,8 @@ function useCategoryThumbs(photoId: string | null | undefined): Record<string, s
             .catch(() => undefined);
       const bmp = blob ? await createImageBitmap(blob).catch(() => null) : null;
       if (!alive || !bmp) return;
-      await setPreviewSource(`home:${photoId ?? 'sample'}`, bmp);
+      // The sample never changes, so its covers may be kept; your photo's thumbnail changes with edits.
+      await setPreviewSource(`home:${photoId ?? 'sample'}`, bmp, photoId ? undefined : 'sample');
       bmp.close();
       for (const c of SHELF) {
         if (!alive || !c.first) return;

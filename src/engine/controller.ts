@@ -106,11 +106,18 @@ class EngineController {
     out.style.display = 'block';
     try {
       if (this.renderer) {
-        if (!this.renderer.hasTarget('after')) return null;
-        const img = this.renderer.readTargetScaled('after', maxSide);
-        out.width = img.width;
-        out.height = img.height;
-        out.getContext('2d')?.putImageData(img, 0, 0);
+        const t = this.renderer.targetSize('after');
+        if (!t) return null;
+        // Sized now, filled when the GPU hands the pixels back (non-blocking; a synchronous read
+        // stalled look changes ~0.7 s). GL runs commands in order, so the copy is of the previous
+        // frame even though the new look renders before the pixels arrive.
+        const k = Math.min(1, maxSide / Math.max(t.w, t.h));
+        out.width = Math.max(1, Math.round(t.w * k));
+        out.height = Math.max(1, Math.round(t.h * k));
+        void this.renderer
+          .readTargetScaledAsync('after', maxSide)
+          .then((img) => out.getContext('2d')?.putImageData(img, 0, 0))
+          .catch(() => undefined);
         return out;
       }
       const c = this.canvas;
@@ -603,13 +610,26 @@ class EngineController {
     this.histTimer = window.setTimeout(() => {
       this.histTimer = 0;
       if (!this.renderer?.hasTarget('after')) return;
-      try {
-        const small = this.renderer.readTargetScaled('after', 320);
-        useEngine.setState({ histogram: computeHistogram(small) });
-      } catch {
-        /* ignore transient failures */
-      }
+      // Non-blocking: a synchronous read here waited for the whole render (2–4 s stalls on slow GPUs).
+      this.renderer
+        .readTargetScaledAsync('after', 320)
+        .then((small) => useEngine.setState({ histogram: computeHistogram(small) }))
+        .catch(() => {
+          /* ignore transient failures */
+        });
     }, 160);
+  }
+
+  /** Like `readRendered`, but never makes the main thread wait for the GPU (autosave thumbnails). */
+  async readRenderedAsync(maxSide: number): Promise<ImageData | null> {
+    if (this.renderer?.hasTarget('after') && useEditor.getState().tool !== 'crop') {
+      try {
+        return await this.renderer.readTargetScaledAsync('after', maxSide);
+      } catch {
+        return null;
+      }
+    }
+    return this.readRendered(maxSide);
   }
 
   /** Small render of the current edit for thumbnails and comparisons. */
