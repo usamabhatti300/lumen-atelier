@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
+import { publishLookSequence } from '@/features/editor/lookSequence';
 import { isoDate, stampText } from '@/lib/finish/stamp';
 import { Check, Copy, Download, MoreHorizontal, Pencil, Search, Star, Trash2, Blend, X } from 'lucide-react';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -84,6 +85,12 @@ export function PresetBrowser({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, filter, favorites, recent, user, all]);
+
+  // The editor's browser tells a swipe on the photo which looks to step through (roadmap 2.1).
+  const publishes = variant !== 'page' && !!onApply;
+  useEffect(() => {
+    if (publishes) publishLookSequence(presets.map((p) => p.id));
+  }, [publishes, presets]);
 
   // Frame numbers ("04·07": roll 4, frame 7) are stable: counted over the whole library, not the filtered view.
   const numbers = useMemo(() => {

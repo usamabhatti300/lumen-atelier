@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
+import { applyLibraryLook } from './lookSequence';
 import { ArrowRight, Loader2, Plus, Blend, X } from 'lucide-react';
 import { useState } from 'react';
 import { PresetBrowser, PresetFields } from '@/features/presets/PresetBrowser';
@@ -13,8 +14,6 @@ import { engine } from '@/engine/controller';
 import { matchInWorker, matchSampleFor } from '@/lib/analysis/client';
 import type { PresetCategoryId } from '@/lib/schema/preset';
 import { PhotosPanel } from './PhotosPanel';
-import { tick } from '@/lib/haptics';
-import { adaptationForLook } from '@/engine/lookAdapt';
 import { describeAdaptation } from '@/lib/analysis/lookAdapt';
 
 /**
@@ -38,7 +37,6 @@ export function LeftPanel({
   const tab = compact ? 'presets' : storedTab;
   const setUi = useEditor((s) => s.setUi);
   const hasPhoto = useEditor((s) => !!s.activePhotoId);
-  const applyPreset = useEditor((s) => s.applyPreset);
   const [saving, setSaving] = useState(false);
 
   return (
@@ -100,11 +98,8 @@ export function LeftPanel({
         ) : (
           <PresetBrowser
             variant={compact && !expanded ? 'strip' : 'panel'}
-            onApply={(p) => {
-              tick(12);
-              // Library looks are evened out for this photo first (Settings → Adaptive looks).
-              applyPreset(p, 100, adaptationForLook(p.adjustments));
-            }}
+            // Library looks are evened out for this photo first (Settings → Adaptive looks).
+            onApply={(p) => applyLibraryLook(p)}
             canApply={hasPhoto}
             trailing={
               compact && onClose ? (

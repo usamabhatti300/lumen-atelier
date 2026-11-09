@@ -47,7 +47,9 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   editable (vocabulary in docs/AI_ARCHITECTURE.md; the owner may want to change words).
   **1.7: phone sheet detents done**; labelled desktop top bar and the real-phone check were skipped
   by the owner, who found Phase 1 unexciting and wants the fun Phase 2/3 features next (swipe between
-  looks, effects, frames/text/stickers, reveal video, look links). Ask which ones first.
+  looks, effects, frames/text/stickers, reveal video, look links). **Owner chose swipe + effects:
+  2.1 swipe between looks done; next 2.5 Effects tool** (light leaks, halation, bloom, flare, dust,
+  chromatic aberration, dreamy blur, flash look; each in schema + both renderers + tests).
   **The C: drive is nearly full** (≈0.6 GB free after clearing test leftovers with the owner's OK):
   run long e2e suites with `--trace off`.
 

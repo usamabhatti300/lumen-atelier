@@ -270,6 +270,10 @@ owner's request, 2026-11-08) that floats a little over the panel above it; nothi
   group with edits; the group's sliders as one-line rows (`Slider size="row"`: label · track with tick
   scale · value) and a "Reset {group}" text button. **Colour mix on phones**: the band swatches, then
   that band's Hue, Saturation and Luminance rows together. Grade and Curve unchanged.
+- **Swipe between looks (touch)**: a one-finger sideways swipe on the photo (≥ 48 px, mostly
+  horizontal) steps to the next (left) or previous (right) look in what the Looks browser shows,
+  wrapping around, keeping the amount, with the haptic tick and the afterimage. Only at fit size and
+  with no tool; a second finger makes it a pinch, and a hold that became compare never swipes.
 - **Sheet detents (phones)**: the docked sheet follows a finger on its handle and settles on the nearest
   stop (closed, compact, tall at 64% of the screen); a flick goes to the next stop in its direction.
   A tap on the handle toggles compact and tall (`src/lib/sheetDetents.ts`).

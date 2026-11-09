@@ -2,6 +2,7 @@
  * Canvas viewport: hosts the engine's canvas, handles fit / zoom / pan, and
  * renders interactive overlays (before/after divider, crop, mask tools, heal).
  */
+import { stepLook, swipeDirection } from './lookSequence';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, ImagePlus, Loader2 } from 'lucide-react';
@@ -151,9 +152,16 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     window.clearTimeout(h.timer);
     if (h.on) setUi({ compare: 'off' });
   };
+  // A one-finger horizontal swipe on the photo steps through looks (roadmap 2.1). Only at fit size
+  // (zoomed in, a finger pans) and with no tool; a second finger makes it a pinch.
+  const swipe = useRef<{ id: number; x: number; y: number; t: number; multi: boolean } | null>(null);
   const onTouchDown = (e: React.PointerEvent) => {
     touches.current.set(e.pointerId, local(e));
     endHold();
+    if (touches.current.size === 1) {
+      const p0 = local(e);
+      swipe.current = { id: e.pointerId, x: p0.x, y: p0.y, t: e.timeStamp, multi: false };
+    } else if (swipe.current) swipe.current.multi = true;
     if (touches.current.size === 2) {
       // A second finger turns a pan into a pinch.
       panning.current = null;
@@ -255,6 +263,14 @@ export function Viewport({ onImport }: { onImport: () => void }) {
   const land = useRef<HTMLDivElement>(null);
 
   const onTouchUp = (e: React.PointerEvent) => {
+    const s = swipe.current;
+    if (s && s.id === e.pointerId) {
+      swipe.current = null;
+      const p = local(e);
+      const holding = hold.current?.on ?? false;
+      const dir = s.multi || holding || !fitted || tool !== 'none' ? 0 : swipeDirection(p.x - s.x, p.y - s.y, e.timeStamp - s.t);
+      if (dir && stepLook(dir)) lastTap.current = null; // a swipe is never half of a double-tap
+    }
     touches.current.delete(e.pointerId);
     endHold();
     if (touches.current.size < 2) pinch.current = null;

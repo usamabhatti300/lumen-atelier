@@ -9,7 +9,21 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-09 (newest): roadmap 1.7, phone part only (owner's choice).** Sheet detents on phones: the
+**2026-11-10 (newest): roadmap 2.1, swipe between looks** (owner chose "swipe looks + effects" as the
+next features). A one-finger sideways swipe on the photo steps to the next/previous look in whatever
+the Looks browser shows (open roll, Kept, Last roll, Yours, after search), wrapping around, keeping
+the amount; it applies like a tile tap (adaptive looks, haptic tick, afterimage, readout). Not when
+zoomed (a finger pans), with a tool active, during a pinch, or after hold-to-compare engaged. Code:
+`src/features/editor/lookSequence.ts`, gesture in `Viewport.tsx`.
+Tests run: typecheck clean; lint 0 errors; Vitest 248 passed, 1 skipped (4 new); e2e `mobile-swipe`
+(new, real touch events: swipe left/right, vertical drag ignored, hold-to-compare, pinch, pan when
+zoomed) passed 3 of 3 after the test lets the page settle between swipes (software rendering keeps
+the dev page busy ~3 s after a look change, which made a quick test swipe register as 3 s long);
+`mobile`, `mobile-sheet`, `mobile-finish`, `editor`, `adaptive-looks`, `afterimage` passed. Checked
+on a production build at 390 and 834 px: three swipes stepped 01·01 → 01·02 → 01·03. Desktop (mouse)
+is unchanged; the swipe is touch only.
+
+**2026-11-09: roadmap 1.7, phone part only (owner's choice).** Sheet detents on phones: the
 docked sheet now follows your finger while you drag its handle and settles on the nearest stop
 (closed, compact, tall); a flick (≥ 0.5 px/ms) goes to the next stop in its direction, however short;
 a tap still toggles. Logic in `src/lib/sheetDetents.ts`. **Not done, by the owner's decision:** the
