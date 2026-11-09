@@ -45,8 +45,9 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   plus a per-photo IndexedDB preview cache (DB v2). Previews stay on the main GL context on purpose
   (see PROJECT_STATUS.md). **1.6 done**: matched looks get a measured roll-style name and mood,
   editable (vocabulary in docs/AI_ARCHITECTURE.md; the owner may want to change words).
-  **Next: 1.7 open UX items** (sheet detents, labelled desktop top bar, real-phone check: the last one
-  needs the owner's phones and an HTTPS host).
+  **1.7: phone sheet detents done**; labelled desktop top bar and the real-phone check were skipped
+  by the owner, who found Phase 1 unexciting and wants the fun Phase 2/3 features next (swipe between
+  looks, effects, frames/text/stickers, reveal video, look links). Ask which ones first.
   **The C: drive is nearly full** (≈0.6 GB free after clearing test leftovers with the owner's OK):
   run long e2e suites with `--trace off`.
 

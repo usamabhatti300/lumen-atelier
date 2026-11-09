@@ -9,7 +9,20 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-09 (newest): roadmap 1.6, name the matched look.** Saving a matched look now suggests a
+**2026-11-09 (newest): roadmap 1.7, phone part only (owner's choice).** Sheet detents on phones: the
+docked sheet now follows your finger while you drag its handle and settles on the nearest stop
+(closed, compact, tall); a flick (≥ 0.5 px/ms) goes to the next stop in its direction, however short;
+a tap still toggles. Logic in `src/lib/sheetDetents.ts`. **Not done, by the owner's decision:** the
+labelled desktop top bar, and the real Android/iPhone check (needs the owner's phones and an HTTPS
+host). The owner then asked to move on to the more exciting Phase 2/3 features.
+Tests run: typecheck clean; lint 0 errors (same 10 warnings); Vitest 244 passed, 1 skipped (4 new in
+`sheetDetents.test.ts`); e2e `mobile-sheet` (new) passed 6 of 7 runs (the one failure was the first
+run right after an edit, while the dev server recompiled; it checks drag-to-close by distance because
+software rendering makes simulated flick speed vary 0.14–0.72 px/ms between runs, so flick speed is
+covered by the unit tests), `mobile`, `mobile-finish`, `mobile-home-sample` passed. Checked at 390 and
+834 px, mid-drag and settled (desktop has no sheet).
+
+**2026-11-09: roadmap 1.6, name the matched look.** Saving a matched look now suggests a
 short roll-style name and mood from the measured statistics ("Moss Hour" · "soft, green, faded")
 instead of "Reference look 8 Nov"; both are editable, the mood is saved as searchable tags, and the
 suggestion is taken once per reference (saving doesn't change the field). Rules and vocabulary in

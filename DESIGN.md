@@ -270,6 +270,9 @@ owner's request, 2026-11-08) that floats a little over the panel above it; nothi
   group with edits; the group's sliders as one-line rows (`Slider size="row"`: label · track with tick
   scale · value) and a "Reset {group}" text button. **Colour mix on phones**: the band swatches, then
   that band's Hue, Saturation and Luminance rows together. Grade and Curve unchanged.
+- **Sheet detents (phones)**: the docked sheet follows a finger on its handle and settles on the nearest
+  stop (closed, compact, tall at 64% of the screen); a flick goes to the next stop in its direction.
+  A tap on the handle toggles compact and tall (`src/lib/sheetDetents.ts`).
 - **Dock behaviour**: it slides away (spring, ~115% down and faded) while you press, drag or pinch the
   photo or drag a slider, and returns ~0.65 s after you let go. It keeps its space, so nothing moves.
 - **Match result**: your photo leads; the look card adds a camera-style info list of what was measured

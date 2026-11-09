@@ -1,4 +1,5 @@
 /** Main editor: top bar, presets/photos panel, canvas, adjustment panels, filmstrip. */
+import { dragHeight, pickDetent } from '@/lib/sheetDetents';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronLeft, Droplet, Ellipsis, Sun, X } from 'lucide-react';
 import { LooksIcon, MatchIcon } from '@/components/icons';
@@ -359,12 +360,18 @@ const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Looks', adjust: 
 
 /**
  * The open panel: docked under the photo (portrait) or beside it (phone landscape), so edits
- * stay visible. Under the photo it has a grab handle: tap or drag up to expand it (presets then
- * show as a full grid), drag down to shrink or close.
+ * stay visible. Under the photo it has a grab handle with detents (roadmap 1.7): the sheet follows
+ * your finger and settles on the nearest stop (closed, compact, tall), carried along by a flick.
+ * A tap on the handle toggles compact and tall; Enter / Space too.
  */
 function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; setSheet: (s: Sheet | null) => void; side?: boolean }) {
   const [tall, setTall] = useState(false);
-  const drag = useRef<{ y: number; moved: boolean } | null>(null);
+  const sheetEl = useRef<HTMLDivElement>(null);
+  /** Height while the handle is being dragged (px), else null (the sheet sizes itself). */
+  const [dragH, setDragH] = useState<number | null>(null);
+  const compactH = useRef(0);
+  const drag = useRef<{ y: number; h: number; moved: boolean; lastY: number; lastT: number; v: number } | null>(null);
+  const tallPx = () => window.innerHeight * 0.64;
   const inner = side ? 'w-[min(320px,46vw)]' : '';
   const close = () => {
     setTall(false);
@@ -378,9 +385,11 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
           initial={side ? { width: 0 } : { height: 0 }}
           // Keep the photo the hero: presets, Light and Colour get compact content-sized views (a
           // strip, or one slider at a time); other tools a short sheet. Drag the handle up for everything.
-          animate={side ? { width: 'min(320px, 46vw)' } : { height: tall ? '64dvh' : focusable(sheet) ? 'auto' : '40dvh' }}
+          animate={side ? { width: 'min(320px, 46vw)' } : { height: dragH ?? (tall ? '64dvh' : focusable(sheet) ? 'auto' : '40dvh') }}
           exit={side ? { width: 0 } : { height: 0 }}
-          transition={{ type: 'spring', stiffness: 420, damping: 40, mass: 0.9 }}
+          transition={dragH !== null ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 40, mass: 0.9 }}
+          ref={sheetEl}
+          data-dragging={dragH !== null || undefined}
           onKeyDown={(e) => e.key === 'Escape' && close()}
           className={`flex shrink-0 flex-col overflow-hidden bg-raised ${side ? 'rounded-l-xl border-l border-line-soft' : 'rounded-t-xl border-t border-line-soft pb-4 shadow-[0_-20px_40px_-20px_rgb(0_0_0/0.8)]'}`}
           role="region"
@@ -393,28 +402,49 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
               type="button"
               aria-label={tall ? 'Shrink panel' : 'Expand panel'}
               aria-expanded={tall}
-              className="flex h-6 w-full shrink-0 touch-none items-center justify-center"
+              className="flex h-6 w-full shrink-0 touch-none items-center justify-center coarse:h-8"
+              data-testid="sheet-handle"
               onPointerDown={(e) => {
-                drag.current = { y: e.clientY, moved: false };
+                const h = sheetEl.current?.getBoundingClientRect().height ?? 0;
+                if (!tall) compactH.current = h;
+                drag.current = { y: e.clientY, h, moved: false, lastY: e.clientY, lastT: e.timeStamp, v: 0 };
                 (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
               }}
               onPointerMove={(e) => {
                 const d = drag.current;
-                if (d && Math.abs(e.clientY - d.y) > 8) d.moved = true;
+                if (!d) return;
+                if (Math.abs(e.clientY - d.y) > 8) d.moved = true;
+                const dt = e.timeStamp - d.lastT;
+                if (dt > 0) d.v = 0.7 * ((e.clientY - d.lastY) / dt) + 0.3 * d.v;
+                d.lastY = e.clientY;
+                d.lastT = e.timeStamp;
+                if (d.moved) setDragH(dragHeight(d.h, e.clientY - d.y, tallPx()));
               }}
               onPointerUp={(e) => {
                 const d = drag.current;
                 drag.current = null;
+                setDragH(null);
                 if (!d) return;
-                const dy = e.clientY - d.y;
-                if (!d.moved) setTall(!tall);
-                else if (dy < -30) setTall(true);
-                else if (dy > 30) {
-                  if (tall) setTall(false);
-                  else close();
+                if (!d.moved) {
+                  setTall(!tall);
+                  return;
                 }
+                // A pause before letting go is not a flick.
+                const v = e.timeStamp - d.lastT > 80 ? 0 : d.v;
+                const h = dragHeight(d.h, e.clientY - d.y, tallPx());
+                const compact = compactH.current || window.innerHeight * 0.3;
+                const to = pickDetent(h, v, [
+                  { key: 'closed', height: 0 },
+                  { key: 'compact', height: Math.min(compact, tallPx() - 40) },
+                  { key: 'tall', height: tallPx() },
+                ]);
+                if (to === 'closed') close();
+                else setTall(to === 'tall');
               }}
-              onPointerCancel={() => (drag.current = null)}
+              onPointerCancel={() => {
+                drag.current = null;
+                setDragH(null);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
