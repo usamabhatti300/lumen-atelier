@@ -9,7 +9,19 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-09 (newest): roadmap 1.3, automatic face detection.** When a photo opens, faces and the
+**2026-11-09 (newest): roadmap 1.4, sample photo for a first visit.** A CC0 photo chosen by the owner
+("Perspective view of a narrow uphill street leading to A Coruña City Hall" by diaz827, WordPress.org
+Photo Directory, CC0 1.0; no identifiable people) ships in `public/samples/` at 2048 px (480 KB) and
+480 px (36 KB), re-encoded without EXIF; source and original SHA-256 in `src/lib/samples.ts`, credit
+in README. On a first visit the roll covers render on it instead of blank cards, and the empty
+contact sheet shows "add a photo" plus a **try a sample** frame that opens it as an ordinary edit.
+No paragraphs or step cards were added. It is part of the offline app shell.
+Tests run: typecheck clean; lint 0 errors (same 10 warnings); Vitest 230 passed, 1 skipped (3 new in
+`samples.test.ts`); e2e `home-sample` + `mobile-home-sample` (new, 2), `editor` + `mobile` 11 passed,
+`test:e2e:pwa` 4 passed. Checked at 390, 834 and 1440 px. Also, with the owner's OK, removed old
+Playwright temp profiles (~77 MB) and `dist/` to free disk space.
+
+**2026-11-09: roadmap 1.3, automatic face detection.** When a photo opens, faces and the
 person are found in the background (on-device MediaPipe), so portrait tools are ready without the
 "Detect faces & subject" step. It starts at an idle moment after the photo is on screen, can be
 stopped (Stop in Portrait; a stopped photo isn't re-run automatically), stops when you leave the

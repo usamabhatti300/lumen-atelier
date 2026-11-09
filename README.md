@@ -178,3 +178,9 @@ idb, Lucide (MIT/ISC); GSAP (standard "no charge" GreenSock licence); ONNX Runti
 licences; Geist, Geist Mono and Instrument Serif (SIL OFL, self-hosted). The built-in presets are original
 works and imply no affiliation with film manufacturers or other preset makers; the category codes are our
 own.
+
+Sample photo (`public/samples/`, shown on a first visit): "Perspective view of a narrow uphill street
+leading to A Coruña City Hall" by diaz827, from the
+[WordPress.org Photo Directory](https://wordpress.org/photos/photo/5586a9e729/), released under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Shipped re-encoded at 2048 px and 480 px
+without metadata. No attribution is required; it is credited here as a courtesy.

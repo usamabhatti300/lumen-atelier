@@ -183,7 +183,8 @@ Unchanged from the previous system (phone first; 16px gutter, 32px from `sm`; 56
 actions (Match a look in lilac, Open a photo secondary) and one mono line ("free · private · on this
 device"). Below: **your edits** as a contact sheet (3 columns on phones: film frames with a sprocket
 edge, the cover, a frame number and an mm·dd date; the edit you were last in has the lilac edge; a ⋯
-menu holds Rename and Delete), then **rolls** (covers rendered on your last photo). Section heads are
+menu holds Rename and Delete; with no edits yet, "add a photo" and a **try a sample** frame showing the
+bundled CC0 sample), then **rolls** (covers rendered on your last photo, or on the sample before you have one). Section heads are
 lowercase mono. No paragraphs, eyebrows, step cards or drop-zone art: dropping files anywhere works.
 The install suggestion is one quiet mono row.
 

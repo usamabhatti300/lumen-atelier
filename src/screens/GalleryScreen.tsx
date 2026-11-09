@@ -26,6 +26,7 @@ import {
   type ProjectRecord,
 } from '@/lib/storage/db';
 import { importFiles } from '@/engine/importer';
+import { SAMPLE_PHOTO, sampleFile } from '@/lib/samples';
 
 interface ProjectCard extends ProjectRecord {
   cover: string | null;
@@ -296,9 +297,24 @@ export function GalleryScreen() {
                   <span className="font-mono text-[10px]">add a photo</span>
                 </button>
               </li>
-              {[1, 2].map((n) => (
-                <li key={n} aria-hidden className="aspect-[4/5] rounded-[8px] border border-dashed border-line-soft" />
-              ))}
+              {/* First visit: a bundled CC0 photo to try every look on, one tap away. */}
+              <li>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void sampleFile()
+                      .then((f) => startProject([f], 'edit'))
+                      .catch((e: unknown) => showToast(e instanceof Error ? e.message : 'The sample photo could not be loaded.', 'error'))
+                  }
+                  className="group relative block aspect-[4/5] w-full overflow-hidden rounded-[8px] bg-raised-2 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-offset"
+                  data-testid="try-sample"
+                >
+                  <img src={SAMPLE_PHOTO.thumbUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80 transition-opacity group-hover:opacity-100" />
+                  <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+                  <span className="absolute inset-x-0 bottom-2 text-center font-mono text-[10px] text-white">try a sample</span>
+                </button>
+              </li>
+              <li aria-hidden className="aspect-[4/5] rounded-[8px] border border-dashed border-line-soft" />
             </ul>
           ) : (
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">
@@ -404,7 +420,7 @@ export function GalleryScreen() {
           <ul className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:scroll-px-8 sm:px-8">
             {SHELF.map((c) => (
               <li key={c.id} data-look className="w-[132px] shrink-0 snap-start sm:w-[150px]">
-                <CategoryTile category={c} src={thumbs[c.id]} rendering={!!hero} />
+                <CategoryTile category={c} src={thumbs[c.id]} rendering={projects !== null} />
               </li>
             ))}
           </ul>
@@ -514,19 +530,23 @@ const SHELF = PRESET_CATEGORIES.map((id) => {
 
 /**
  * Real renders for the rail: each category's first look through the same pipeline, on the
- * user's latest photo. Without a photo (null) or while projects load (undefined), none.
+ * user's latest photo, or on the bundled sample photo before they have one (null). While projects
+ * load (undefined), none.
  */
 function useCategoryThumbs(photoId: string | null | undefined): Record<string, string> {
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   useEffect(() => {
-    // No photo yet: the tiles stay tint washes (the low-resolution test scene looks worse than none).
-    if (!photoId) return;
+    if (photoId === undefined) return;
     let alive = true;
     void (async () => {
-      const rec = await getPhoto(photoId).catch(() => undefined);
-      const bmp = rec ? await createImageBitmap(rec.thumbnail).catch(() => null) : null;
+      const blob = photoId
+        ? (await getPhoto(photoId).catch(() => undefined))?.thumbnail
+        : await fetch(SAMPLE_PHOTO.thumbUrl)
+            .then((r) => (r.ok ? r.blob() : undefined))
+            .catch(() => undefined);
+      const bmp = blob ? await createImageBitmap(blob).catch(() => null) : null;
       if (!alive || !bmp) return;
-      await setPreviewSource(`home:${photoId}`, bmp);
+      await setPreviewSource(`home:${photoId ?? 'sample'}`, bmp);
       bmp.close();
       for (const c of SHELF) {
         if (!alive || !c.first) return;

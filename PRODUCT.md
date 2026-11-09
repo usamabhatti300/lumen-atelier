@@ -55,8 +55,9 @@ and filmstrip. Exports go to the photo library / downloads / share sheet.
 ## Evidence on Hand
 
 No testimonials, user counts, reviews or press exist; do not invent any. Preset names and categories are
-real (docs/PHOTO_EDITOR_SIGNATURE_PRO_PRESETS.md). No bundled sample photography licensed for marketing
-use is in the repo.
+real (docs/PHOTO_EDITOR_SIGNATURE_PRO_PRESETS.md). One bundled sample photo (CC0, a
+street in A Coruña, `public/samples/`, credited in README) is used on a first visit; no other photography
+licensed for marketing use is in the repo.
 
 ## Product Principles
 

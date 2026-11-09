@@ -39,10 +39,11 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   share image (this project's photos, up to 12). **1.1 HEIC: skipped for now by the owner** (asked
   about libheif-js). **1.2 done**: adaptive looks (Settings toggle, on by default). See
   PROJECT_STATUS.md for tests. **1.3 done**: automatic face detection, now in a Web Worker
-  (it froze the page for ~11 s on the main thread). **Next: 1.4 sample photo for first visit** (needs a
-  licence-clear photo: ask the owner where it comes from). **The C: drive is nearly full** (≈270 MB
-  free): an e2e run failed with ENOSPC. Old Playwright temp profiles in %TEMP% (~77 MB) and `dist/`
-  (265 MB, rebuildable) could go, but ask the owner first.
+  (it froze the page for ~11 s on the main thread). **1.4 done**: a CC0 sample photo
+  (owner picked the A Coruña street) for roll covers and a "try a sample" frame on first visit.
+  **Next: 1.5 fast look previews** (OffscreenCanvas worker + IndexedDB cache; measure long tasks).
+  **The C: drive is nearly full** (≈0.6 GB free after clearing test leftovers with the owner's OK):
+  run long e2e suites with `--trace off`.
 
 - **2026-11-08 (newest): third redesign, "Afterimage" (built, committed).** The owner's new brief banned
   neon lime, rainbow gradients, champagne gold, glassmorphism and glows (so Afterglow's lime and prism are
