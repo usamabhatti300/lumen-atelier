@@ -6,6 +6,7 @@
  * screen's one main action in a bar at the bottom (Analyse look, then Refine in the editor);
  * two columns on desktop (reference and its measurements | analysis, apply, save).
  */
+import { suggestLookName } from '@/lib/analysis/lookName';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   AlertTriangle,
@@ -751,7 +752,14 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
   const [matchFor, setMatchFor] = useState<{ key: string; match: MatchResult } | null>(null);
   const [matchState, setMatchState] = useState<{ key: string; pass: number; max: number; error?: string } | null>(null);
   const [suggestionState, setSuggestions] = useState<Suggestion[]>([]);
-  const [name, setName] = useState(() => `Reference look ${new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`);
+  // A roll-style name and mood from what was measured (roadmap 1.6), editable before saving.
+  // Suggested once per reference (against your looks' names at that moment), so saving doesn't
+  // change the name in the field.
+  const suggestion = useMemo(() => suggestLookName(refStats, usePresets.getState().user.map((p) => p.name)), [refStats]);
+  const [edits, setEdits] = useState<{ name?: string; mood?: string }>({});
+  const name = edits.name ?? suggestion.name;
+  const mood = edits.mood ?? suggestion.mood;
+  const setName = (v: string) => setEdits((e) => ({ ...e, name: v }));
   const [saved, setSaved] = useState<string | null>(null);
   const [showHow, setShowHow] = useState(false);
   const presetId = useMemo(() => `ref:${newId()}`, []);
@@ -862,7 +870,14 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
       category: 'reference',
       origin: 'reference',
       description: result.description.slice(0, 400),
-      tags: ['reference'],
+      // The mood's words, so searching "green" or "faded" finds it.
+      tags: [
+        'reference',
+        ...mood
+          .split(',')
+          .map((w) => w.trim().toLowerCase().slice(0, 30))
+          .filter(Boolean),
+      ].slice(0, 12),
       adjustments: scaledValues(result.adjustments, amount),
       reference: {
         styleSummary: result.description.slice(0, 600),
@@ -1003,6 +1018,17 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
                 Save
               </Button>
             </div>
+            <label className="mt-2 flex items-center gap-2 pl-4">
+              <span className="label-caps shrink-0 text-fg-4">mood</span>
+              <input
+                value={mood}
+                maxLength={60}
+                onChange={(e) => setEdits((x) => ({ ...x, mood: e.target.value }))}
+                aria-label="Mood"
+                data-testid="reference-mood"
+                className="h-8 min-w-0 flex-1 rounded-full bg-transparent px-2 font-mono text-[12px] text-fg-3 outline-none transition-colors focus:bg-well focus:text-fg"
+              />
+            </label>
             <AnimatePresence>
               {saved && (
                 <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-2 flex items-center gap-1.5 text-[13px] text-success">

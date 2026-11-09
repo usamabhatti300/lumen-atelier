@@ -43,7 +43,10 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   (owner picked the A Coruña street) for roll covers and a "try a sample" frame on first visit.
   **1.5 done**: the look-change freezes were synchronous GPU readback; now async (fenced PBO reads)
   plus a per-photo IndexedDB preview cache (DB v2). Previews stay on the main GL context on purpose
-  (see PROJECT_STATUS.md). **Next: 1.6 name the matched look.**
+  (see PROJECT_STATUS.md). **1.6 done**: matched looks get a measured roll-style name and mood,
+  editable (vocabulary in docs/AI_ARCHITECTURE.md; the owner may want to change words).
+  **Next: 1.7 open UX items** (sheet detents, labelled desktop top bar, real-phone check: the last one
+  needs the owner's phones and an HTTPS host).
   **The C: drive is nearly full** (≈0.6 GB free after clearing test leftovers with the owner's OK):
   run long e2e suites with `--trace off`.
 

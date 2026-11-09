@@ -274,7 +274,8 @@ owner's request, 2026-11-08) that floats a little over the panel above it; nothi
   photo or drag a slider, and returns ~0.65 s after you let go. It keeps its space, so nothing moves.
 - **Match result**: your photo leads; the look card adds a camera-style info list of what was measured
   (`src/lib/analysis/readout.ts`: exposure, contrast, white balance, colour, grain, vignette), using
-  the mapping's own thresholds.
+  the mapping's own thresholds. Saving suggests a roll-style name ("Moss Hour") and a lowercase mono
+  mood line ("soft, green, faded") from the same measurements; both are editable.
 - **Icons**: Lucide at stroke 1.6–2, plus two of our own in `src/components/icons.tsx`: `LooksIcon`
   (two frames over a wide one) and `MatchIcon` (two overlapping circles: a double exposure). Never a
   magic wand.

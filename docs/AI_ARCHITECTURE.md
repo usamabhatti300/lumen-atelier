@@ -131,6 +131,20 @@ what the look was made to do. Measurements and fixed rules only; no AI.
   doesn't set them), so they scale with Amount, stay editable, and are listed under the applied look
   ("Fitted to this photo: exposure −0.40 · temperature −6"). Matched looks are never adapted.
 
+## Matched look names (`src/lib/analysis/lookName.ts`)
+
+A saved matched look gets a suggested roll-style name and mood instead of a date, both editable. Fixed
+rules on the measured statistics, with the readout's thresholds (`readout.ts`), so they never disagree:
+- **First word**, the heaviest palette colour with OKLab chroma ≥ 0.04, by hue: Ember (0–40°), Amber
+  (40–75°), Honey (75–115°), Moss (115–165°), Lagoon (165–225°), Harbour (225–285°), Violet (285–330°),
+  Rose (330–360°); else Silver (black and white), Ash (muted), Paper.
+- **Second word**, first that applies: Diary (black and white), Night (median < 0.3 or night), Postcard
+  (lifted blacks), Static (visible grain), Morning (median > 0.62), Hour (warm cast), Tide (cool cast),
+  Frame.
+- **Mood**: light (dark / bright / soft / punchy / even), colour (black & white / muted / hue / warm /
+  cool / neutral), finish (faded / grainy / vignetted / crisp / clean). Saved as tags, so it's searchable.
+- Never a roll's name or one of the user's own look names (then "II", "III"…). No AI is involved.
+
 ## Privacy and security
 
 - The API key lives only in the server environment (`ANTHROPIC_API_KEY`). It is never in a

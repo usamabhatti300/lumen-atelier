@@ -57,7 +57,7 @@ describe('look-preview cache (IndexedDB v2)', () => {
     expect(await db.get('thumbs', 'k0')).toBeUndefined();
     expect(await db.get('thumbs', 'newest')).toBeDefined();
     expect(await db.get('thumbs', `k${THUMB_CACHE_MAX - 1}`)).toBeDefined();
-  });
+  }, 30_000); // 2,000 records in the in-memory fake; slow when the whole suite runs in parallel
 
   it('deletes a photo’s previews with it, and everything on "delete all data"', async () => {
     await putCachedThumb('a1', 'photoA', jpeg());

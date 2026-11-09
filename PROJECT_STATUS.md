@@ -9,7 +9,20 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-09 (newest): roadmap 1.5, fast look previews.** Measured first (production build,
+**2026-11-09 (newest): roadmap 1.6, name the matched look.** Saving a matched look now suggests a
+short roll-style name and mood from the measured statistics ("Moss Hour" · "soft, green, faded")
+instead of "Reference look 8 Nov"; both are editable, the mood is saved as searchable tags, and the
+suggestion is taken once per reference (saving doesn't change the field). Rules and vocabulary in
+`docs/AI_ARCHITECTURE.md`; they use the readout's thresholds, and the info list is unchanged. Known
+limit: "muted" follows the median saturation, so a vivid subject on a large black background reads
+"muted" (as the info list also says).
+Tests run: typecheck clean; lint 0 errors (same 10 warnings); Vitest 240 passed, 1 skipped (6 new in
+`lookName.test.ts`; the 1.5 eviction test got a 30 s timeout after timing out once in a full parallel
+run, then passed twice); e2e `reference-name` (new), `critical-journey` (passed first time),
+`reference-replace`, `mobile` passed. Checked at 390, 834 and 1440 px (a wallpaper reference on the
+sample: "Ember Night" · "dark, muted, clean").
+
+**2026-11-09: roadmap 1.5, fast look previews.** Measured first (production build,
 SwiftShader, CPU profile): the 2–4 s stalls when a look is applied came from **synchronous GPU
 readback**, not from where previews render. The histogram (320 px), the autosave thumbnail and each
 preview tile read pixels with `readPixels`, and encoding JPEGs from GPU-backed 2D canvases did the
