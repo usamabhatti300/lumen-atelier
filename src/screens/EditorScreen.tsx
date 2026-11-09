@@ -511,6 +511,7 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
 function MoreTabs({ value, onChange }: { value: RightTab; onChange: (t: RightTab) => void }) {
   const tabs: { id: RightTab; label: string }[] = [
     { id: 'detail', label: 'Detail' },
+    { id: 'effects', label: 'Effects' },
     { id: 'masks', label: 'Masks' },
     { id: 'portrait', label: 'Portrait' },
     { id: 'remove', label: 'Remove' },
@@ -559,6 +560,7 @@ const TOOLS: { id: RightTab | 'photos'; label: string; body: string }[] = [
   { id: 'masks', label: 'Masks', body: 'Select an object or paint an area' },
   { id: 'remove', label: 'Remove', body: "Brush out what you don't want" },
   { id: 'portrait', label: 'Portrait', body: 'Skin, eyes and face light' },
+  { id: 'effects', label: 'Effects', body: 'Light leaks, bloom, flare and dust' },
   { id: 'detail', label: 'Detail', body: 'Sharpen, grain and noise' },
   { id: 'detail', label: 'Lens blur', body: 'Soften the background' },
 ];

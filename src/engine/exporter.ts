@@ -276,7 +276,10 @@ async function renderTiles(
   const lensAlign = lensPx >= 0.5 ? lensBlurPlan(lensPx).factor : 1;
   const pad = Math.max(
     Math.ceil(
-      Math.max(BLUR_RADII.large * 3, BLUR_RADII.layerMax * maxLayerBlur * 3, BLUR_RADII.medium * 1.6 * 3, maxSpotReach) * longEdge,
+      // Bloom/halation/dreamy blur the finished develop again, so their reach adds to the rest.
+      (Math.max(BLUR_RADII.large * 3, BLUR_RADII.layerMax * maxLayerBlur * 3, BLUR_RADII.medium * 1.6 * 3, maxSpotReach) +
+        (deriveDevelopParams(edit.adjustments).glowActive ? BLUR_RADII.glow * 3 : 0)) *
+        longEdge,
     ) + 8,
     lensPx >= 0.5 ? lensTilePadding(lensPx) + 8 : 0,
   );

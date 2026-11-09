@@ -1,6 +1,6 @@
 # Project status: Lumen Atelier
 
-_Last updated: 2026-11-08. Source of truth for requirements: `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`._
+_Last updated: 2026-11-10. Source of truth for requirements: `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`._
 
 ## Summary
 
@@ -9,7 +9,26 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-10 (newest): roadmap 2.1, swipe between looks** (owner chose "swipe looks + effects" as the
+**2026-11-10 (newest): roadmap 2.5, the Effects tool.** A new **Effects** tile in the More grid
+(phone/tablet) and an **Effects** tab on desktop, with eight one-slider effects, all 0 by default:
+Light (light leak, lens flare, bloom, halation, flash) and Lens & film (dreamy blur, colour fringe,
+dust & scratches). Each is a control in the schema (`effects.*`; edits saved before them load with
+them off, and partial looks don't reset them), `params.ts` (`fx`, `glowActive`), both renderers
+(`pixel.ts` + `cpuRender.ts`, `shaders.ts` + `renderer.ts`: a glow pass after the layers, the rest in
+the output pass) and the UI (`EffectsPanel.tsx`). All procedural: no new files, libraries or models.
+Export tile padding grows by the glow's reach. Looks can carry them (`effects` is already part of a
+look's partial adjustments); no library looks were changed.
+Tests run: typecheck clean; lint 0 errors; Vitest 258 passed, 1 skipped (10 new in `pixel.test.ts`:
+identity at 0 for every effect and for a whole CPU render, each effect changes a render, direction
+checks, dust density and preview/export consistency, old edits load); e2e `effects` (desktop: each
+effect changes the photo, all at 0 is pixel-identical to the original, leak warms the right edge,
+flash brightens the centre, section reset, undo/redo, PNG export) and `mobile-effects` (More →
+Effects, slider changes the photo, no new dock tab, back chevron) passed. Checked in the running app
+at 390, 834 and 1440 px (wallpaper photo and the A Coruña sample). Halation is deliberately a thin
+rim: strong around lights, subtle on daylight scenes (~3 % of the sample's pixels change at 100).
+Desktop tab labels went to 10 px so eight tabs fit.
+
+**2026-11-10: roadmap 2.1, swipe between looks** (owner chose "swipe looks + effects" as the
 next features). A one-finger sideways swipe on the photo steps to the next/previous look in whatever
 the Looks browser shows (open roll, Kept, Last roll, Yours, after search), wrapping around, keeping
 the amount; it applies like a tile tap (adaptive looks, haptic tick, afterimage, readout). Not when

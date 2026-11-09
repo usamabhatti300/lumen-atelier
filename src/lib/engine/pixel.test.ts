@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { defaultAdjustments, defaultEditState, defaultLensBlur, mergeAdjustments, type EditState, type LensBlur, type PartialAdjustments } from '../schema/adjustments';
 import { deriveDevelopParams, deriveLensParams, lensBlurPlan, lensTilePadding } from './params';
+import { applyDust, dustValue, flashLin, frameRadius, fringeScale, glowStage, lensFlare, lightLeak, screenAdd } from './pixel';
+import { EditStateSchema, PartialAdjustmentsSchema } from '../schema/adjustments';
 import { developPixel, toneShape, applyContrast, bandInterp, bokehCompress, bokehExpand, cocSimilarity, lensBlendWeights, lensCoc, lensGatherWeight, type RGB } from './pixel';
 import { cpuRender, lensBlurLinear, type DepthRaster } from './cpu/cpuRender';
 import { linearToSrgb, srgbToLinear } from '../color/srgb';
@@ -368,5 +370,136 @@ describe('lens blur', { timeout: 60_000 }, () => {
     expect(lensBlendWeights(3, plan)[1]).toBe(0); // ...without the coarse level yet
     expect(lensBlendWeights(20, plan)).toEqual([1, 1]);
     expect(lensBlurPlan(12).fine).toBeNull();
+  });
+});
+
+describe('photo effects (roadmap 2.5)', () => {
+  const FX = (p: Partial<ReturnType<typeof params>['fx']> = {}) => ({ ...params().fx, ...p });
+  const close = (a: RGB, b: RGB, eps = 1e-6) => a.forEach((v, k) => expect(v).toBeCloseTo(b[k], -Math.log10(eps)));
+
+  it('are all off by default', () => {
+    const P = params();
+    expect(Object.values(P.fx).every((v) => v === 0)).toBe(true);
+    expect(P.glowActive).toBe(false);
+    expect(params({ effects: { bloom: 30 } }).glowActive).toBe(true);
+    expect(params({ effects: { flare: 30 } }).glowActive).toBe(false); // positional effects need no glow pass
+  });
+
+  it('change nothing at 0', () => {
+    for (const c of SAMPLES) {
+      close(glowStage(c, [1, 1, 1], [1, 1, 1], FX()), c);
+      close(flashLin(c, 0.2, 0), c);
+      close(applyDust(c, 0), c);
+    }
+    expect(lightLeak(0.9, 0.3, 1.5, 0)).toEqual([0, 0, 0]);
+    expect(lensFlare(0.8, 0.2, 1.5, 0)).toEqual([0, 0, 0]);
+    expect(fringeScale(0)).toBe(0);
+    for (let i = 0; i < 200; i++) expect(dustValue(i * 13.7, i * 7.3, 3000, 1, 0)).toBe(0);
+    close(screenAdd([0.3, 0.5, 0.7], [0, 0, 0]), [0.3, 0.5, 0.7]);
+  });
+
+  it('leave a whole render unchanged at their defaults (cpu renderer)', () => {
+    const W = 20;
+    const H = 14;
+    const src = new Uint8ClampedArray(W * H * 4);
+    // Noisy mid-tones with a bright block, so the glows have highlights to work on.
+    for (let i = 0; i < src.length; i++) src[i] = i % 4 === 3 || ((i >> 2) % W) < 6 ? 255 : (i * 53) % 256;
+    const args = { source: { width: W, height: H, data: src }, fullSize: { width: W, height: H }, out: { width: W, height: H } };
+    const plain = cpuRender({ ...args, edit: defaultEditState() });
+    const zeroed = defaultEditState();
+    zeroed.adjustments = mergeAdjustments(defaultAdjustments(), { effects: { lightLeak: 0, bloom: 0, dust: 0, fringe: 0 } });
+    expect(Array.from(cpuRender({ ...args, edit: zeroed }).data)).toEqual(Array.from(plain.data));
+    for (const k of ['lightLeak', 'halation', 'bloom', 'flare', 'dust', 'fringe', 'dreamy', 'flash'] as const) {
+      const e = defaultEditState();
+      e.adjustments = mergeAdjustments(defaultAdjustments(), { effects: { [k]: 100 } });
+      // Every effect changes the render (dust needs a bigger frame to land a speck: tested below).
+      if (k !== 'dust') expect(Array.from(cpuRender({ ...args, edit: e }).data), k).not.toEqual(Array.from(plain.data));
+    }
+  });
+
+  it('bloom and dreamy glow from highlights; halation adds a red rim', () => {
+    const dark: RGB = [0.2, 0.2, 0.2];
+    const bright: RGB = [0.95, 0.95, 0.95];
+    const bloom = glowStage(dark, dark, bright, FX({ bloom: 1 }));
+    expect(bloom[0]).toBeGreaterThan(0.3);
+    // No highlights nearby: bloom leaves a dark area alone.
+    close(glowStage(dark, dark, dark, FX({ bloom: 1 })), dark, 1e-3);
+    const halo = glowStage(dark, [0.7, 0.7, 0.7], dark, FX({ halation: 1 }));
+    expect(halo[0] - dark[0]).toBeGreaterThan(0.2);
+    expect(halo[0] - dark[0]).toBeGreaterThan(3 * (halo[2] - dark[2])); // red, not white
+    // Inside a flat bright area there is no rim.
+    close(glowStage(bright, bright, bright, FX({ halation: 1 })), bright, 1e-6);
+    const dreamy = glowStage([0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.6, 0.6, 0.6], FX({ dreamy: 1 }));
+    expect(dreamy[0]).toBeGreaterThan(0.4); // softened and lifted towards the glow
+  });
+
+  it('flash brightens the centre and darkens the edges', () => {
+    const grey: RGB = [0.18, 0.18, 0.18];
+    expect(frameRadius(0.5, 0.5, 1.5)).toBe(0);
+    expect(frameRadius(1, 1, 1.5)).toBeCloseTo(1);
+    const centre = flashLin(grey, 0, 1);
+    const edge = flashLin(grey, 1, 1);
+    expect(centre[1]).toBeGreaterThan(grey[1] * 1.3);
+    expect(edge[1]).toBeLessThan(grey[1] * 0.8);
+    expect(centre[2]).toBeGreaterThan(centre[0]); // a little cool
+  });
+
+  it('light leak is warm and comes from the right edge', () => {
+    const right = lightLeak(0.98, 0.3, 1.5, 1);
+    expect(right[0]).toBeGreaterThan(0.5);
+    expect(right[0]).toBeGreaterThan(right[1]);
+    expect(right[1]).toBeGreaterThan(right[2]);
+    expect(lightLeak(0.05, 0.8, 1.5, 1)[0]).toBeLessThan(0.02);
+  });
+
+  it('lens flare is brightest at the sun, with ghosts across the centre', () => {
+    expect(lensFlare(0.8, 0.2, 1.5, 1)[0]).toBeGreaterThan(1);
+    expect(lensFlare(0.05, 0.95, 1.5, 1)[0]).toBeLessThan(0.01);
+    // The second ghost sits past the centre on the line from the sun: 0.8 + (0.5 - 0.8) * 1.75 = 0.275.
+    const g = lensFlare(0.275, 0.2 + 0.3 * 1.75, 1, 1);
+    expect(g[2]).toBeGreaterThan(0.1);
+  });
+
+  it('dust lands the same specks in the preview and the export, fading when smaller than a preview pixel', () => {
+    // A 1500 x 1000 frame, sampled every 2 px (specks are 1.6-3.3 px across at this size).
+    const long = 1500;
+    let full = 0;
+    let low = 0;
+    let peakFull = 0;
+    let peakSmall = 0;
+    let maxAbs = 0;
+    for (let y = 0; y < 1000; y += 2)
+      for (let x = 0; x < 1500; x += 2) {
+        const v = dustValue(x, y, long, 1, 1);
+        maxAbs = Math.max(maxAbs, Math.abs(v));
+        if (v !== 0) full++;
+        if (dustValue(x, y, long, 1, 0.2) !== 0) low++;
+        peakFull = Math.max(peakFull, v);
+        // A preview at a fifth of the size sees the same features, fainter.
+        peakSmall = Math.max(peakSmall, dustValue(x, y, long, 0.2, 1));
+      }
+    expect(maxAbs).toBeLessThanOrEqual(1);
+    expect(full).toBeGreaterThan(50);
+    expect(low).toBeLessThan(full); // fewer specks at a low amount
+    expect(peakSmall).toBeGreaterThan(0);
+    expect(peakSmall).toBeLessThan(peakFull);
+    expect(applyDust([0.2, 0.2, 0.2], 1)[0]).toBeCloseTo(0.95);
+    expect(applyDust([0.5, 0.5, 0.5], -1)[0]).toBeLessThan(0.1);
+  }, 20_000); // ~1.5 M noise samples; slow when the whole suite runs in parallel
+
+  it('fringe stays subtle: at most 0.6 % of the distance from the centre', () => {
+    expect(fringeScale(1)).toBeCloseTo(0.006);
+  });
+
+  it('keeps edits saved before the effects existed (they load with every effect off)', () => {
+    const e = JSON.parse(JSON.stringify(defaultEditState()));
+    for (const k of ['lightLeak', 'halation', 'bloom', 'flare', 'dust', 'fringe', 'dreamy', 'flash']) delete e.adjustments.effects[k];
+    e.adjustments.effects.grain = 40;
+    const parsed = EditStateSchema.parse(e);
+    expect(parsed.adjustments.effects.grain).toBe(40);
+    expect(parsed.adjustments.effects.bloom).toBe(0);
+    // A look that sets only some effects does not reset the others.
+    const look = PartialAdjustmentsSchema.parse({ effects: { bloom: 30 } });
+    expect(look.effects).toEqual({ bloom: 30 });
   });
 });

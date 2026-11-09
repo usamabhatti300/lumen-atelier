@@ -27,11 +27,13 @@ import {
 } from '../params';
 import { outputToSourceMatrix, toGlMat3, type Mat3, type Size } from '../geometry';
 import { CURVE_LUT_SIZE } from '../../color/curves';
+import { fringeScale } from '../pixel';
 import {
   VERTEX,
   blurFrag,
   copyFrag,
   developFrag,
+  glowFrag,
   layerFrag,
   lensCompositeFrag,
   lensGatherFrag,
@@ -480,6 +482,22 @@ export class GLRenderer {
       flip = !flip;
     }
 
+    // 5b. Bloom, halation and dreamy soft blur (roadmap 2.5), on the finished develop.
+    const FX = params.fx;
+    if (globalOn && params.glowActive) {
+      const halo = FX.halation > 0 ? this.blur('fxHalo', cur, radius(BLUR_RADII.halation, 2)) : cur;
+      const glow = FX.bloom > 0 || FX.dreamy > 0 ? this.blur('fxGlow', cur, radius(BLUR_RADII.glow, 4)) : cur;
+      const next = this.ensureTarget(flip ? 'devA' : 'devB', sw, sh, f);
+      this.pass('glow', glowFrag(f), next, {
+        u_cur: cur.tex,
+        u_halo: halo.tex,
+        u_glow: glow.tex,
+        u_fx: [FX.bloom, FX.halation, FX.dreamy],
+      });
+      cur = next;
+      flip = !flip;
+    }
+
     // 6. Output.
     const targetName = req.target ?? (neutral ? 'before' : 'after');
     const out = this.ensureTarget(targetName, req.out.width, req.out.height, false);
@@ -506,6 +524,8 @@ export class GLRenderer {
       u_aspect: fullOut.width / fullOut.height,
       u_vig: [V.amount, V.midpoint, V.roundness, V.feather],
       u_grain: [G.amount, G.size, G.roughness],
+      u_fx1: [FX.lightLeak, FX.flare, FX.dust, FX.flash],
+      u_fringe: fringeScale(FX.fringe),
       u_effectsOn: globalOn && !req.cropOverride ? 1 : 0,
       u_bg: [0.07, 0.066, 0.063, 1],
     });

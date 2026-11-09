@@ -75,6 +75,15 @@ export const RANGES = {
     grain: r(0, 100),
     grainSize: r(0, 100, 25),
     grainRoughness: r(0, 100, 50),
+    // Photo effects (roadmap 2.5). Each is one strength; 0 leaves the photo untouched.
+    lightLeak: r(0, 100),
+    halation: r(0, 100),
+    bloom: r(0, 100),
+    flare: r(0, 100),
+    dust: r(0, 100),
+    fringe: r(0, 100),
+    dreamy: r(0, 100),
+    flash: r(0, 100),
   },
 } as const;
 
@@ -176,6 +185,22 @@ export interface Adjustments {
     grain: number;
     grainSize: number;
     grainRoughness: number;
+    /** Warm light bleeding in from the frame's edge. */
+    lightLeak: number;
+    /** Red glow around bright edges, as on film without an anti-halation layer. */
+    halation: number;
+    /** Soft glow spreading from highlights. */
+    bloom: number;
+    /** A sun flare with ghosts across the frame. */
+    flare: number;
+    /** Dust specks and fine scratches. */
+    dust: number;
+    /** Chromatic aberration: colour fringes towards the corners. */
+    fringe: number;
+    /** Dreamy soft blur (a bright, soft glow over the photo). */
+    dreamy: number;
+    /** On-camera flash: a bright centre, darker surroundings, cool and crisp. */
+    flash: number;
   };
 }
 
@@ -523,6 +548,14 @@ export function defaultAdjustments(): Adjustments {
       grain: 0,
       grainSize: 25,
       grainRoughness: 50,
+      lightLeak: 0,
+      halation: 0,
+      bloom: 0,
+      flare: 0,
+      dust: 0,
+      fringe: 0,
+      dreamy: 0,
+      flash: 0,
     },
   };
 }
@@ -631,6 +664,15 @@ function sectionSchema<T extends Record<string, Range>>(ranges: T) {
   );
 }
 
+/** The photo effects (roadmap 2.5) came later: an edit saved before them gets their defaults. */
+export const LATER_EFFECTS = ['lightLeak', 'halation', 'bloom', 'flare', 'dust', 'fringe', 'dreamy', 'flash'] as const;
+const effectsSchema = sectionSchema(RANGES.effects).extend(
+  Object.fromEntries(LATER_EFFECTS.map((k) => [k, clampTo(RANGES.effects[k]).default(RANGES.effects[k].default)])) as Record<
+    (typeof LATER_EFFECTS)[number],
+    z.ZodDefault<ReturnType<typeof clampTo>>
+  >,
+);
+
 export const AdjustmentsSchema = z.object({
   basic: sectionSchema(RANGES.basic),
   presence: sectionSchema(RANGES.presence),
@@ -657,7 +699,7 @@ export const AdjustmentsSchema = z.object({
   }),
   mixer: z.object({ red: MixerRowSchema, green: MixerRowSchema, blue: MixerRowSchema }),
   levels: sectionSchema(RANGES.levels),
-  effects: sectionSchema(RANGES.effects),
+  effects: effectsSchema,
 });
 
 /**

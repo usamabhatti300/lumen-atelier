@@ -4,11 +4,13 @@ import { useResetKeys, useSectionModified } from './LightPanel';
 import { useEngine } from '@/engine/engineStore';
 import { LensBlurSection } from './LensBlurSection';
 
+const VIGNETTE_GRAIN = ['vignette', 'vignetteMidpoint', 'vignetteRoundness', 'vignetteFeather', 'grain', 'grainSize', 'grainRoughness'];
+
 export function DetailPanel() {
   const detailMod = useSectionModified('detail');
-  const effectsMod = useSectionModified('effects');
+  const effectsMod = useSectionModified('effects', VIGNETTE_GRAIN);
   const resetDetail = useResetKeys('detail', ['sharpening', 'sharpenMasking', 'noiseReduction', 'colorNoiseReduction']);
-  const resetEffects = useResetKeys('effects', ['vignette', 'vignetteMidpoint', 'vignetteRoundness', 'vignetteFeather', 'grain', 'grainSize', 'grainRoughness']);
+  const resetEffects = useResetKeys('effects', VIGNETTE_GRAIN);
   const preview = useEngine((s) => s.previewSize);
   const full = useEngine((s) => s.fullSize);
   const downscaled = preview && full && preview.width < full.width;

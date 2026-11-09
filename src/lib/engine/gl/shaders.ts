@@ -115,6 +115,80 @@ float valueNoise(vec2 p) {
   float a = hash(i), b = hash(i + vec2(1.0, 0.0)), c = hash(i + vec2(0.0, 1.0)), d = hash(i + vec2(1.0, 1.0));
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
+
+// Photo effects (roadmap 2.5); mirrors the effect functions at the end of pixel.ts.
+vec3 screenAdd(vec3 lin, vec3 add) { return 1.0 - (1.0 - clamp(lin, 0.0, 1.0)) * (1.0 - clamp(add, 0.0, 1.0)); }
+float frameRadius(vec2 uv, float aspect) {
+  return length(vec2((uv.x - 0.5) * aspect, uv.y - 0.5)) / length(vec2(aspect * 0.5, 0.5));
+}
+vec3 flashLin(vec3 lin, float d, float amount) {
+  if (amount <= 0.0) return lin;
+  float fall = 1.0 - smoothstep(0.0, 0.85, d);
+  float gain = 1.0 + amount * (0.55 * fall - 0.45 * (1.0 - fall));
+  vec3 lit = lin * gain;
+  float p = encodeY(dot(lit, LUMA));
+  vec3 o = setLuminance(lit, decodeY(max(applyContrast(p, 0.35 * amount), 0.0)));
+  return softClip(o * vec3(1.0 - 0.03 * amount, 1.0, 1.0 + 0.05 * amount));
+}
+vec3 lightLeak(vec2 uv, float aspect, float amount) {
+  if (amount <= 0.0) return vec3(0.0);
+  float n = valueNoise(vec2(uv.y * 3.0 + 11.3, 0.7));
+  float edge = smoothstep(0.55 + 0.12 * n, 1.05, uv.x);
+  float dx = (uv.x - 1.0) * aspect, dy = uv.y - 0.3;
+  float blob = exp(-(dx * dx + dy * dy) / 0.18);
+  float w = clamp(edge * 0.7 + blob * 0.8, 0.0, 1.0) * amount * 0.85;
+  float t = smoothstep(0.0, 1.0, uv.y);
+  return vec3(w, mix(0.32, 0.72, t) * w, mix(0.06, 0.28, t) * w);
+}
+vec3 flareGhost(vec2 p, vec2 s, vec2 c, float k, float r, vec3 col) {
+  vec2 g = s + (c - s) * k;
+  return col * (1.0 - smoothstep(r * 0.7, r, length(p - g))) * 0.18;
+}
+vec3 lensFlare(vec2 uv, float aspect, float amount) {
+  if (amount <= 0.0) return vec3(0.0);
+  vec2 p = vec2(uv.x * aspect, uv.y);
+  vec2 s = vec2(0.8 * aspect, 0.2);
+  vec2 c = vec2(0.5 * aspect, 0.5);
+  vec2 d = p - s;
+  float d2 = dot(d, d);
+  float hot = exp(-d2 / 0.012) + 0.35 * exp(-d2 / 0.08);
+  float streak = 0.35 * exp(-(d.y * d.y) / 0.00015) * exp(-abs(d.x) / (0.6 * aspect));
+  vec3 o = vec3(1.0, 0.85, 0.65) * (hot + streak);
+  o += flareGhost(p, s, c, 1.35, 0.045, vec3(0.6, 1.0, 0.7));
+  o += flareGhost(p, s, c, 1.75, 0.08, vec3(0.7, 0.6, 1.0));
+  o += flareGhost(p, s, c, 2.1, 0.03, vec3(1.0, 0.8, 0.5));
+  return o * amount;
+}
+float dustValue(vec2 f, float longEdge, float scale, float amount) {
+  if (amount <= 0.0) return 0.0;
+  float unit = longEdge / 1500.0;
+  float soft = max(1.0 / scale, 0.6 * unit);
+  float cell = 60.0 * unit;
+  float ci = floor(f.x / cell), cj = floor(f.y / cell);
+  float speck = 0.0;
+  if (hash(vec2(ci + 0.31, cj + 7.7)) > 1.0 - 0.5 * amount) {
+    float r = (0.8 + 0.85 * (hash(vec2(ci + 3.1, cj + 1.3)) + 1.0)) * unit;
+    float room = 0.5 * max(0.0, cell - 2.0 * r - 4.0 * unit);
+    vec2 pc = (vec2(ci, cj) + 0.5) * cell + vec2(hash(vec2(ci + 5.7, cj + 2.9)), hash(vec2(ci + 8.3, cj + 6.1))) * room;
+    float a = 1.0 - smoothstep(r - soft * 0.5, r + soft * 0.5, length(f - pc));
+    speck = a * min(1.0, r * scale) * (hash(vec2(ci + 9.1, cj + 4.4)) > -0.3 ? 1.0 : -1.0);
+  }
+  float band = 220.0 * unit;
+  float bi = floor(f.x / band);
+  float scratch = 0.0;
+  if (hash(vec2(bi + 1.7, 13.1)) > 1.0 - 0.3 * amount) {
+    float x0 = (bi + 0.5) * band + hash(vec2(bi + 2.3, 4.1)) * 0.4 * band + valueNoise(vec2(f.y / (400.0 * unit), bi * 1.3)) * 6.0 * unit;
+    float w = 0.6 * unit;
+    float a = 1.0 - smoothstep(w, w + soft, abs(f.x - x0));
+    scratch = a * min(1.0, 2.0 * w * scale) * smoothstep(0.0, 0.3, valueNoise(vec2(f.y / (300.0 * unit), bi * 2.7 + 9.0)));
+  }
+  return clamp(speck + 0.7 * scratch, -1.0, 1.0) * (0.35 + 0.65 * amount);
+}
+vec3 applyDust(vec3 c, float t) {
+  if (t == 0.0) return c;
+  if (t > 0.0) return mix(c, vec3(0.95, 0.95, 0.93), t);
+  return c * (1.0 + 0.85 * t);
+}
 `;
 
 const header = (floatFbo: boolean) => `#version 300 es
@@ -474,7 +548,34 @@ void main() {
   o = vec4(mix(cur.rgb, res, m), cur.a);
 }`;
 
-/** Output pass: geometry (crop/rotate/flip/straighten), vignette, grain, dither. */
+/**
+ * Bloom, halation and dreamy soft blur (roadmap 2.5) on display-encoded data, after the layers.
+ * u_halo / u_glow are this image blurred at BLUR_RADII.halation / glow. Mirrors glowStage in pixel.ts.
+ */
+export const glowFrag = (f: boolean) => `${header(f)}
+in vec2 v_uv; out vec4 o;
+uniform sampler2D u_cur, u_halo, u_glow;
+uniform vec3 u_fx;          // bloom, halation, dreamy
+void main() {
+  vec4 cur = texture(u_cur, v_uv);
+  vec3 x0 = srgbToLinear3(clamp(cur.rgb, 0.0, 1.0));
+  vec3 x = x0;
+  vec3 g = srgbToLinear3(clamp(texture(u_glow, v_uv).rgb, 0.0, 1.0));
+  if (u_fx.x > 0.0) x += g * smoothstep(0.25, 0.9, dot(g, LUMA)) * u_fx.x * 1.2;
+  if (u_fx.y > 0.0) {
+    vec3 h = srgbToLinear3(clamp(texture(u_halo, v_uv).rgb, 0.0, 1.0));
+    float yh = dot(h, LUMA);
+    float e = max(0.0, yh - dot(x0, LUMA)) * smoothstep(0.15, 0.7, yh) * u_fx.y * 1.8;
+    x += vec3(1.0, 0.28, 0.08) * e;
+  }
+  if (u_fx.z > 0.0) {
+    vec3 soft = screenAdd(x, g * 0.85);
+    x = mix(x, mix(soft, g, 0.35), u_fx.z * 0.8);
+  }
+  o = vec4(linearToSrgb3(softClip(x)), cur.a);
+}`;
+
+/** Output pass: geometry (crop/rotate/flip/straighten), fringe, flash, vignette, leak, flare, dust, grain, dither. */
 export const outputFrag = (f: boolean) => `${header(f)}
 in vec2 v_uv; out vec4 o;
 uniform sampler2D u_dev;
@@ -486,6 +587,8 @@ uniform float u_scale;       // rendered px per full-res px
 uniform float u_aspect;
 uniform vec4 u_vig;          // amount, midpoint, roundness, feather
 uniform vec3 u_grain;        // amount, size, roughness
+uniform vec4 u_fx1;          // light leak, flare, dust, flash
+uniform float u_fringe;      // fringeScale(amount)
 uniform int u_effectsOn;
 uniform vec4 u_bg;
 
@@ -498,6 +601,15 @@ void main() {
   vec4 c = texture(u_dev, local);
   vec3 disp = c.rgb;
   if (u_effectsOn == 1) {
+    if (u_fringe > 0.0) {
+      // Red a little further out, blue a little further in, about the frame's centre.
+      vec2 dr = uvOut - 0.5;
+      vec3 sr = u_m * vec3(0.5 + dr * (1.0 + u_fringe), 1.0);
+      vec3 sb = u_m * vec3(0.5 + dr * (1.0 - u_fringe), 1.0);
+      disp.r = texture(u_dev, (sr.xy - u_srcRegion.xy) / u_srcRegion.zw).r;
+      disp.b = texture(u_dev, (sb.xy - u_srcRegion.xy) / u_srcRegion.zw).b;
+    }
+    if (u_fx1.w > 0.0) disp = linearToSrgb3(flashLin(srgbToLinear3(clamp(disp, 0.0, 1.0)), frameRadius(uvOut, u_aspect), u_fx1.w));
     if (u_vig.x != 0.0) {
       vec2 uv = uvOut * 2.0 - 1.0;
       float k = (u_vig.z + 1.0) / 2.0;
@@ -510,6 +622,13 @@ void main() {
       if (u_vig.x < 0.0) lin *= 1.0 + u_vig.x * wt * 0.9;
       else lin = mix(lin, vec3(1.0), u_vig.x * wt * 0.75);
       disp = linearToSrgb3(lin);
+    }
+    if (u_fx1.x > 0.0 || u_fx1.y > 0.0) {
+      vec3 add = lightLeak(uvOut, u_aspect, u_fx1.x) + lensFlare(uvOut, u_aspect, u_fx1.y);
+      disp = linearToSrgb3(screenAdd(srgbToLinear3(clamp(disp, 0.0, 1.0)), add));
+    }
+    if (u_fx1.z > 0.0) {
+      disp = applyDust(disp, dustValue(uvOut * u_outFull, max(u_outFull.x, u_outFull.y), u_scale, u_fx1.z));
     }
     if (u_grain.x > 0.0) {
       vec2 fp = uvOut * u_outFull;

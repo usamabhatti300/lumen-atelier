@@ -1,6 +1,6 @@
 # Handoff: read this first in a new session
 
-_Last updated: 2026-11-08 (newest: roadmap 1.0, Finish step: export date stamp and contact sheet). Owner: Usama (usama@doppellabs.ai)._
+_Last updated: 2026-11-10 (newest: roadmap 2.5, Effects tool). Owner: Usama (usama@doppellabs.ai)._
 
 ## What this project is
 
@@ -48,8 +48,10 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   **1.7: phone sheet detents done**; labelled desktop top bar and the real-phone check were skipped
   by the owner, who found Phase 1 unexciting and wants the fun Phase 2/3 features next (swipe between
   looks, effects, frames/text/stickers, reveal video, look links). **Owner chose swipe + effects:
-  2.1 swipe between looks done; next 2.5 Effects tool** (light leaks, halation, bloom, flare, dust,
-  chromatic aberration, dreamy blur, flash look; each in schema + both renderers + tests).
+  2.1 swipe between looks done; 2.5 Effects tool done** (More → Effects / desktop Effects tab:
+  light leak, lens flare, bloom, halation, flash, dreamy blur, colour fringe, dust & scratches; each
+  in schema + both renderers + tests, all procedural). Ask the owner what's next (Phase 2 left:
+  2.6 frames, 2.7 text and stickers, 2.8 cut-out sticker, 2.9 pick a colour, 2.10 camera [ask]).
   **The C: drive is nearly full** (≈0.6 GB free after clearing test leftovers with the owner's OK):
   run long e2e suites with `--trace off`.
 

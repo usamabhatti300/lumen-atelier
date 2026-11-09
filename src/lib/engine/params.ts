@@ -67,6 +67,19 @@ export interface DevelopParams {
   };
   vignette: { amount: number; midpoint: number; roundness: number; feather: number };
   grain: { amount: number; size: number; roughness: number };
+  /** Photo effects (roadmap 2.5), each 0..1. */
+  fx: {
+    lightLeak: number;
+    halation: number;
+    bloom: number;
+    flare: number;
+    dust: number;
+    fringe: number;
+    dreamy: number;
+    flash: number;
+  };
+  /** Bloom, halation or dreamy blur is on (needs the glow pass). */
+  glowActive: boolean;
 }
 
 const GRADE_CHROMA = 0.11;
@@ -120,6 +133,18 @@ export function deriveDevelopParams(adj: Adjustments): DevelopParams {
   const levelsActive =
     lv.inBlack !== 0 || lv.inWhite !== 255 || lv.gamma !== 1 || lv.outBlack !== 0 || lv.outWhite !== 255;
 
+  const e = adj.effects;
+  const fx = {
+    lightLeak: e.lightLeak / 100,
+    halation: e.halation / 100,
+    bloom: e.bloom / 100,
+    flare: e.flare / 100,
+    dust: e.dust / 100,
+    fringe: e.fringe / 100,
+    dreamy: e.dreamy / 100,
+    flash: e.flash / 100,
+  };
+
   return {
     wb: whiteBalanceMultipliers(b.temperature, b.tint),
     exposureMul: Math.pow(2, b.exposure),
@@ -166,6 +191,8 @@ export function deriveDevelopParams(adj: Adjustments): DevelopParams {
       size: adj.effects.grainSize / 100,
       roughness: adj.effects.grainRoughness / 100,
     },
+    fx,
+    glowActive: fx.bloom > 0 || fx.halation > 0 || fx.dreamy > 0,
   };
 }
 
@@ -306,6 +333,10 @@ export const BLUR_RADII = {
   large: 0.025,
   /** Maximum background blur for mask layers at blur = 100. */
   layerMax: 0.03,
+  /** Halation's glow around bright edges. */
+  halation: 0.012,
+  /** Bloom and dreamy soft blur. */
+  glow: 0.02,
 };
 
 /** Minimum blur radius in pixels, so detail controls still act on small previews. */

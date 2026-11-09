@@ -45,13 +45,24 @@ Source space (oriented original, before crop):
     and **levels**. Optional imported **3D LUT** (`.cube`) with amount.
 11. **Adjustment layers**: per mask layer, local exposure, WB, contrast, highlights, shadows,
     saturation, clarity, dehaze, colour tint and blur, mixed by the rasterized mask × opacity.
+11b. **Glow effects** (roadmap 2.5, only when one is on): **bloom** (highlights of a blur at 2 % of
+    the long edge added back), **halation** (a red rim where a 1.2 % blur is brighter than the pixel:
+    light spilling past bright edges) and **dreamy soft blur** (a screen blend towards the 2 % blur).
+    Linear light, on the finished develop; `glowStage` in pixel.ts, `glowFrag` in shaders.ts. Export
+    pads tiles by the glow's reach on top of the detail blurs.
 
 Output space:
 
 12. **Geometry**: one affine matrix maps output pixels → source pixels (crop, 90° rotations, flips,
     straighten) and resamples bilinearly.
-13. **Vignette** (in linear light, relative to the crop) and **grain** (value noise at full-resolution
-    pixel coordinates; attenuated when grain is smaller than a preview pixel).
+13. In this order, all relative to the crop: **colour fringe** (red sampled at 1 + k and blue at 1 − k
+    of the distance from the frame centre, k ≤ 0.006), **flash** (bright punchy centre, darker
+    edges, slightly cool), **vignette** (linear light), **light leak** and **lens flare** (procedural
+    warm light screen-blended in linear light; the flare's sun sits top right with three ghosts),
+    **dust and scratches** (specks and broken vertical lines sized to the long edge, at
+    full-resolution pixel coordinates so tiles join; faded when smaller than a preview pixel) and
+    **grain** (value noise at full-resolution pixel coordinates; attenuated when grain is smaller
+    than a preview pixel). Every effect is 0 by default and then skipped (identity, tested).
 14. **Dither** (±0.5/255) and 8-bit output.
 
 ## Lens blur (depth of field)

@@ -422,3 +422,155 @@ export function lensBlendWeights(cocPx: number, plan: Pick<LensPlan, 'factor' | 
   if (!plan.fine) return [smoothstep(0.5, 0.5 + plan.factor, c), 1];
   return [smoothstep(0.5, 0.5 + plan.fine.factor, c), smoothstep(0.75 * plan.factor, 1.5 * plan.factor, c)];
 }
+
+// ---------------------------------------------------------------------------
+// Photo effects (roadmap 2.5). Mirrored by glowFrag and the effects block of
+// outputFrag in gl/shaders.ts; cpuRender.ts applies them in the same order:
+// glow stage (source space, after layers), then in the output frame: fringe
+// (sampling), flash, vignette, light leak, flare, dust, grain.
+// ---------------------------------------------------------------------------
+
+const lum = (c: RGB) => luminance(c[0], c[1], c[2]);
+const toLin = (c: RGB): RGB => [srgbToLinear(clamp(c[0], 0, 1)), srgbToLinear(clamp(c[1], 0, 1)), srgbToLinear(clamp(c[2], 0, 1))];
+const toDisp = (c: RGB): RGB => [linearToSrgb(c[0]), linearToSrgb(c[1]), linearToSrgb(c[2])];
+
+/** Screen blend in linear light: brightens like light added on film, never past white. */
+export function screenAdd(lin: RGB, add: RGB): RGB {
+  return [0, 1, 2].map((k) => 1 - (1 - clamp(lin[k], 0, 1)) * (1 - clamp(add[k], 0, 1))) as RGB;
+}
+
+/** Halation's colour: the red/orange of light scattered back through film's red layer. */
+export const HALATION_TINT: RGB = [1.0, 0.28, 0.08];
+
+/**
+ * Bloom, halation and dreamy soft blur, on display-encoded values. `halo` and `glow` are the
+ * photo blurred at BLUR_RADII.halation and BLUR_RADII.glow at this pixel.
+ */
+export function glowStage(disp: RGB, halo: RGB, glow: RGB, F: DevelopParams['fx']): RGB {
+  const x0 = toLin(disp);
+  let x: RGB = [...x0];
+  const g = toLin(glow);
+  if (F.bloom > 0) {
+    const m = smoothstep(0.25, 0.9, lum(g)) * F.bloom * 1.2;
+    x = [x[0] + g[0] * m, x[1] + g[1] * m, x[2] + g[2] * m];
+  }
+  if (F.halation > 0) {
+    // Light spilling from brighter surroundings: a rim past bright edges, none inside flat areas.
+    const yh = lum(toLin(halo));
+    const e = Math.max(0, yh - lum(x0)) * smoothstep(0.15, 0.7, yh) * F.halation * 1.8;
+    x = [x[0] + HALATION_TINT[0] * e, x[1] + HALATION_TINT[1] * e, x[2] + HALATION_TINT[2] * e];
+  }
+  if (F.dreamy > 0) {
+    const soft = screenAdd(x, [g[0] * 0.85, g[1] * 0.85, g[2] * 0.85]);
+    const t = F.dreamy * 0.8;
+    x = [0, 1, 2].map((k) => mix(x[k], mix(soft[k], g[k], 0.35), t)) as RGB;
+  }
+  return toDisp(softClip(x));
+}
+
+/** Chromatic aberration: red is sampled at (1 + k) and blue at (1 - k) of the distance from the frame's centre. */
+export function fringeScale(amount: number): number {
+  return amount * 0.006;
+}
+
+/** Distance from the frame's centre, 0 at the centre and 1 in the corners (u, v in 0..1). */
+export function frameRadius(u: number, v: number, aspect: number): number {
+  return Math.hypot((u - 0.5) * aspect, v - 0.5) / Math.hypot(aspect * 0.5, 0.5);
+}
+
+/** On-camera flash: a bright, punchy centre falling off to darker edges, slightly cool. Linear in, linear out. */
+export function flashLin(lin: RGB, d: number, amount: number): RGB {
+  if (amount <= 0) return lin;
+  const fall = 1 - smoothstep(0, 0.85, d);
+  const gain = 1 + amount * (0.55 * fall - 0.45 * (1 - fall));
+  const lit: RGB = [lin[0] * gain, lin[1] * gain, lin[2] * gain];
+  const p = encodeY(lum(lit));
+  const out = setLuminance(lit, decodeY(Math.max(applyContrast(p, 0.35 * amount), 0)));
+  return softClip([out[0] * (1 - 0.03 * amount), out[1], out[2] * (1 + 0.05 * amount)]);
+}
+
+/** Light leak: warm light (to add with screenAdd) bleeding in from the right edge, with an uneven front. */
+export function lightLeak(u: number, v: number, aspect: number, amount: number): RGB {
+  if (amount <= 0) return [0, 0, 0];
+  const n = valueNoise(v * 3 + 11.3, 0.7);
+  const edge = smoothstep(0.55 + 0.12 * n, 1.05, u);
+  const blob = Math.exp(-(((u - 1) * aspect) ** 2 + (v - 0.3) ** 2) / 0.18);
+  const w = clamp(edge * 0.7 + blob * 0.8, 0, 1) * amount * 0.85;
+  const t = smoothstep(0, 1, v);
+  return [w, mix(0.32, 0.72, t) * w, mix(0.06, 0.28, t) * w];
+}
+
+/** The flare's ghosts: [distance along source → centre (1 = centre), radius, r, g, b]. */
+export const FLARE_GHOSTS: [number, number, number, number, number][] = [
+  [1.35, 0.045, 0.6, 1.0, 0.7],
+  [1.75, 0.08, 0.7, 0.6, 1.0],
+  [2.1, 0.03, 1.0, 0.8, 0.5],
+];
+const FLARE_SRC = [0.8, 0.2];
+const FLARE_TINT: RGB = [1.0, 0.85, 0.65];
+
+/** Lens flare from a sun near the top right: hot spot, a horizontal streak and ghosts (to add with screenAdd). */
+export function lensFlare(u: number, v: number, aspect: number, amount: number): RGB {
+  if (amount <= 0) return [0, 0, 0];
+  const px = u * aspect;
+  const sx = FLARE_SRC[0] * aspect;
+  const sy = FLARE_SRC[1];
+  const cx = 0.5 * aspect;
+  const d2 = (px - sx) ** 2 + (v - sy) ** 2;
+  const hot = Math.exp(-d2 / 0.012) + 0.35 * Math.exp(-d2 / 0.08);
+  const streak = 0.35 * Math.exp(-((v - sy) ** 2) / 0.00015) * Math.exp(-Math.abs(px - sx) / (0.6 * aspect));
+  const out: RGB = [FLARE_TINT[0] * (hot + streak), FLARE_TINT[1] * (hot + streak), FLARE_TINT[2] * (hot + streak)];
+  for (const [k, r, gr, gg, gb] of FLARE_GHOSTS) {
+    const gx = sx + (cx - sx) * k;
+    const gy = sy + (0.5 - sy) * k;
+    const disc = (1 - smoothstep(r * 0.7, r, Math.hypot(px - gx, v - gy))) * 0.18;
+    out[0] += gr * disc;
+    out[1] += gg * disc;
+    out[2] += gb * disc;
+  }
+  return [out[0] * amount, out[1] * amount, out[2] * amount];
+}
+
+/**
+ * Dust and scratches at a full-resolution output pixel (fx, fy). Returns a signed cover in
+ * [-1, 1]: positive lightens (dust on a scanned negative), negative darkens. Features are sized to
+ * the photo's long edge so the preview and the export match; `scale` is preview px per full px,
+ * and features smaller than a preview pixel fade as they would when averaged.
+ */
+export function dustValue(fx: number, fy: number, longEdge: number, scale: number, amount: number): number {
+  if (amount <= 0) return 0;
+  const unit = longEdge / 1500;
+  const soft = Math.max(1 / scale, 0.6 * unit);
+  // Specks: at most one per cell, kept inside its cell.
+  const cell = 60 * unit;
+  const ci = Math.floor(fx / cell);
+  const cj = Math.floor(fy / cell);
+  let speck = 0;
+  if (hashNoise(ci + 0.31, cj + 7.7) > 1 - 0.5 * amount) {
+    const r = (0.8 + 0.85 * (hashNoise(ci + 3.1, cj + 1.3) + 1)) * unit;
+    const room = 0.5 * Math.max(0, cell - 2 * r - 4 * unit);
+    const px = (ci + 0.5) * cell + hashNoise(ci + 5.7, cj + 2.9) * room;
+    const py = (cj + 0.5) * cell + hashNoise(ci + 8.3, cj + 6.1) * room;
+    const a = 1 - smoothstep(r - soft * 0.5, r + soft * 0.5, Math.hypot(fx - px, fy - py));
+    speck = a * Math.min(1, r * scale) * (hashNoise(ci + 9.1, cj + 4.4) > -0.3 ? 1 : -1);
+  }
+  // Scratches: thin, broken vertical lines in a few bands.
+  const band = 220 * unit;
+  const bi = Math.floor(fx / band);
+  let scratch = 0;
+  if (hashNoise(bi + 1.7, 13.1) > 1 - 0.3 * amount) {
+    const x0 = (bi + 0.5) * band + hashNoise(bi + 2.3, 4.1) * 0.4 * band + valueNoise(fy / (400 * unit), bi * 1.3) * 6 * unit;
+    const w = 0.6 * unit;
+    const a = 1 - smoothstep(w, w + soft, Math.abs(fx - x0));
+    scratch = a * Math.min(1, 2 * w * scale) * smoothstep(0, 0.3, valueNoise(fy / (300 * unit), bi * 2.7 + 9));
+  }
+  return clamp(speck + 0.7 * scratch, -1, 1) * (0.35 + 0.65 * amount);
+}
+
+/** Applies a dust cover (display-encoded). */
+export function applyDust(c: RGB, t: number): RGB {
+  if (t === 0) return c;
+  if (t > 0) return [mix(c[0], 0.95, t), mix(c[1], 0.95, t), mix(c[2], 0.93, t)];
+  const k = 1 + 0.85 * t;
+  return [c[0] * k, c[1] * k, c[2] * k];
+}

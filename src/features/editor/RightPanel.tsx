@@ -1,11 +1,12 @@
 import { motion } from 'motion/react';
-import { Crop, Eraser, Layers, Palette, ScanFace, SlidersHorizontal, Sparkle } from 'lucide-react';
+import { Aperture, Crop, Eraser, Layers, Palette, ScanFace, SlidersHorizontal, Sparkle } from 'lucide-react';
 import { useEditor, type RightTab } from '@/state/editorStore';
 import { selectRightTab } from './rightTabs';
 import { Histogram } from './Histogram';
 import { LightPanel } from './panels/LightPanel';
 import { ColorPanel } from './panels/ColorPanel';
 import { DetailPanel } from './panels/DetailPanel';
+import { EffectsPanel } from './panels/EffectsPanel';
 import { GeometryPanel } from './panels/GeometryPanel';
 import { MasksPanel } from './panels/MasksPanel';
 import { PortraitPanel } from './panels/PortraitPanel';
@@ -15,6 +16,7 @@ export const RIGHT_TABS: { id: RightTab; label: string; icon: typeof SlidersHori
   { id: 'adjust', label: 'Light', icon: SlidersHorizontal },
   { id: 'color', label: 'Colour', icon: Palette },
   { id: 'detail', label: 'Detail', icon: Sparkle },
+  { id: 'effects', label: 'Effects', icon: Aperture },
   { id: 'masks', label: 'Masks', icon: Layers },
   { id: 'portrait', label: 'Portrait', icon: ScanFace },
   { id: 'remove', label: 'Remove', icon: Eraser },
@@ -29,6 +31,8 @@ export function PanelContent({ tab }: { tab: RightTab }) {
       return <ColorPanel />;
     case 'detail':
       return <DetailPanel />;
+    case 'effects':
+      return <EffectsPanel />;
     case 'masks':
       return <MasksPanel />;
     case 'portrait':
@@ -45,7 +49,7 @@ export function RightPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Histogram />
-      <div role="tablist" aria-label="Adjustment panels" className="mx-1.5 mb-1 grid shrink-0 grid-cols-7 rounded-lg bg-raised p-1 ring-1 ring-line-soft">
+      <div role="tablist" aria-label="Adjustment panels" className="mx-1.5 mb-1 grid shrink-0 grid-cols-8 rounded-lg bg-raised p-1 ring-1 ring-line-soft">
         {RIGHT_TABS.map((t) => (
           <button
             key={t.id}
@@ -55,7 +59,7 @@ export function RightPanel() {
             aria-selected={tab === t.id}
             aria-controls="right-tabpanel"
             onClick={() => selectRightTab(t.id)}
-            className={`relative flex min-w-0 flex-col items-center gap-1 rounded-md py-2 text-[11px] font-medium tracking-[-0.02em] transition-colors ${
+            className={`relative flex min-w-0 flex-col items-center gap-1 rounded-md py-2 text-[10px] font-medium tracking-[-0.03em] transition-colors ${
               tab === t.id ? 'text-fg' : 'text-fg-3 hover:text-fg'
             }`}
           >

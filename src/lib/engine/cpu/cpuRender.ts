@@ -21,8 +21,17 @@ import {
   type LensParams,
 } from '../params';
 import {
+  applyDust,
   applyGrainSrgb,
   applyVignette,
+  dustValue,
+  flashLin,
+  frameRadius,
+  fringeScale,
+  glowStage,
+  lensFlare,
+  lightLeak,
+  screenAdd,
   bokehCompress,
   bokehExpand,
   cocSimilarity,
@@ -437,7 +446,20 @@ export function cpuRender(input: CpuRenderInput): ImageData | CpuImage {
     if ((i & 0xffff) === 0 && input.shouldCancel?.()) throw new RenderCancelled();
   }
 
-  // Output geometry, vignette, grain.
+  // Bloom, halation and dreamy soft blur (roadmap 2.5), on the finished develop.
+  if (globalOn && P.glowActive) {
+    const halo = P.fx.halation > 0 ? boxBlur3(dev, W, H, radius(BLUR_RADII.halation, 2)) : dev;
+    const glow = P.fx.bloom > 0 || P.fx.dreamy > 0 ? boxBlur3(dev, W, H, radius(BLUR_RADII.glow, 4)) : dev;
+    for (let o = 0; o < n * 3; o += 3) {
+      const c = glowStage([dev[o], dev[o + 1], dev[o + 2]], [halo[o], halo[o + 1], halo[o + 2]], [glow[o], glow[o + 1], glow[o + 2]], P.fx);
+      dev[o] = c[0];
+      dev[o + 1] = c[1];
+      dev[o + 2] = c[2];
+    }
+    if (input.shouldCancel?.()) throw new RenderCancelled();
+  }
+
+  // Output geometry, fringe, flash, vignette, light leak, flare, dust, grain.
   const { out } = input;
   const result = new Uint8ClampedArray(out.width * out.height * 4);
   const mat = outputToSourceMatrix(input.fullSize, edit.geometry);
@@ -449,6 +471,29 @@ export function cpuRender(input: CpuRenderInput): ImageData | CpuImage {
   const aspect = fullOutW / fullOutH;
   const scale = out.width / fullOutW;
   const effects = globalOn;
+  const F = P.fx;
+  const fringe = fringeScale(F.fringe);
+  const longOut = Math.max(fullOutW, fullOutH);
+  /** Bilinear sample of the developed image, one channel, at source position (s, t). */
+  const sampleDev = (s: number, t: number, k: number) => {
+    const fx = s * W - 0.5;
+    const fy = t * H - 0.5;
+    const x0 = Math.max(0, Math.min(W - 1, Math.floor(fx)));
+    const y0 = Math.max(0, Math.min(H - 1, Math.floor(fy)));
+    const x1 = Math.min(W - 1, x0 + 1);
+    const y1 = Math.min(H - 1, y0 + 1);
+    const ax = Math.min(1, Math.max(0, fx - x0));
+    const ay = Math.min(1, Math.max(0, fy - y0));
+    const top = dev[(y0 * W + x0) * 3 + k] * (1 - ax) + dev[(y0 * W + x1) * 3 + k] * ax;
+    const bot = dev[(y1 * W + x0) * 3 + k] * (1 - ax) + dev[(y1 * W + x1) * 3 + k] * ax;
+    return top * (1 - ay) + bot * ay;
+  };
+  const toLin8 = (c: RGB): RGB => [
+    SRGB8_TO_LINEAR[Math.round(clamp01(c[0]) * 255)],
+    SRGB8_TO_LINEAR[Math.round(clamp01(c[1]) * 255)],
+    SRGB8_TO_LINEAR[Math.round(clamp01(c[2]) * 255)],
+  ];
+  const toDisp = (l: RGB): RGB => [linearToSrgb(l[0]), linearToSrgb(l[1]), linearToSrgb(l[2])];
   for (let oy = 0; oy < out.height; oy++) {
     for (let ox = 0; ox < out.width; ox++) {
       const u = (ox + 0.5) / out.width;
@@ -459,32 +504,27 @@ export function cpuRender(input: CpuRenderInput): ImageData | CpuImage {
         result[di + 3] = 255;
         continue;
       }
-      // Bilinear sample of the developed image.
       const fx = s * W - 0.5;
       const fy = t * H - 0.5;
-      const x0 = Math.max(0, Math.min(W - 1, Math.floor(fx)));
-      const y0 = Math.max(0, Math.min(H - 1, Math.floor(fy)));
-      const x1 = Math.min(W - 1, x0 + 1);
-      const y1 = Math.min(H - 1, y0 + 1);
-      const ax = Math.min(1, Math.max(0, fx - x0));
-      const ay = Math.min(1, Math.max(0, fy - y0));
-      let c: RGB = [0, 0, 0];
-      for (let k = 0; k < 3; k++) {
-        const top = dev[(y0 * W + x0) * 3 + k] * (1 - ax) + dev[(y0 * W + x1) * 3 + k] * ax;
-        const bot = dev[(y1 * W + x0) * 3 + k] * (1 - ax) + dev[(y1 * W + x1) * 3 + k] * ax;
-        c[k] = top * (1 - ay) + bot * ay;
-      }
+      let c: RGB = [sampleDev(s, t, 0), sampleDev(s, t, 1), sampleDev(s, t, 2)];
       const alpha = source.data[(Math.round(Math.min(H - 1, Math.max(0, fy))) * W + Math.round(Math.min(W - 1, Math.max(0, fx)))) * 4 + 3];
       if (effects) {
+        if (fringe > 0) {
+          const [sr, tr] = apply(mat, 0.5 + (u - 0.5) * (1 + fringe), 0.5 + (v - 0.5) * (1 + fringe));
+          const [sb, tb] = apply(mat, 0.5 + (u - 0.5) * (1 - fringe), 0.5 + (v - 0.5) * (1 - fringe));
+          c = [sampleDev(sr, tr, 0), c[1], sampleDev(sb, tb, 2)];
+        }
+        if (F.flash > 0) c = toDisp(flashLin(toLin8(c), frameRadius(u, v, aspect), F.flash));
         if (P.vignette.amount !== 0) {
           const wgt = vignetteWeight(u * 2 - 1, v * 2 - 1, aspect, P.vignette);
-          const linC = applyVignette(
-            [SRGB8_TO_LINEAR[Math.round(clamp01(c[0]) * 255)], SRGB8_TO_LINEAR[Math.round(clamp01(c[1]) * 255)], SRGB8_TO_LINEAR[Math.round(clamp01(c[2]) * 255)]],
-            wgt,
-            P.vignette.amount,
-          );
-          c = [linearToSrgb(linC[0]), linearToSrgb(linC[1]), linearToSrgb(linC[2])];
+          c = toDisp(applyVignette(toLin8(c), wgt, P.vignette.amount));
         }
+        if (F.lightLeak > 0 || F.flare > 0) {
+          const leak = lightLeak(u, v, aspect, F.lightLeak);
+          const flare = lensFlare(u, v, aspect, F.flare);
+          c = toDisp(screenAdd(toLin8(c), [leak[0] + flare[0], leak[1] + flare[1], leak[2] + flare[2]]));
+        }
+        if (F.dust > 0) c = applyDust(c, dustValue(u * fullOutW, v * fullOutH, longOut, scale, F.dust));
         if (P.grain.amount > 0) {
           c = applyGrainSrgb(c, grainValue(u * fullOutW, v * fullOutH, P.grain, scale), P.grain.amount);
         }
