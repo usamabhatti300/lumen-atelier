@@ -12,7 +12,8 @@ import { engine } from './controller';
 
 let cached: { key: string; lin: Float32Array } | null = null;
 
-function photoSample(): Float32Array | null {
+/** A small linear-RGB sample of the open photo's original pixels (cached per photo), or null before it has loaded. */
+export function photoSample(): Float32Array | null {
   const id = engine.getActivePhotoId();
   const bmp = engine.getPreviewBitmap();
   if (!id || !bmp) return null;

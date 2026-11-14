@@ -65,7 +65,9 @@ export function RemovePanel() {
           {status.phase === 'download' && (
             <div className="space-y-1.5" data-testid="remove-status">
               <p className="text-xs text-fg-2">
-                Loading the removal model · {mb(status.loaded)} of {mb(status.total)}
+                {status.total && status.loaded >= status.total
+                  ? 'Starting the removal model…'
+                  : `Loading the removal model · ${mb(status.loaded)} of ${mb(status.total)}`}
               </p>
               <Progress value={status.total ? status.loaded / status.total : 0} label="Removal model download" />
               <Button variant="ghost" size="sm" onClick={() => engine.removals.cancel()}>

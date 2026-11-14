@@ -32,15 +32,17 @@ test('adaptive looks: a backlit photo is evened out before the look, and the set
   await page.getByTestId('gallery-file-input').setInputFiles({ name: 'backlit.jpg', mimeType: 'image/jpeg', buffer: await backlit(page) });
   await waitForRender(page);
 
-  const apply = page.getByRole('button', { name: 'Apply Golden Portrait Negative', exact: true });
+  const roll = page.getByRole('tab', { name: 'Basement Summer' });
+  const apply = page.getByRole('button', { name: 'Apply Sunday Negative', exact: true });
+  await roll.click();
   await apply.click();
   const note = page.getByTestId('look-adapted');
   await expect(note).toContainText(/Fitted to this photo: exposure −\d\.\d\d/);
 
-  // The exposure the user sees includes the offset (the look alone sets +0.10).
+  // The exposure the user sees includes the offset (the look alone sets +0.15).
   await page.locator('#tab-adjust').click();
   const exposure = page.getByRole('slider', { name: 'Exposure' }).first();
-  expect(Number(await exposure.inputValue())).toBeLessThan(0.1);
+  expect(Number(await exposure.inputValue())).toBeLessThan(0.15);
 
   // Off in Settings: the same look applies exactly as made.
   await page.goto('/settings');
@@ -50,9 +52,10 @@ test('adaptive looks: a backlit photo is evened out before the look, and the set
   await expect(toggle).not.toBeChecked();
   await page.goBack();
   await waitForRender(page);
+  await roll.click();
   await apply.click();
-  await expect(page.getByRole('button', { name: 'Remove preset' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove look' }).first()).toBeVisible();
   await expect(note).toHaveCount(0);
   await page.locator('#tab-adjust').click();
-  await expect(page.getByRole('slider', { name: 'Exposure' }).first()).toHaveValue('0.1');
+  await expect(page.getByRole('slider', { name: 'Exposure' }).first()).toHaveValue('0.15');
 });

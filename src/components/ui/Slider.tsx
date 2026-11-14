@@ -9,7 +9,7 @@
  * finger landed; a vertical swipe scrolls the panel; a tap changes nothing.
  */
 import { RotateCcw } from 'lucide-react';
-import { memo, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { motionReduced } from '@/lib/haptics';
 import type { Range } from '@/lib/schema/adjustments';
 
@@ -218,7 +218,7 @@ export const Slider = memo(function Slider({
         />
         {!track && (
           <div
-            className={`pointer-events-none absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-accent shadow-[0_0_10px_rgb(200_184_255/0.55)] transition-[left,width] ${pressed ? 'duration-75' : 'duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]'}`}
+            className={`pointer-events-none absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-accent transition-[left,width] ${pressed ? 'duration-75' : 'duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]'}`}
             style={fillStyle}
           />
         )}
@@ -254,29 +254,45 @@ export const Slider = memo(function Slider({
   );
 });
 
-/** The readout's number: follows `value` exactly while `live`, otherwise counts to it (~420 ms). */
+/** Sliders being dragged right now (any of them, anywhere on the page). */
+let activeDrags = 0;
+
+/**
+ * The readout's number: follows `value` exactly while `live` or while any slider is being dragged
+ * (one drag, such as a look's Amount, moves many sliders at once), otherwise counts to it (~420 ms).
+ * It only holds state while a count is running, so following a value costs no extra render.
+ */
 function useCountTo(value: number, live: boolean, step: number) {
-  const [shown, setShown] = useState(value);
+  const [counting, setCounting] = useState<number | null>(null);
   const from = useRef(value);
   useEffect(() => {
+    if (!live) return;
+    activeDrags++;
+    return () => {
+      activeDrags--;
+    };
+  }, [live]);
+  // Before paint, so a jump starts counting from the old number instead of flashing the new one.
+  useLayoutEffect(() => {
     const start = from.current;
-    if (live || motionReduced() || Math.abs(value - start) <= step * 1.5) {
+    if (live || activeDrags > 0 || motionReduced() || Math.abs(value - start) <= step * 1.5) {
       from.current = value;
-      setShown(value);
+      setCounting(null);
       return;
     }
+    setCounting(Math.round(start / step) * step);
     let raf = 0;
     const t0 = performance.now();
     const run = (now: number) => {
       const k = Math.min(1, (now - t0) / 420);
       const e = 1 - Math.pow(1 - k, 3);
       const v = start + (value - start) * e;
-      from.current = v;
-      setShown(k < 1 ? Math.round(v / step) * step : value);
+      from.current = k < 1 ? v : value;
+      setCounting(k < 1 ? Math.round(v / step) * step : null);
       if (k < 1) raf = requestAnimationFrame(run);
     };
     raf = requestAnimationFrame(run);
     return () => cancelAnimationFrame(raf);
   }, [value, live, step]);
-  return shown;
+  return counting ?? value;
 }

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { defaultAdjustments, defaultEditState, PartialAdjustmentsSchema, leafPaths, type Adjustments, type PartialAdjustments } from '../schema/adjustments';
+import { defaultAdjustments, defaultEditState, AdjustmentsSchema, PartialAdjustmentsSchema, leafPaths, type Adjustments, type PartialAdjustments } from '../schema/adjustments';
 import { cpuRender } from '../engine/cpu/cpuRender';
 import { blendPreset, blendWheel } from './blend';
-import { BUILTIN_PRESETS, CATEGORY_LABELS, PRESET_CATEGORIES } from './library';
+import { BUILTIN_PRESETS, CATEGORY_LABELS, LOOK_ALIASES, PRESET_CATEGORIES, migrateLookIds } from './library';
+import { TRAITS } from './recommend';
+import { ROLLS } from './rolls';
 import { deriveDevelopParams } from '../engine/params';
 import { developPixel } from '../engine/pixel';
 import { mergeAdjustments } from '../schema/adjustments';
@@ -56,70 +58,104 @@ describe('preset blending', () => {
   });
 });
 
-describe('built-in preset library', () => {
-  it('has 186 presets in the expected categories, with unique ids and names', () => {
-    const counts: Record<string, number> = {
-      signature: 51, cinematic: 16, 'pale-blue': 15, film: 15, matte: 4, portrait: 16, wedding: 4,
-      luxury: 14, 'golden-hour': 4, travel: 16, earthy: 4, street: 4, bw: 4, social: 19,
-    };
-    expect(BUILTIN_PRESETS).toHaveLength(186);
+describe('built-in look library', () => {
+  const ids = new Set(BUILTIN_PRESETS.map((p) => p.id));
+  const palette: [number, number, number][] = [
+    [0.1, 0.1, 0.12], [0.45, 0.45, 0.45], [0.85, 0.85, 0.82], [0.8, 0.6, 0.48],
+    [0.25, 0.5, 0.2], [0.2, 0.35, 0.7], [0.75, 0.2, 0.15], [0.95, 0.8, 0.3],
+  ];
+  const onPalette = (adjustments: Adjustments) => {
+    const P = deriveDevelopParams(adjustments);
+    return palette.flatMap((c) => developPixel(c, P));
+  };
+  const rms = (a: number[], b: number[]) => Math.sqrt(a.reduce((s, v, k) => s + (v - b[k]) ** 2, 0) / a.length);
+
+  it('is a curated set: 54 looks in 12 rolls, with unique ids and names', () => {
+    expect(BUILTIN_PRESETS).toHaveLength(54);
+    expect(PRESET_CATEGORIES).toHaveLength(12);
     expect(PRESET_CATEGORIES[0]).toBe('signature');
-    expect([...PRESET_CATEGORIES].sort()).toEqual(Object.keys(counts).sort());
-    for (const c of PRESET_CATEGORIES) expect(BUILTIN_PRESETS.filter((p) => p.category === c), c).toHaveLength(counts[c]);
-    expect(new Set(BUILTIN_PRESETS.map((p) => p.id)).size).toBe(186);
-    expect(new Set(BUILTIN_PRESETS.map((p) => p.name.toLowerCase())).size).toBe(186);
+    for (const c of PRESET_CATEGORIES) {
+      const n = BUILTIN_PRESETS.filter((p) => p.category === c).length;
+      expect(n, c).toBeGreaterThanOrEqual(3);
+      expect(n, c).toBeLessThanOrEqual(6);
+      expect(ROLLS[c].no, c).toMatch(/^(0[1-9]|1[0-2])$/);
+    }
+    expect(new Set(PRESET_CATEGORIES.map((c) => ROLLS[c].no)).size).toBe(12);
+    expect(ids.size).toBe(BUILTIN_PRESETS.length);
+    expect(new Set(BUILTIN_PRESETS.map((p) => p.name.toLowerCase())).size).toBe(BUILTIN_PRESETS.length);
   });
 
-  it('every preset has a label, a description and 2-5 tags', () => {
-    for (const p of BUILTIN_PRESETS) {
-      expect(CATEGORY_LABELS[p.category], p.name).toBeTruthy();
-      expect(p.description.length, p.name).toBeGreaterThan(20);
-      expect(p.tags.length, p.name).toBeGreaterThanOrEqual(2);
-      expect(p.tags.length, p.name).toBeLessThanOrEqual(5);
+  it('looks are listed roll by roll, and each roll has its cover look', () => {
+    const order = BUILTIN_PRESETS.map((p) => PRESET_CATEGORIES.indexOf(p.category));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    for (const c of PRESET_CATEGORIES) {
+      const cover = ROLLS[c].cover;
+      if (cover) expect(BUILTIN_PRESETS.some((p) => p.category === c && p.name === cover), cover).toBe(true);
     }
   });
 
-  it('every preset at intensity 0 leaves the photo untouched', () => {
+  it('every look has a label, a description, 2-5 tags and the photos it suits', () => {
+    for (const p of BUILTIN_PRESETS) {
+      expect(CATEGORY_LABELS[p.category], p.name).toBeTruthy();
+      expect(p.description.length, p.name).toBeGreaterThan(20);
+      expect(p.description.length, p.name).toBeLessThanOrEqual(400);
+      expect(p.tags.length, p.name).toBeGreaterThanOrEqual(2);
+      expect(p.tags.length, p.name).toBeLessThanOrEqual(5);
+      expect(p.suits.length, p.name).toBeGreaterThanOrEqual(2);
+      for (const t of p.suits) expect(TRAITS, p.name).toContain(t);
+      expect(p.name, p.name).not.toMatch(/inspired/i);
+    }
+  });
+
+  it('every look at amount 0 leaves the photo untouched', () => {
     const base = defaultAdjustments();
     for (const p of BUILTIN_PRESETS) expect(blendPreset(base, p.adjustments, 0), p.name).toEqual(base);
   });
 
-  it('every preset is schema-valid without clamping', () => {
+  it('every look is schema-valid without clamping', () => {
     for (const p of BUILTIN_PRESETS) {
       const parsed = PartialAdjustmentsSchema.parse(p.adjustments);
       expect(JSON.parse(JSON.stringify(parsed))).toEqual(JSON.parse(JSON.stringify(p.adjustments)));
     }
   });
 
-  it('presets render meaningfully different results on a test palette', () => {
-    const palette: [number, number, number][] = [
-      [0.1, 0.1, 0.12], [0.45, 0.45, 0.45], [0.85, 0.85, 0.82], [0.8, 0.6, 0.48],
-      [0.25, 0.5, 0.2], [0.2, 0.35, 0.7], [0.75, 0.2, 0.15], [0.95, 0.8, 0.3],
-    ];
-    const renders = BUILTIN_PRESETS.map((p) => {
-      const P = deriveDevelopParams(mergeAdjustments(defaultAdjustments(), p.adjustments));
-      return palette.flatMap((c) => developPixel(c, P));
-    });
+  it('follows the house rules that keep highlights, shadows and corners safe', () => {
+    for (const p of BUILTIN_PRESETS) {
+      const a = p.adjustments;
+      expect(a.basic?.whites ?? 0, `${p.name}: whites`).toBeLessThanOrEqual(4);
+      expect(a.basic?.exposure ?? 0, `${p.name}: exposure`).toBeLessThanOrEqual(0.25);
+      expect(a.basic?.blacks ?? 0, `${p.name}: blacks`).toBeGreaterThanOrEqual(-15);
+      expect(a.effects?.vignette ?? 0, `${p.name}: vignette`).toBeGreaterThanOrEqual(-22);
+      expect(a.detail, `${p.name}: looks never set detail`).toBeUndefined();
+    }
+  });
+
+  it('every look changes a photo visibly', () => {
+    const untouched = onPalette(defaultAdjustments());
+    for (const p of BUILTIN_PRESETS) {
+      expect(leafPaths(p.adjustments).length, p.name).toBeGreaterThan(5);
+      // At least ~2% RMS per channel away from the untouched render (the old library had looks at 0.4%).
+      expect(rms(onPalette(mergeAdjustments(defaultAdjustments(), p.adjustments)), untouched), p.name).toBeGreaterThan(0.02);
+    }
+  });
+
+  it('no two looks render alike on a test palette', () => {
+    const renders = BUILTIN_PRESETS.map((p) => onPalette(mergeAdjustments(defaultAdjustments(), p.adjustments)));
     let minDist = Infinity;
     let pair = '';
     for (let i = 0; i < renders.length; i++) {
       for (let j = i + 1; j < renders.length; j++) {
-        const d = Math.sqrt(renders[i].reduce((s, v, k) => s + (v - renders[j][k]) ** 2, 0) / renders[i].length);
+        const d = rms(renders[i], renders[j]);
         if (d < minDist) {
           minDist = d;
           pair = `${BUILTIN_PRESETS[i].name} / ${BUILTIN_PRESETS[j].name}`;
         }
       }
     }
-    // RMS difference of at least ~1% per channel between the two most similar presets.
-    expect(minDist, `closest pair: ${pair}`).toBeGreaterThan(0.01);
+    expect(minDist, `closest pair: ${pair}`).toBeGreaterThan(0.015);
   });
 
-  it('every preset changes the image', () => {
-    for (const p of BUILTIN_PRESETS) expect(leafPaths(p.adjustments).length).toBeGreaterThan(5);
-  });
-
-  it('presets added after the original 70 do not clip a bright sky more than the untouched render', () => {
+  it('no look clips a bright sky more than the untouched render', () => {
     // Pale hazy sky (blue at the top to near-white at the horizon), a sun disc with a glow, and sand.
     const W = 120;
     const H = 90;
@@ -143,9 +179,43 @@ describe('built-in preset library', () => {
     };
     const untouched = whiteFraction(defaultAdjustments());
     expect(untouched).toBeGreaterThan(0.01); // the fixture really has clipped highlights to protect
-    // The original 70 come first and predate this rule (15 of them clip this fixture).
-    for (const p of BUILTIN_PRESETS.slice(70)) {
+    for (const p of BUILTIN_PRESETS) {
       expect(whiteFraction(blendPreset(defaultAdjustments(), p.adjustments, 100)), p.name).toBeLessThanOrEqual(untouched);
     }
   }, 120_000);
+
+  it('a look can be pushed to 150%: values carry on past the look, inside their ranges', () => {
+    const base = defaultAdjustments();
+    const look = { basic: { contrast: 20, saturation: -80, highlights: -90 }, curves: { master: [[0, 0.1], [1, 0.9]] as [number, number][] }, grading: { shadows: { hue: 200, saturation: 80 } } };
+    const full = blendPreset(base, look, 100);
+    const pushed = blendPreset(base, look, 150);
+    expect(full.basic.contrast).toBe(20);
+    expect(pushed.basic.contrast).toBe(30);
+    // Clamped to the control's range rather than running past it.
+    expect(pushed.basic.saturation).toBe(-100);
+    expect(pushed.basic.highlights).toBe(-100);
+    expect(pushed.grading.shadows.saturation).toBe(100);
+    expect(pushed.grading.shadows.hue).toBeCloseTo(200, 0);
+    // The fade deepens, and the curve stays inside 0..1.
+    expect(pushed.curves.master[0][1]).toBeCloseTo(0.15, 2);
+    for (const [x, y] of pushed.curves.master) {
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(1);
+    }
+    // Amounts past the limit are held at it, and every built-in survives it schema-valid.
+    expect(blendPreset(base, look, 400)).toEqual(pushed);
+    for (const p of BUILTIN_PRESETS) expect(() => AdjustmentsSchema.parse(blendPreset(base, p.adjustments, 150)), p.name).not.toThrow();
+  });
+
+  it('old look ids carry over to their replacement, and unknown ones are dropped', () => {
+    for (const [from, to] of Object.entries(LOOK_ALIASES)) {
+      expect(ids.has(from), from).toBe(false);
+      expect(ids.has(to), `${from} -> ${to}`).toBe(true);
+    }
+    const known = new Set([...ids, 'u_mine']);
+    expect(
+      migrateLookIds(['builtin:golden-portrait-negative', 'builtin:velvet-slide', 'builtin:creator-clean-pop', 'u_mine', 'builtin:warm-grain', 'u_gone'], known),
+    ).toEqual(['builtin:sunday-negative', 'builtin:velvet-slide', 'u_mine']);
+  });
 });

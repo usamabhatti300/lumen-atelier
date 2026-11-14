@@ -4,6 +4,7 @@ import { openDB } from 'idb';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DB_NAME,
+  DB_VERSION,
   THUMB_CACHE_MAX,
   _resetDbForTests,
   clearAllData,
@@ -69,5 +70,15 @@ describe('look-preview cache (IndexedDB v2)', () => {
     expect(await getCachedThumb('b1')).not.toBeNull();
     await clearAllData().catch(() => undefined); // other caches may be unavailable under Node
     expect(await (await getDb()).count('thumbs')).toBe(0);
+  });
+});
+
+describe('database connection', () => {
+  it('tries again after a failed open instead of remembering the failure', async () => {
+    // A database from a newer build: opening it at our (older) version is refused.
+    (await openDB(DB_NAME, DB_VERSION + 1)).close();
+    await expect(getDb()).rejects.toThrow();
+    globalThis.indexedDB = new IDBFactory(); // the problem goes away; no reset of the cached connection
+    await expect(getDb()).resolves.toBeDefined();
   });
 });

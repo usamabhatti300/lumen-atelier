@@ -78,7 +78,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         type={type}
         aria-label={label}
         aria-pressed={active === undefined ? undefined : active}
-        className={`inline-flex h-9 w-9 items-center justify-center rounded-full coarse:h-10 coarse:w-10 transition-[background-color,color,transform] duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 ${
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-full coarse:h-10 coarse:w-10 coarse:max-lg:h-11 coarse:max-lg:w-11 transition-[background-color,color,transform] duration-150 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30 ${
           active ? 'bg-fg/[0.12] text-fg ring-1 ring-fg/15' : 'text-fg-2 hover:bg-control hover:text-fg'
         }`}
         {...rest}

@@ -6,7 +6,7 @@
  * are GPU-only; the UI discloses this when the CPU path is active. Lens blur
  * runs on both paths (lensBlurLinear is the reference for the GLSL passes).
  */
-import { SRGB8_TO_LINEAR, linearToSrgb } from '../../color/srgb';
+import { SRGB8_TO_LINEAR, linearToSrgb, srgbToLinear } from '../../color/srgb';
 import type { EditState } from '../../schema/adjustments';
 import { apply, outputToSourceMatrix, type Size } from '../geometry';
 import {
@@ -15,15 +15,23 @@ import {
   deriveDevelopParams,
   deriveLensParams,
   deriveLocalParams,
+  dragPasses,
   lensBlurPlan,
   lensRadiusPx,
+  motionPasses,
+  streakDirection,
+  streakLengths,
+  STREAK,
   type DevelopParams,
   type LensParams,
+  type StreakPass,
 } from '../params';
 import {
   applyDust,
   applyGrainSrgb,
   applyVignette,
+  dragComposite,
+  dragHighlight,
   dustValue,
   flashLin,
   frameRadius,
@@ -32,6 +40,7 @@ import {
   lensFlare,
   lightLeak,
   screenAdd,
+  streakWeight,
   bokehCompress,
   bokehExpand,
   cocSimilarity,
@@ -111,6 +120,69 @@ function boxV(src: Float32Array, dst: Float32Array, w: number, h: number, r: num
       }
     }
   }
+}
+
+/**
+ * One pass of a directional streak (motion blur, shutter drag) over display-encoded float RGB:
+ * STREAK.taps bilinear samples along (dx, dy) source pixels per step, averaged in linear light.
+ * Mirrors streakFrag in gl/shaders.ts (same tap positions and weights; edges clamp).
+ */
+export function streakPass(src: Float32Array, w: number, h: number, dx: number, dy: number, pass: StreakPass): Float32Array {
+  const out = new Float32Array(src.length);
+  const n = STREAK.taps;
+  const weights = Array.from({ length: n }, (_, i) => streakWeight(i, pass.decay));
+  const norm = 1 / weights.reduce((a, b) => a + b, 0);
+  const c: RGB = [0, 0, 0];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let i = 0; i < n; i++) {
+        const k = pass.start + i;
+        const fx = Math.min(w - 1, Math.max(0, x - dx * k));
+        const fy = Math.min(h - 1, Math.max(0, y - dy * k));
+        const x0 = Math.floor(fx);
+        const y0 = Math.floor(fy);
+        const x1 = Math.min(w - 1, x0 + 1);
+        const y1 = Math.min(h - 1, y0 + 1);
+        const ax = fx - x0;
+        const ay = fy - y0;
+        const o00 = (y0 * w + x0) * 3;
+        const o01 = (y0 * w + x1) * 3;
+        const o10 = (y1 * w + x0) * 3;
+        const o11 = (y1 * w + x1) * 3;
+        for (let ch = 0; ch < 3; ch++) {
+          const top = src[o00 + ch] + (src[o01 + ch] - src[o00 + ch]) * ax;
+          const bot = src[o10 + ch] + (src[o11 + ch] - src[o10 + ch]) * ax;
+          c[ch] = toLinFast(top + (bot - top) * ay);
+        }
+        const v = pass.extract ? dragHighlight(c) : c;
+        const wgt = weights[i];
+        r += v[0] * wgt;
+        g += v[1] * wgt;
+        b += v[2] * wgt;
+      }
+      const o = (y * w + x) * 3;
+      out[o] = linearToSrgb(r * norm);
+      out[o + 1] = linearToSrgb(g * norm);
+      out[o + 2] = linearToSrgb(b * norm);
+    }
+  }
+  return out;
+}
+
+/** sRGB decode of a 0..1 value from a table (the streak passes decode 3 x 16 values per pixel per pass). */
+const LIN_LUT_SIZE = 4096;
+let linLut: Float32Array | null = null;
+function toLinFast(v: number): number {
+  if (!linLut) {
+    linLut = new Float32Array(LIN_LUT_SIZE + 2);
+    for (let i = 0; i < linLut.length; i++) linLut[i] = srgbToLinear(Math.min(1, i / LIN_LUT_SIZE));
+  }
+  const f = (v < 0 ? 0 : v > 1 ? 1 : v) * LIN_LUT_SIZE;
+  const i = f | 0;
+  return linLut[i] + (linLut[i + 1] - linLut[i]) * (f - i);
 }
 
 /** Single-channel depth raster: nearness 0 (far) .. 255 (near), covering the full image. */
@@ -446,9 +518,44 @@ export function cpuRender(input: CpuRenderInput): ImageData | CpuImage {
     if ((i & 0xffff) === 0 && input.shouldCancel?.()) throw new RenderCancelled();
   }
 
-  // Bloom, halation and dreamy soft blur (roadmap 2.5), on the finished develop.
+  // Geometry of the output frame (also needed for the streak direction).
+  const { out } = input;
+  const mat = outputToSourceMatrix(input.fullSize, edit.geometry);
+  const g = edit.geometry;
+  const frameW = g.rotate90 % 2 ? input.fullSize.height : input.fullSize.width;
+  const frameH = g.rotate90 % 2 ? input.fullSize.width : input.fullSize.height;
+  const fullOutW = g.crop.w * frameW;
+  const fullOutH = g.crop.h * frameH;
+
+  // Motion blur, then shutter drag: directional streaks on the finished develop.
+  if (globalOn && P.streakActive) {
+    const [dx, dy] = streakDirection(mat, { width: fullOutW, height: fullOutH }, input.fullSize);
+    const len = streakLengths(P.fx);
+    const run = (src: Float32Array, pass: StreakPass) => {
+      const px = pass.step * longEdge * pxPerFull;
+      return streakPass(src, W, H, dx * px, dy * px, pass);
+    };
+    if (P.fx.motionBlur > 0) {
+      const [a, b] = motionPasses(len.motion);
+      dev.set(run(run(dev, a), b));
+      if (input.shouldCancel?.()) throw new RenderCancelled();
+    }
+    if (P.fx.shutterDrag > 0) {
+      const [a, b] = dragPasses(len.drag);
+      const trail = run(run(dev, a), b);
+      for (let o = 0; o < n * 3; o += 3) {
+        const c = dragComposite([dev[o], dev[o + 1], dev[o + 2]], [trail[o], trail[o + 1], trail[o + 2]], P.fx.shutterDrag);
+        dev[o] = c[0];
+        dev[o + 1] = c[1];
+        dev[o + 2] = c[2];
+      }
+      if (input.shouldCancel?.()) throw new RenderCancelled();
+    }
+  }
+
+  // Soft focus, bloom, halation and dreamy soft blur (roadmap 2.5), on the finished develop.
   if (globalOn && P.glowActive) {
-    const halo = P.fx.halation > 0 ? boxBlur3(dev, W, H, radius(BLUR_RADII.halation, 2)) : dev;
+    const halo = P.fx.halation > 0 || P.fx.softFocus > 0 ? boxBlur3(dev, W, H, radius(BLUR_RADII.halation, 2)) : dev;
     const glow = P.fx.bloom > 0 || P.fx.dreamy > 0 ? boxBlur3(dev, W, H, radius(BLUR_RADII.glow, 4)) : dev;
     for (let o = 0; o < n * 3; o += 3) {
       const c = glowStage([dev[o], dev[o + 1], dev[o + 2]], [halo[o], halo[o + 1], halo[o + 2]], [glow[o], glow[o + 1], glow[o + 2]], P.fx);
@@ -460,14 +567,7 @@ export function cpuRender(input: CpuRenderInput): ImageData | CpuImage {
   }
 
   // Output geometry, fringe, flash, vignette, light leak, flare, dust, grain.
-  const { out } = input;
   const result = new Uint8ClampedArray(out.width * out.height * 4);
-  const mat = outputToSourceMatrix(input.fullSize, edit.geometry);
-  const g = edit.geometry;
-  const frameW = g.rotate90 % 2 ? input.fullSize.height : input.fullSize.width;
-  const frameH = g.rotate90 % 2 ? input.fullSize.width : input.fullSize.height;
-  const fullOutW = g.crop.w * frameW;
-  const fullOutH = g.crop.h * frameH;
   const aspect = fullOutW / fullOutH;
   const scale = out.width / fullOutW;
   const effects = globalOn;

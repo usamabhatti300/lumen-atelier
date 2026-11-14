@@ -12,6 +12,14 @@ test('mobile effects: More → Effects opens the effects, a slider changes the p
   await page.getByRole('button', { name: 'Effects', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Effects', pressed: true })).toBeVisible();
   const leak = page.getByRole('slider', { name: 'Light leak', exact: true });
+  // One-tap tiles sit above the sliders: a tap adds the effect, another takes it off.
+  const flashTile = page.getByTestId('effect-flash');
+  await expect(flashTile).toBeVisible();
+  await flashTile.click();
+  await expect(flashTile).toHaveAttribute('aria-pressed', 'true');
+  await flashTile.click();
+  await expect(flashTile).toHaveAttribute('aria-pressed', 'false');
+  await leak.scrollIntoViewIfNeeded();
   await expect(leak).toBeVisible();
   await page.waitForTimeout(800);
   const before = await page.locator('canvas.editor-canvas').screenshot();

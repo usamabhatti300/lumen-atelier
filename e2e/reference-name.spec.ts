@@ -11,7 +11,7 @@ test('a matched look is named from what was measured, and the name and mood can 
   await expect(page.getByText(/look applied \(matched\)/)).toBeVisible({ timeout: 180_000 });
 
   // Two roll-style words instead of "Reference look 8 Nov", and a three-word mood.
-  const name = page.getByLabel('Save as preset');
+  const name = page.getByLabel('Save as a look');
   await expect(name).toHaveValue(/^[A-Z][a-z]+ [A-Z][a-z]+$/);
   const suggested = await name.inputValue();
   const mood = page.getByTestId('reference-mood');

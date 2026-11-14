@@ -11,11 +11,17 @@
  *  - an exposure offset moves the photo's output median `keep` of the way toward the intent (the rest
  *    is the scene's own exposure; a night shot stays a night shot), found by bisection, capped and
  *    with a dead band so well-exposed photos are left alone. It never pushes the brightest 0.5% of
- *    pixels past `highlightCeiling` (or past where they already were), nor the darkest 0.5% below
- *    `shadowFloor`, so a low-key or night photo isn't blown out to reach an average brightness;
- *  - a white-balance offset removes part of the difference between the photo's output cast and the
- *    intent's (the cast is the mean colour of the least colourful half of the pixels, so a strong
- *    cast that tints every grey still counts), kept only if a trial render shows it moved closer.
+ *    pixels past `highlightCeiling` (or past where they already were), nor the top 3% past
+ *    `upperCeiling` (or more than `upperSlack` above where they were), nor the darkest 0.5% below
+ *    `shadowFloor`, so a low-key, night or sun-and-shade photo isn't blown out to reach an average
+ *    brightness;
+ *  - a white-balance offset removes part of the photo's OWN cast: the mean colour of the least
+ *    colourful quarter of its pixels with no edit at all, against neutral grey (so a strong cast that
+ *    tints every grey still counts). It is kept only if a trial render shows the cast shrank.
+ *    The look's colour is never part of this measurement: until 2026-11-14 the cast was measured
+ *    through the look and compared with the look on a grey ramp, which read a photo's blue sky or
+ *    warm walls under a graded look as an error and pulled the grade back out (Teal and Orange was
+ *    "fitted" with temperature +15, tint +20 and ended up close to the original).
  *    Black-and-white looks get no white-balance change.
  *
  * Only numbers from measurements and fixed rules; no AI. The result is three ordinary slider offsets
@@ -32,21 +38,28 @@ export const LOOK_ADAPT = {
   /** Share of the gap to the look's intended brightness that is closed (the rest is the scene). */
   keep: 0.5,
   /** Largest exposure offset, in EV. */
-  maxEv: 1.25,
+  maxEv: 1.0,
+  /** Brightening also stops before the top 3% of pixels pass this lightness, or rise more than
+   *  `upperSlack` above where they already were. The 0.5% guard alone let a sunlit street with
+   *  deep shade be pushed +1.2 EV: its few brightest pixels were already white, so that guard
+   *  never engaged, and the sky blew out (second audit, 2026-11-14). */
+  upperCeiling: 0.9,
+  upperSlack: 0.03,
   /** Brightness moves smaller than this (perceptual lightness, 0..1) are skipped. */
   deadband: 0.025,
   /** Brightening stops before the top 0.5% of pixels pass this lightness (unless they already do). */
   highlightCeiling: 0.95,
   /** Darkening stops before the bottom 0.5% of pixels fall below this lightness (unless they already do). */
   shadowFloor: 0.03,
-  /** Share of the cast difference removed, and the slider caps for it. */
-  wbShare: 0.6,
-  maxTemperature: 30,
-  maxTint: 20,
+  /** Share of the photo's own cast removed, and the slider caps for it. */
+  wbShare: 0.5,
+  maxTemperature: 18,
+  maxTint: 10,
   /** Cast differences smaller than this (OKLab a/b) are skipped. */
   minCast: 0.006,
-  /** The least colourful pixels whose mean colour is the cast, and the chroma above which there is no grey to judge. */
-  castShare: 0.5,
+  /** The least colourful pixels whose mean colour is the cast, and the chroma above which there is no grey to judge.
+   *  A quarter, not half: with half, a large pale sky counted as "grey" and a daylight photo was warmed to the cap. */
+  castShare: 0.25,
   maxCastChroma: 0.12,
   /** Pixels sampled from the photo (enough for a stable median and cast; keeps a tap under ~50 ms). */
   samplePixels: 2500,
@@ -82,10 +95,11 @@ function neutralScene(): Float32Array {
 }
 
 interface Out {
-  /** Median display lightness (0..1), and the 0.5% / 99.5% points. */
+  /** Median display lightness (0..1), the 0.5% / 99.5% points, and the 97% point. */
   median: number;
   low: number;
   high: number;
+  upper: number;
   /** Mean OKLab a/b of the least colourful pixels; null when even those are strongly coloured. */
   cast: { a: number; b: number } | null;
   mono: boolean;
@@ -127,6 +141,7 @@ function measure(lin: Float32Array, adj: Adjustments, buf?: Float32Array): Out {
     median,
     low: at(0.005),
     high: at(0.995),
+    upper: at(0.97),
     cast: cutoff <= LOOK_ADAPT.maxCastChroma ? { a: sa / k, b: sb / k } : null,
     mono: maxC < 0.02,
   };
@@ -160,6 +175,7 @@ export function adaptLook(targetLin: Float32Array, onPhoto: Adjustments, intent:
     // Median, top and bottom all rise with exposure, so "reached the goal or clipped" is monotonic.
     const brighten = goal > base.median;
     const ceiling = Math.max(base.high, LOOK_ADAPT.highlightCeiling);
+    const upperCeiling = Math.max(base.upper + LOOK_ADAPT.upperSlack, LOOK_ADAPT.upperCeiling);
     const floor = Math.min(base.low, LOOK_ADAPT.shadowFloor);
     let lo = brighten ? 0 : -LOOK_ADAPT.maxEv;
     let hi = brighten ? LOOK_ADAPT.maxEv : 0;
@@ -167,7 +183,7 @@ export function adaptLook(targetLin: Float32Array, onPhoto: Adjustments, intent:
       const mid = (lo + hi) / 2;
       const m = measure(targetLin, withOffsets(onPhoto, mid), buf);
       if (brighten) {
-        if (m.median < goal && m.high <= ceiling) lo = mid;
+        if (m.median < goal && m.high <= ceiling && m.upper <= upperCeiling) lo = mid;
         else hi = mid;
       } else if (m.median > goal && m.low >= floor) hi = mid;
       else lo = mid;
@@ -177,25 +193,29 @@ export function adaptLook(targetLin: Float32Array, onPhoto: Adjustments, intent:
     exposure = Math.trunc(safe * 100) / 100;
   }
 
-  // White balance: remove part of the cast this photo adds on top of the look's own.
+  // White balance: remove part of this photo's own cast (measured with no edit, against neutral).
   let temperature = 0;
   let tint = 0;
-  const now = exposure ? measure(targetLin, withOffsets(onPhoto, exposure), buf) : base;
   // A black-and-white look leaves this photo without colour; it gets no white-balance change.
-  if (!base.mono && !onPhoto.basic.monochrome && now.cast && want.cast) {
-    const da = now.cast.a - want.cast.a;
-    const db = now.cast.b - want.cast.b;
-    const off = Math.hypot(da, db);
-    if (off >= LOOK_ADAPT.minCast) {
-      const wb = inverseWhiteBalance(-da * LOOK_ADAPT.wbShare, -db * LOOK_ADAPT.wbShare);
-      const t = Math.round(clamp(wb.temperature, -LOOK_ADAPT.maxTemperature, LOOK_ADAPT.maxTemperature));
-      const g = Math.round(clamp(wb.tint, -LOOK_ADAPT.maxTint, LOOK_ADAPT.maxTint));
-      if (t || g) {
-        const trial = measure(targetLin, withOffsets(onPhoto, exposure, t, g), buf);
-        // Keep it only if the cast really moved closer to the look's.
-        if (trial.cast && Math.hypot(trial.cast.a - want.cast.a, trial.cast.b - want.cast.b) < off * 0.9) {
-          temperature = t;
-          tint = g;
+  if (!base.mono && !onPhoto.basic.monochrome) {
+    const plain = defaultAdjustments();
+    const own = measure(targetLin, plain, buf).cast;
+    const grey = measure(neutralScene(), plain).cast;
+    if (own && grey) {
+      const da = own.a - grey.a;
+      const db = own.b - grey.b;
+      const off = Math.hypot(da, db);
+      if (off >= LOOK_ADAPT.minCast) {
+        const wb = inverseWhiteBalance(-da * LOOK_ADAPT.wbShare, -db * LOOK_ADAPT.wbShare);
+        const t = Math.round(clamp(wb.temperature, -LOOK_ADAPT.maxTemperature, LOOK_ADAPT.maxTemperature));
+        const g = Math.round(clamp(wb.tint, -LOOK_ADAPT.maxTint, LOOK_ADAPT.maxTint));
+        if (t || g) {
+          const trial = measure(targetLin, withOffsets(plain, 0, t, g), buf).cast;
+          // Keep it only if the photo's cast really shrank.
+          if (trial && Math.hypot(trial.a - grey.a, trial.b - grey.b) < off * 0.9) {
+            temperature = t;
+            tint = g;
+          }
         }
       }
     }

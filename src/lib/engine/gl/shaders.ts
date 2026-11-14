@@ -3,7 +3,7 @@
  * The colour math mirrors src/lib/engine/pixel.ts (CPU reference). Keep the two
  * in sync; tests exercise the CPU version and e2e tests compare both paths.
  */
-import { LENS } from '../params';
+import { LENS, STREAK } from '../params';
 
 export const VERTEX = /* glsl */ `#version 300 es
 in vec2 a_pos;
@@ -548,19 +548,71 @@ void main() {
   o = vec4(mix(cur.rgb, res, m), cur.a);
 }`;
 
+const DRAG_MASK = `smoothstep(${STREAK.dragLow.toFixed(4)}, ${STREAK.dragHigh.toFixed(4)}, `;
+
 /**
- * Bloom, halation and dreamy soft blur (roadmap 2.5) on display-encoded data, after the layers.
+ * One pass of a directional streak (motion blur, shutter drag) on display-encoded data, after the
+ * layers: STREAK.taps samples along u_step, averaged in linear light. Tap i reads the image at
+ * -(u_start + i) * u_step. Mirrors streakPass in cpu/cpuRender.ts (weights: streakWeight,
+ * highlights: dragHighlight in pixel.ts).
+ */
+export const streakFrag = (f: boolean) => `${header(f)}
+in vec2 v_uv; out vec4 o;
+uniform sampler2D u_src;
+uniform vec2 u_step;        // one tap step along the streak, in uv
+uniform float u_start;      // first tap, in steps
+uniform float u_decay;      // 1: weights fall off as (1 - i/N)^2; 0: equal weights
+uniform float u_extract;    // 1: keep only each tap's highlights
+const int STREAK_TAPS = ${STREAK.taps};
+void main() {
+  vec3 acc = vec3(0.0);
+  float wsum = 0.0;
+  for (int i = 0; i < STREAK_TAPS; i++) {
+    float fi = float(i);
+    float q = 1.0 - fi / float(STREAK_TAPS);
+    float w = mix(1.0, q * q, u_decay);
+    vec3 c = srgbToLinear3(clamp(texture(u_src, v_uv - u_step * (u_start + fi)).rgb, 0.0, 1.0));
+    if (u_extract > 0.5) c *= ${DRAG_MASK}dot(c, LUMA));
+    acc += c * w;
+    wsum += w;
+  }
+  o = vec4(linearToSrgb3(acc / wsum), texture(u_src, v_uv).a);
+}`;
+
+/** Shutter drag's blend of the trail over the sharp photo. Mirrors dragComposite in pixel.ts. */
+export const dragFrag = (f: boolean) => `${header(f)}
+in vec2 v_uv; out vec4 o;
+uniform sampler2D u_cur, u_trail;
+uniform float u_amount;
+void main() {
+  vec4 cur = texture(u_cur, v_uv);
+  vec3 t = srgbToLinear3(clamp(texture(u_trail, v_uv).rgb, 0.0, 1.0));
+  if (u_amount <= 0.0 || max(t.r, max(t.g, t.b)) <= 0.0) { o = cur; return; }
+  vec3 x = srgbToLinear3(clamp(cur.rgb, 0.0, 1.0));
+  float k = ${STREAK.dragGain.toFixed(4)} * sqrt(u_amount) * (1.0 - 0.5 * ${DRAG_MASK}dot(x, LUMA)));
+  o = vec4(linearToSrgb3(1.0 - (1.0 - x) * exp(-t * k)), cur.a);
+}`;
+
+/**
+ * Soft focus, bloom, halation and dreamy soft blur (roadmap 2.5) on display-encoded data, after the layers.
  * u_halo / u_glow are this image blurred at BLUR_RADII.halation / glow. Mirrors glowStage in pixel.ts.
  */
 export const glowFrag = (f: boolean) => `${header(f)}
 in vec2 v_uv; out vec4 o;
 uniform sampler2D u_cur, u_halo, u_glow;
 uniform vec3 u_fx;          // bloom, halation, dreamy
+uniform float u_soft;       // soft focus
 void main() {
   vec4 cur = texture(u_cur, v_uv);
   vec3 x0 = srgbToLinear3(clamp(cur.rgb, 0.0, 1.0));
   vec3 x = x0;
   vec3 g = srgbToLinear3(clamp(texture(u_glow, v_uv).rgb, 0.0, 1.0));
+  if (u_soft > 0.0) {
+    vec3 h = srgbToLinear3(clamp(texture(u_halo, v_uv).rgb, 0.0, 1.0));
+    x = mix(x, h, u_soft * 0.65);
+    float p = encodeY(dot(x, LUMA));
+    x = setLuminance(x, decodeY(max(applyContrast(p, 0.12 * u_soft), 0.0)));
+  }
   if (u_fx.x > 0.0) x += g * smoothstep(0.25, 0.9, dot(g, LUMA)) * u_fx.x * 1.2;
   if (u_fx.y > 0.0) {
     vec3 h = srgbToLinear3(clamp(texture(u_halo, v_uv).rgb, 0.0, 1.0));

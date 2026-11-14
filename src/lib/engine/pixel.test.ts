@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { defaultAdjustments, defaultEditState, defaultLensBlur, mergeAdjustments, type EditState, type LensBlur, type PartialAdjustments } from '../schema/adjustments';
-import { deriveDevelopParams, deriveLensParams, lensBlurPlan, lensTilePadding } from './params';
-import { applyDust, dustValue, flashLin, frameRadius, fringeScale, glowStage, lensFlare, lightLeak, screenAdd } from './pixel';
+import { STREAK, deriveDevelopParams, deriveLensParams, dragPasses, lensBlurPlan, lensTilePadding, motionPasses, streakDirection, streakReach } from './params';
+import { outputToSourceMatrix } from './geometry';
+import { applyDust, dragComposite, dragHighlight, dustValue, flashLin, frameRadius, fringeScale, glowStage, lensFlare, lightLeak, screenAdd, streakWeight } from './pixel';
 import { EditStateSchema, PartialAdjustmentsSchema } from '../schema/adjustments';
 import { developPixel, toneShape, applyContrast, bandInterp, bokehCompress, bokehExpand, cocSimilarity, lensBlendWeights, lensCoc, lensGatherWeight, type RGB } from './pixel';
-import { cpuRender, lensBlurLinear, type DepthRaster } from './cpu/cpuRender';
+import { cpuRender, lensBlurLinear, streakPass, type DepthRaster } from './cpu/cpuRender';
 import { linearToSrgb, srgbToLinear } from '../color/srgb';
 import { linearSrgbToOklab, oklabToLinearSrgb, oklabToOklch } from '../color/oklab';
 import { whiteBalanceMultipliers } from '../color/whiteBalance';
@@ -501,5 +502,252 @@ describe('photo effects (roadmap 2.5)', () => {
     // A look that sets only some effects does not reset the others.
     const look = PartialAdjustmentsSchema.parse({ effects: { bloom: 30 } });
     expect(look.effects).toEqual({ bloom: 30 });
+  });
+});
+
+describe('blur effects: motion blur, shutter drag, soft focus', () => {
+  const FX = (p: Partial<ReturnType<typeof params>['fx']> = {}) => ({ ...params().fx, ...p });
+  type Img = { width: number; height: number; data: Uint8ClampedArray };
+  /** A grey image from a function of (x, y) returning 0..255. */
+  const image = (w: number, h: number, f: (x: number, y: number) => number): Img => {
+    const data = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const o = (y * w + x) * 4;
+        data[o] = data[o + 1] = data[o + 2] = f(x, y);
+        data[o + 3] = 255;
+      }
+    return { width: w, height: h, data };
+  };
+  const render = (src: Img, effects: PartialAdjustments['effects'], fullSize = { width: src.width, height: src.height }) => {
+    const edit = defaultEditState();
+    edit.adjustments = mergeAdjustments(defaultAdjustments(), { effects });
+    return cpuRender({ source: src, fullSize, edit, out: { width: src.width, height: src.height } }) as Img;
+  };
+  const at = (img: Img, x: number, y: number) => img.data[(y * img.width + x) * 4];
+  /** Mean absolute difference between neighbours, along x and along y (away from the borders). */
+  const detail = (img: Img) => {
+    let dx = 0;
+    let dy = 0;
+    let n = 0;
+    for (let y = 8; y < img.height - 8; y++)
+      for (let x = 8; x < img.width - 8; x++) {
+        dx += Math.abs(at(img, x + 1, y) - at(img, x, y));
+        dy += Math.abs(at(img, x, y + 1) - at(img, x, y));
+        n++;
+      }
+    return { dx: dx / n, dy: dy / n };
+  };
+  const mean = (img: Img) => {
+    let m = 0;
+    for (let i = 0; i < img.data.length; i += 4) m += img.data[i];
+    return m / (img.data.length / 4);
+  };
+  const noise = (x: number, y: number) => {
+    const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return v - Math.floor(v);
+  };
+
+  it('are off by default and switch on only their own passes', () => {
+    const P = params();
+    expect(P.fx.motionBlur).toBe(0);
+    expect(P.fx.shutterDrag).toBe(0);
+    expect(P.fx.softFocus).toBe(0);
+    expect(P.streakActive).toBe(false);
+    expect(params({ effects: { motionBlur: 40 } }).streakActive).toBe(true);
+    expect(params({ effects: { shutterDrag: 40 } }).streakActive).toBe(true);
+    expect(params({ effects: { motionBlur: 40 } }).glowActive).toBe(false);
+    expect(params({ effects: { softFocus: 40 } }).glowActive).toBe(true);
+    expect(params({ effects: { softFocus: 40 } }).streakActive).toBe(false);
+    expect(params({ effects: { bloom: 40 } }).streakActive).toBe(false);
+  });
+
+  it('change nothing at 0', () => {
+    for (const c of SAMPLES) {
+      expect(glowStage(c, [1, 1, 1], [1, 1, 1], FX({ softFocus: 0 }))).toEqual(glowStage(c, [0, 0, 0], [1, 1, 1], FX()));
+      expect(dragComposite(c, [1, 1, 1], 0)).toEqual(c);
+      expect(dragComposite(c, [0, 0, 0], 1)).toEqual(c); // no trail reaching the pixel
+    }
+    expect(streakReach(FX())).toBe(0);
+    // A whole render with the three at 0 is the plain render, byte for byte.
+    const src = image(24, 16, (x, y) => (x < 6 ? 255 : Math.floor(noise(x, y) * 256)));
+    const plain = render(src, {});
+    expect(Array.from(render(src, { motionBlur: 0, shutterDrag: 0, softFocus: 0 }).data)).toEqual(Array.from(plain.data));
+    for (const k of ['motionBlur', 'shutterDrag', 'softFocus'] as const) {
+      expect(Array.from(render(src, { [k]: 100 }).data), k).not.toEqual(Array.from(plain.data));
+      expect(Array.from(render(src, { [k]: 5 }).data), `${k} at 5`).not.toEqual(Array.from(plain.data));
+    }
+  });
+
+  it('samples each streak evenly: two passes of 16 taps are 256 samples a length/256 apart', () => {
+    const n = STREAK.taps;
+    const offsets = (passes: ReturnType<typeof motionPasses>) => {
+      const o: number[] = [];
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) o.push((passes[0].start + i) * passes[0].step + (passes[1].start + j) * passes[1].step);
+      return o.sort((a, b) => a - b);
+    };
+    const m = offsets(motionPasses(1));
+    expect(m).toHaveLength(256);
+    expect(m[0]).toBeCloseTo(-0.5 + 0.5 / 256, 9); // centred on the pixel
+    expect(m[255]).toBeCloseTo(0.5 - 0.5 / 256, 9);
+    for (let i = 1; i < m.length; i++) expect(m[i] - m[i - 1]).toBeCloseTo(1 / 256, 9);
+    const d = offsets(dragPasses(1));
+    expect(d[0]).toBeCloseTo(0.5 / 256, 9); // one-sided: only behind the pixel
+    expect(d[255]).toBeCloseTo(1 - 0.5 / 256, 9);
+    for (let i = 1; i < d.length; i++) expect(d[i] - d[i - 1]).toBeCloseTo(1 / 256, 9);
+    // Drag weights fade away from the light; motion weights are equal.
+    expect(streakWeight(0, true)).toBe(1);
+    expect(streakWeight(8, true)).toBeCloseTo(0.25);
+    expect(streakWeight(15, true)).toBeGreaterThan(0);
+    expect(streakWeight(15, false)).toBe(1);
+    // Reach for export padding: half the motion streak plus the whole trail.
+    expect(streakReach(FX({ motionBlur: 1, shutterDrag: 1 }))).toBeCloseTo(STREAK.motionLength / 2 + STREAK.dragLength);
+  });
+
+  it('keeps the streak direction fixed on screen when the photo is rotated or flipped', () => {
+    const full = { width: 300, height: 200 };
+    const a = (STREAK.angleDeg * Math.PI) / 180;
+    const dir = (g: Partial<EditState['geometry']>) => {
+      const geo = { ...defaultEditState().geometry, ...g };
+      const frame = geo.rotate90 % 2 ? { width: full.height, height: full.width } : full;
+      return streakDirection(outputToSourceMatrix(full, geo), { width: geo.crop.w * frame.width, height: geo.crop.h * frame.height }, full);
+    };
+    // Unrotated: to the right and slightly up (y points down).
+    expect(dir({})[0]).toBeCloseTo(Math.cos(a));
+    expect(dir({})[1]).toBeCloseTo(-Math.sin(a));
+    // Mirrored photo: the same screen direction is the mirrored direction in the source.
+    expect(dir({ flipH: true })[0]).toBeCloseTo(-Math.cos(a));
+    expect(dir({ flipH: true })[1]).toBeCloseTo(-Math.sin(a));
+    // A quarter turn: the source direction turns by 90 degrees and stays a unit vector.
+    const r = dir({ rotate90: 1 });
+    expect(Math.hypot(r[0], r[1])).toBeCloseTo(1);
+    expect(Math.abs(r[1])).toBeCloseTo(Math.cos(a));
+    // A crop does not change it.
+    expect(dir({ crop: { x: 0.1, y: 0.2, w: 0.5, h: 0.3 } })[0]).toBeCloseTo(Math.cos(a));
+  });
+
+  it('motion blur smears along the streak: horizontal detail goes, vertical detail mostly stays', () => {
+    // 96 px wide: the streak is 5.8 px long at 100, 12 degrees from horizontal.
+    const vertical = image(96, 96, (x) => (x % 4 < 2 ? 40 : 215)); // detail along x
+    const horizontal = image(96, 96, (_, y) => (y % 4 < 2 ? 40 : 215)); // detail along y
+    const v0 = detail(vertical).dx;
+    const h0 = detail(horizontal).dy;
+    const v1 = detail(render(vertical, { motionBlur: 100 })).dx;
+    const h1 = detail(render(horizontal, { motionBlur: 100 })).dy;
+    expect(v1).toBeLessThan(v0 * 0.25);
+    expect(h1).toBeGreaterThan(h0 * 0.6);
+    expect(v1 / v0).toBeLessThan((h1 / h0) / 3);
+    // It is a blur, not a brightening: a flat area keeps its value.
+    const flat = render(image(40, 40, () => 128), { motionBlur: 100 });
+    expect(Math.abs(mean(flat) - 128)).toBeLessThan(0.6);
+    // More strength, more blur.
+    expect(detail(render(vertical, { motionBlur: 40 })).dx).toBeGreaterThan(v1);
+  });
+
+  it('shutter drag trails light one way from a bright spot and leaves the rest alone', () => {
+    // 200 px wide: trails reach 20 px at 100. A 6 px light at (60, 50) on a dark, flat frame.
+    const spot = image(200, 100, (x, y) => (Math.abs(x - 60) <= 3 && Math.abs(y - 50) <= 3 ? 255 : 20));
+    const out = render(spot, { shutterDrag: 100 });
+    expect(at(out, 60, 50)).toBeGreaterThanOrEqual(250); // the light itself stays
+    // Trailing side (to the right, slightly up): light, fading with distance.
+    const near = at(out, 68, 49);
+    const far = at(out, 76, 47);
+    expect(near).toBeGreaterThan(60);
+    expect(far).toBeGreaterThan(22);
+    expect(near).toBeGreaterThan(far);
+    // Leading side and everywhere out of reach: exactly the original.
+    expect(at(out, 52, 51)).toBe(20);
+    expect(at(out, 60, 70)).toBe(20);
+    for (let y = 0; y < 100; y++) for (let x = 100; x < 200; x++) expect(at(out, x, y)).toBe(20);
+    // A frame with no highlights is untouched.
+    const dark = image(60, 40, (x, y) => 20 + Math.floor(noise(x, y) * 60));
+    expect(Array.from(render(dark, { shutterDrag: 100 }).data)).toEqual(Array.from(render(dark, {}).data));
+    // Only highlights leave trails, and the blend has a shoulder: it never reaches past white.
+    expect(dragHighlight([0.2, 0.2, 0.2])).toEqual([0, 0, 0]);
+    expect(dragHighlight([0.9, 0.9, 0.9])).toEqual([0.9, 0.9, 0.9]);
+    const lit = dragComposite([0.8, 0.8, 0.8], [1, 1, 1], 1);
+    expect(lit[0]).toBeGreaterThan(0.8);
+    expect(lit[0]).toBeLessThan(1);
+    expect(dragComposite([0.2, 0.2, 0.2], [0.5, 0.5, 0.5], 1)[0]).toBeGreaterThan(dragComposite([0.2, 0.2, 0.2], [0.5, 0.5, 0.5], 0.3)[0]);
+  });
+
+  it('soft focus lowers fine detail and keeps the brightness and the structure', () => {
+    // Fine texture on a left-dark, right-bright frame.
+    const src = image(120, 80, (x, y) => (x < 60 ? 70 : 170) + Math.floor((noise(x, y) - 0.5) * 50));
+    const plain = render(src, {});
+    const soft = render(src, { softFocus: 100 });
+    const d0 = detail(plain);
+    const d1 = detail(soft);
+    expect(d1.dx).toBeLessThan(d0.dx * 0.6);
+    expect(d1.dy).toBeLessThan(d0.dy * 0.6);
+    expect(d1.dx).toBeGreaterThan(d0.dx * 0.15); // softened, not wiped: the sharp picture is still under it
+    expect(Math.abs(mean(soft) - mean(plain))).toBeLessThan(4);
+    // The two halves stay apart (contrast is not flattened).
+    const half = (img: Img, x0: number) => {
+      let m = 0;
+      for (let y = 20; y < 60; y++) for (let x = x0; x < x0 + 30; x++) m += at(img, x, y);
+      return m / (40 * 30);
+    };
+    expect(half(soft, 80) - half(soft, 10)).toBeGreaterThan((half(plain, 80) - half(plain, 10)) * 0.95);
+    // Unlike dreamy blur it is not a glow: a dark pixel next to light is lifted far less.
+    const softPx = glowStage([0.1, 0.1, 0.1], [0.35, 0.35, 0.35], [0.6, 0.6, 0.6], FX({ softFocus: 1 }));
+    const dreamyPx = glowStage([0.1, 0.1, 0.1], [0.35, 0.35, 0.35], [0.6, 0.6, 0.6], FX({ dreamy: 1 }));
+    expect(softPx[0]).toBeLessThan(dreamyPx[0]);
+    // A flat area stays (almost) as it was: only the slight contrast lift acts.
+    const flat = glowStage([0.5, 0.5, 0.5], [0.5, 0.5, 0.5], [0.5, 0.5, 0.5], FX({ softFocus: 1 }));
+    expect(Math.abs(flat[0] - 0.5)).toBeLessThan(0.02);
+  });
+
+  it('looks the same in a preview and at twice the size (lengths follow the long edge)', () => {
+    // The same scene at 2x and, averaged 2 x 2, at 1x; both are views of the same full-size photo.
+    // Soft focus is checked on a larger pair: under ~170 px its blur is held at the 2 px minimum.
+    // Measured: 0.3-0.4 levels apart on average, against 0.2-0.25 from resampling alone.
+    const cases: [PartialAdjustments['effects'], number][] = [
+      [{ motionBlur: 80 }, 120],
+      [{ shutterDrag: 80 }, 120],
+      [{ softFocus: 80 }, 180],
+      [{ motionBlur: 50, shutterDrag: 60, softFocus: 40 }, 180],
+    ];
+    for (const [effects, w] of cases) {
+      const h = (w * 2) / 3;
+      const k = 240 / (2 * w); // scene units per pixel of the big image
+      const scene = (px: number, py: number) => {
+        const x = px * k;
+        const y = py * k;
+        const light = Math.hypot(x - 70, y - 90) < 9 || (Math.abs(x - 170) < 5 && Math.abs(y - 50) < 14);
+        return light ? 250 : 40 + 50 * (0.5 + 0.5 * Math.sin(x / 9)) + 40 * (0.5 + 0.5 * Math.cos(y / 7));
+      };
+      const big = image(2 * w, 2 * h, scene);
+      const small = image(w, h, (x, y) => (scene(2 * x, 2 * y) + scene(2 * x + 1, 2 * y) + scene(2 * x, 2 * y + 1) + scene(2 * x + 1, 2 * y + 1)) / 4);
+      const full = { width: 2 * w, height: 2 * h };
+      const a = render(small, effects, full);
+      const b = render(big, effects, full);
+      const untouched = render(small, {}, full);
+      const untouchedBig = render(big, {}, full);
+      const down = (img: Img, x: number, y: number) => (at(img, 2 * x, 2 * y) + at(img, 2 * x + 1, 2 * y) + at(img, 2 * x, 2 * y + 1) + at(img, 2 * x + 1, 2 * y + 1)) / 4;
+      let diff = 0;
+      let base = 0;
+      let change = 0;
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++) {
+          diff += Math.abs(down(b, x, y) - at(a, x, y));
+          base += Math.abs(down(untouchedBig, x, y) - at(untouched, x, y)); // what resampling alone costs
+          change += Math.abs(at(a, x, y) - at(untouched, x, y));
+        }
+      const label = JSON.stringify(effects);
+      // The two sizes agree to about a level on average: a small part of what the effect does.
+      expect(diff / (w * h), label).toBeLessThan(1.5);
+      expect(diff - base, label).toBeLessThan(change * 0.2);
+    }
+  }, 60_000);
+
+  it('streak passes clamp at the edges and keep a flat image flat', () => {
+    const w = 12;
+    const h = 8;
+    const flat = new Float32Array(w * h * 3).fill(0.4);
+    for (const pass of [...motionPasses(1), ...dragPasses(1)]) {
+      const out = streakPass(flat, w, h, 3.1 * pass.step * 16, -0.7 * pass.step * 16, { ...pass, extract: false });
+      for (const v of out) expect(v).toBeCloseTo(0.4, 4);
+    }
   });
 });

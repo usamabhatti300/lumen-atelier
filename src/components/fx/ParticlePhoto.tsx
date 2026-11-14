@@ -173,7 +173,7 @@ export default function ParticlePhoto({
 
       // Sample the photo into a grid: one particle per cell.
       const small = el.clientWidth < 520;
-      const cols = small ? 132 : 210;
+      const cols = small ? 260 : 400;
       const aspect = img.naturalWidth / img.naturalHeight;
       const rows = Math.round(cols / aspect);
       const cv = document.createElement('canvas');

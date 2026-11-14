@@ -6,9 +6,11 @@
  *
  * Mount <LiquidGlass /> once (App). It renders the filter, marks <html data-liquid> when the
  * refraction is supported, and moves the highlight of whichever `.liquid` surface is under the
- * pointer (CSS variables only, no React renders).
+ * pointer (CSS variables only, no React renders). The highlight is off in the editor and on touch
+ * devices; the refraction itself is CSS and stays everywhere.
  */
 import { useEffect } from 'react';
+import { useLocation } from 'react-router';
 
 function chromium() {
   const brands = (navigator as Navigator & { userAgentData?: { brands?: { brand: string }[] } })
@@ -17,9 +19,20 @@ function chromium() {
 }
 
 export function LiquidGlass() {
+  // The highlight is a mouse nicety for the calm screens. The editor (/project/…) gets no pointer
+  // listener at all: every mouse move there would cost a DOM walk and a layout read while you work.
+  const inEditor = useLocation().pathname.startsWith('/project/');
+
   useEffect(() => {
     const root = document.documentElement;
     if (chromium()) root.dataset.liquid = '';
+    return () => {
+      delete root.dataset.liquid;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (inEditor || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
     let last: HTMLElement | null = null;
     let raf = 0;
     const move = (e: PointerEvent) => {
@@ -41,9 +54,9 @@ export function LiquidGlass() {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('pointermove', move);
-      delete root.dataset.liquid;
+      last?.style.removeProperty('--lx');
     };
-  }, []);
+  }, [inEditor]);
 
   return (
     <svg

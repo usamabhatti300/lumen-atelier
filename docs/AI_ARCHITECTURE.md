@@ -118,18 +118,62 @@ what the look was made to do. Measurements and fixed rules only; no AI.
 - **Intent:** the look rendered on a neutral grey ramp (perceptual lightness 0.03–0.97, no cast) with
   the CPU pipeline (`renderPixels`, same maths as the shader); its output median lightness and cast.
 - **Photo:** the look rendered on ~2,500 pixels of the photo's original preview, measured the same way.
-- **Exposure:** an offset (bisection, ±1.25 EV) that closes `keep` = 50% of the gap between the photo's
+- **Exposure:** an offset (bisection, ±1.0 EV) that closes `keep` = 50% of the gap between the photo's
   output median and the intent's; gaps under 0.025 are left alone.
   Guards: brightening stops before the brightest 0.5% of pixels pass lightness 0.95 (or where they
-  already were), darkening before the darkest 0.5% fall below 0.03, so low-key and night photos keep
-  their highlights instead of being blown out to an average brightness.
-- **White balance:** cast = mean OKLab a/b of the least colourful half of the pixels (skipped when even
-  those exceed chroma 0.12). 60% of the difference from the intent's cast becomes temperature/tint via
-  `inverseWhiteBalance` (caps ±30 / ±20), kept only if a trial render brings the cast at least 10%
-  closer. Looks that leave the photo without colour (black and white) get no white-balance change.
+  already were), and before the top 3% pass 0.90 or rise more than 0.03 above where they were;
+  darkening stops before the darkest 0.5% fall below 0.03. So low-key, night and sun-and-shade
+  photos keep their highlights instead of being blown out to an average brightness. (The 3% guard
+  was added on 2026-11-14: a sunlit street with deep shade was being pushed +1.2 EV, because its
+  few brightest pixels were already white and the 0.5% guard never engaged.)
+- **White balance** (changed 2026-11-14): only the photo's **own** cast is corrected. Cast = mean OKLab
+  a/b of the least colourful quarter of the photo's pixels with no edit at all (a quarter, so a large
+  pale sky is not mistaken for grey) (skipped when even those
+  exceed chroma 0.12), measured against neutral grey. 50% of it becomes temperature/tint via
+  `inverseWhiteBalance` (caps ±18 / ±10), kept only if a trial render shrinks the cast by at least 10%.
+  Before this change the cast was measured through the look and compared with the look on a grey
+  ramp; a blue sky or warm walls under a graded look then read as an error, and the correction pulled
+  the look's colour back out (Teal and Orange got temperature +15, tint +20 on the sample). Looks
+  that leave the photo without colour (black and white) get no white-balance change.
 - The offsets are added to the look's own exposure/temperature/tint (or the baseline's, when the look
   doesn't set them), so they scale with Amount, stay editable, and are listed under the applied look
   ("Fitted to this photo: exposure −0.40 · temperature −6"). Matched looks are never adapted.
+
+## Looks picked for a photo (`src/lib/presets/recommend.ts`, constants `TRAIT_RULES`)
+
+The first roll in the editor's Looks browser, **For this photo**, lists six built-in looks chosen for
+the open photo. Measurements and fixed rules only; no AI.
+
+- **Traits**, from the same ~2,500-pixel sample the adaptive fit uses:
+  `dark` (median lightness < 0.30 and the brightest 5% below 0.62: night, low key), `bright` (median
+  > 0.58), `flat` (5%–95% spread < 0.50), `contrasty` (spread > 0.80, or a dark median with bright
+  highlights: sun and deep shade), `warm` / `cool` (mean OKLab b of the less colourful half beyond
+  ±0.012), `muted` / `vivid` (mean chroma of the lit pixels < 0.04 / > 0.10), `greens` / `blues`
+  (coloured pixels in OKLCh hue 110–175° / 200–285° holding more than 14% of the photo), and `face`
+  when on-device detection found one.
+- **Looks** each list the traits they were made for (`suits` in `library.ts`, most important first;
+  `any` marks an all-rounder).
+- **Score** = 1 per matching trait, 1.5 for `face`, 1.25 for `any` (so a safe all-rounder outranks a
+  single matching trait). Best first; ties keep library order; no roll fills more than two places.
+- The measured traits are shown above the picks ("picked for this photo · hard light · muted"), so
+  the choice is never a black box. Until the photo has been measured the roll shows Editor's Picks.
+
+## Auto (`src/lib/analysis/autoEnhance.ts`, constants `AUTO`)
+
+One tap in Light. Measured from the photo's pixel sample rendered through the CPU pipeline; fixed
+rules, no AI; the result is ordinary slider values, one undo step.
+
+- **No look on:** absolute values, measured with the eight sliders at zero and the rest of the edit
+  as it is, so a second press changes nothing. Exposure and white balance come from the adaptive fit
+  against a neutral photo (exposure half way, highlights and shadows guarded; white balance halved
+  again so a real sunset keeps its warmth). Then, on the corrected render: highlights down when the
+  brightest 1% is above 0.93 (10–45), shadows up when more than 20% of the photo is below 0.15 (up
+  to 40), contrast up when the 5%–95% spread is under 0.50 (up to 22), blacks down when the darkest
+  1% sits above 0.05 (up to 18), vibrance +16 / +10 when mean chroma is under 0.05 / 0.09.
+  A black-and-white edit gets no colour changes.
+- **On top of a look:** the look stays in charge. Auto sets the exposure, adds to the look's
+  highlights and shadows only when the result still needs it, and leaves contrast, black point,
+  white balance and vibrance alone.
 
 ## Matched look names (`src/lib/analysis/lookName.ts`)
 

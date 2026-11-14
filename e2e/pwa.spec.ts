@@ -58,8 +58,9 @@ test('offline: gallery, editor, presets, settings and export work without a conn
   await waitForRender(page);
   const nav = page.getByRole('navigation', { name: 'Editing tools' });
   await nav.getByRole('button', { name: 'Looks' }).click();
-  await page.getByRole('button', { name: 'Apply Golden Hour Glow', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Apply Golden Hour Glow', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('tab', { name: "Editor's Picks" }).click();
+  await page.getByRole('button', { name: 'Apply Clean Studio', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Apply Clean Studio', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Close panel' }).click();
 
   await page.getByTestId('export-open').click();

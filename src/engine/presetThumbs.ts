@@ -23,7 +23,7 @@ import * as shaders from '@/lib/engine/gl/shaders';
 import * as params from '@/lib/engine/params';
 
 // Sharp on high-density phone screens (larger cards there), unchanged on standard desktop screens.
-const THUMB_SIDE = typeof window === 'undefined' ? 220 : Math.round(Math.min(360, Math.max(220, 150 * (window.devicePixelRatio || 1))));
+const THUMB_SIDE = typeof window === 'undefined' ? 220 : Math.round(Math.min(480, Math.max(260, 200 * (window.devicePixelRatio || 1))));
 
 interface Job {
   key: string;
@@ -51,10 +51,20 @@ const PIPELINE_ID = hash(
 const cache = new Map<string, string>();
 const queue: Job[] = [];
 
+/** The source bitmap the renderer already holds as its texture (uploaded once, not per preview). */
+let uploaded: ImageBitmap | null = null;
+
 function getRenderer(): GLRenderer | null {
   if (renderer === undefined) {
+    uploaded = null;
     try {
-      renderer = new GLRenderer(createCanvas(4, 4) as HTMLCanvasElement);
+      const r = new GLRenderer(createCanvas(4, 4) as HTMLCanvasElement);
+      // A lost context never comes back for this renderer: drop it, and the next preview makes a
+      // new one (or falls back to the CPU if the browser won't give out a context).
+      r.onContextLost = () => {
+        if (renderer === r) renderer = undefined;
+      };
+      renderer = r;
     } catch {
       renderer = null;
     }
@@ -181,7 +191,10 @@ async function renderJob(job: Job): Promise<string> {
   const r = getRenderer();
   let img: ImageData;
   if (r) {
-    r.setSource(src.bitmap, size);
+    if (uploaded !== src.bitmap) {
+      r.setSource(src.bitmap, size);
+      uploaded = src.bitmap;
+    }
     r.render({ edit, params: deriveDevelopParams(adjustments), fullSize: size, out: size, target: 'thumb' });
     img = await r.readTargetAsync('thumb');
   } else {

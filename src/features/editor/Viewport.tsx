@@ -3,7 +3,7 @@
  * renders interactive overlays (before/after divider, crop, mask tools, heal).
  */
 import { stepLook, swipeDirection } from './lookSequence';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, ImagePlus, Loader2 } from 'lucide-react';
 import { engine } from '@/engine/controller';
@@ -261,17 +261,8 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     [ghost],
   );
   const land = useRef<HTMLDivElement>(null);
-  // The dissolve (three.js) loads in the background when the editor opens; until it has arrived the
-  // ghost uses the plain CSS fade.
-  const [Dissolve, setDissolve] = useState<ComponentType<{ source: HTMLCanvasElement; onStart?: () => void; onDone: () => void }> | null>(null);
-  useEffect(() => {
-    let alive = true;
-    void import('@/components/fx/LookDissolve').then((m) => alive && setDissolve(() => m.default), () => undefined);
-    return () => {
-      alive = false;
-    };
-  }, []);
-  const [dissolving, setDissolving] = useState<number | null>(null);
+  // The ghost is a plain, quick fade. (A particle dissolve was tried on 2026-11-14 and removed the
+  // next day at the owner's request: it did not look good on a look change.)
 
   const onTouchUp = (e: React.PointerEvent) => {
     const s = swipe.current;
@@ -346,17 +337,10 @@ export function Viewport({ onImport }: { onImport: () => void }) {
           <div
             key={ghost.key}
             aria-hidden
-            className={`afterimage-ghost ${Dissolve ? 'is-dissolving' : ''}`}
-            onAnimationEnd={() => !Dissolve && setGhost((g) => (g?.key === ghost.key ? null : g))}
+            className="afterimage-ghost"
+            onAnimationEnd={() => setGhost((g) => (g?.key === ghost.key ? null : g))}
           >
-            <div ref={mountGhost} className="h-full w-full" style={{ opacity: Dissolve && dissolving === ghost.key ? 0 : 1 }} />
-            {Dissolve && (
-              <Dissolve
-                source={ghost.canvas}
-                onStart={() => setDissolving(ghost.key)}
-                onDone={() => setGhost((g) => (g?.key === ghost.key ? null : g))}
-              />
-            )}
+            <div ref={mountGhost} className="h-full w-full" />
           </div>
         )}
         {activePhotoId && !loading && compare === 'split' && tool !== 'crop' && <SplitDivider box={box} />}
@@ -380,8 +364,8 @@ export function Viewport({ onImport }: { onImport: () => void }) {
               original
             </span>
             {look && (
-              <span className="px-2.5 text-fg-2">
-                let go for {look.name.toLowerCase()} · {Math.round(look.amount)}
+              <span className="surface-float rounded-full px-2.5 py-1 text-fg-2">
+                let go for {look.name.toLowerCase()} · {Math.round(look.amount)}%
               </span>
             )}
           </span>

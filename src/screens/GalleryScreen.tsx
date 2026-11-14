@@ -10,8 +10,6 @@ import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Progress } from '@/components/ui/misc';
 import { Wordmark } from '@/components/Wordmark';
-import { useGSAP } from '@gsap/react';
-import gsap from 'gsap';
 import { BUILTIN_PRESETS, PRESET_CATEGORIES } from '@/lib/presets/library';
 import { rollOf } from '@/lib/presets/rolls';
 import { presetThumb, setPreviewSource } from '@/engine/presetThumbs';
@@ -97,15 +95,25 @@ export function GalleryScreen() {
 
   useEffect(() => {
     let alive = true;
-    void loadProjectCards().then((cards) => alive && setProjects(cards));
+    void loadProjectCards()
+      .then((cards) => alive && setProjects(cards))
+      .catch(() => {
+        if (!alive) return;
+        setProjects([]);
+        showToast('This browser is blocking storage for this site, so edits cannot be saved. Leave private browsing or allow site data, then reload.', 'error');
+      });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [showToast]);
 
   const startProject = useCallback(
     async (files: File[], mode: 'edit' | 'reference') => {
-      const project = await createProject(defaultProjectName());
+      const project = await createProject(defaultProjectName()).catch(() => null);
+      if (!project) {
+        showToast('The photo could not be opened: this browser is blocking storage for this site. Leave private browsing or allow site data, then reload.', 'error');
+        return;
+      }
       if (files.length) {
         setImporting({ done: 0, total: files.length });
         const result = await importFiles(files, project.id, (done, total) => setImporting({ done, total }));
@@ -151,7 +159,8 @@ export function GalleryScreen() {
       window.removeEventListener('dragleave', leave);
       window.removeEventListener('drop', drop);
     };
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onFiles only reads refs and startProject
+  }, [startProject]);
 
   // Arrivals from outside the app: the phone's share sheet, a home-screen shortcut, or
   // image files opened with the installed app on a computer.
@@ -198,25 +207,12 @@ export function GalleryScreen() {
     void startProject([], 'reference');
   };
 
-  // Orchestrated entrance: hero lines rise in order, then the stage, then the looks rail
-  // (skipped with reduced motion, system or in-app).
-  const root = useRef<HTMLDivElement>(null);
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add('(prefers-reduced-motion: no-preference)', () => {
-        if (document.documentElement.dataset.motion === 'reduced') return;
-        const tl = gsap.timeline({ defaults: { ease: 'expo.out', duration: 0.9 } });
-        tl.from('[data-reveal]', { y: 26, opacity: 0, stagger: 0.07 }, 0.05)
-          .from('[data-look]', { y: 48, opacity: 0, duration: 1.1 }, 0.5);
-      });
-      return () => mm.revert();
-    },
-    { scope: root },
-  );
+  // Once you have edits, home is yours: your edits come straight after the two actions, and the
+  // pitch (the paragraph, the story) steps back. A first visit keeps the full introduction.
+  const returning = !!projects && projects.length > 0;
 
   return (
-    <div ref={root} className="scroll-quiet relative h-full overflow-x-hidden overflow-y-auto bg-ground">
+    <div className="scroll-quiet relative h-full overflow-x-hidden overflow-y-auto bg-ground">
       {/* The hero's darkroom: black with a little grain, so the photo is the only colour on the page. */}
       <div aria-hidden className="home-void" />
       <header className="liquid-bar sticky top-0 z-30 pt-[env(safe-area-inset-top)]">
@@ -259,7 +255,7 @@ export function GalleryScreen() {
         />
 
         {/* The promise and the two ways in, beside the photo made of particles that the looks wash across. */}
-        <section className="relative grid items-center gap-6 pt-6 pb-12 sm:pt-12 sm:pb-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-4">
+        <section className={`relative grid items-center gap-6 pt-6 sm:pt-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-4 ${returning ? 'pb-8 sm:pb-12' : 'pb-12 sm:pb-16'}`}>
           <div className="relative z-10">
             <h1 className="display text-[clamp(2.9rem,12vw,5rem)] text-fg lg:text-[clamp(3.6rem,5.4vw,5.1rem)]">
               <span className="block">
@@ -270,10 +266,12 @@ export function GalleryScreen() {
                 <DecodeText text="yours." immediate delay={0.65} className="voice pr-2 text-accent" />
               </span>
             </h1>
-            <p data-reveal className="mt-5 max-w-[36ch] text-[16px] leading-relaxed text-fg-2">
-              Bring a photo whose look you love. Lumen measures its light and colour and turns it into a look you can put on your own photos and keep editing.
-            </p>
-            <div data-reveal className="mt-7 grid grid-cols-2 gap-2.5 sm:flex sm:gap-3">
+            {!returning && (
+              <p data-reveal className="mt-5 max-w-[36ch] text-[16px] leading-relaxed text-fg-2">
+                Bring a photo whose look you love. Lumen measures its light and colour and turns it into a look you can put on your own photos and keep editing.
+              </p>
+            )}
+            <div data-reveal style={{ '--reveal-i': 1 } as React.CSSProperties} className="mt-7 grid grid-cols-2 gap-2.5 sm:flex sm:gap-3">
               <Magnetic className="contents sm:inline-flex">
                 <Button variant="accent" size="lg" className="sheen h-13 w-full px-4 text-[15px] sm:h-12 sm:w-auto sm:px-6" icon={<MatchIcon size={18} strokeWidth={2} />} onClick={matchLook}>
                   Match a look
@@ -283,7 +281,7 @@ export function GalleryScreen() {
                 Open a photo
               </Button>
             </div>
-            <p data-reveal className="mt-4 font-mono text-[11px] text-fg-4">
+            <p data-reveal style={{ '--reveal-i': 2 } as React.CSSProperties} className="mt-4 font-mono text-[11px] text-fg-4">
               free · private · on this device
             </p>
             {importing && (
@@ -296,7 +294,9 @@ export function GalleryScreen() {
             )}
           </div>
 
-          <figure data-reveal data-cursor="Scatter" className="relative -mx-4 sm:mx-0">
+          {/* On a phone with edits, the contact sheet below already shows your photos: no hero plate. */}
+          {(wide || !returning) && (
+          <figure data-reveal style={{ '--reveal-i': 3 } as React.CSSProperties} data-cursor="Scatter" className="relative -mx-4 sm:mx-0">
             <div className="hero-stage aspect-[4/3] w-full">
               {plateSrc && (
                 <Suspense fallback={<img src={plateSrc} alt="" className="h-full w-full object-contain opacity-0" />}>
@@ -322,10 +322,11 @@ export function GalleryScreen() {
               </AnimatePresence>
             </figcaption>
           </figure>
+          )}
         </section>
 
-        {/* How a look travels: the scroll story. */}
-        <MatchStory onMatch={matchLook} />
+        {/* How a look travels: the introduction on a first visit; after your work once you have edits. */}
+        {!returning && <MatchStory onMatch={matchLook} />}
 
         {/* Your edits as a contact sheet: numbered frames with their dates. */}
         <section aria-labelledby="edits-title" className="pb-14">
@@ -482,7 +483,7 @@ export function GalleryScreen() {
               <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
-          <div data-look className="-mx-4 overflow-hidden px-4 sm:-mx-8 sm:px-8">
+          <div data-reveal style={{ '--reveal-i': 6 } as React.CSSProperties} className="-mx-4 overflow-hidden px-4 sm:-mx-8 sm:px-8">
             <RingCarousel
               label="Rolls of looks"
               items={SHELF.map((c) => ({
@@ -497,6 +498,12 @@ export function GalleryScreen() {
             <p className="mt-1 text-center font-mono text-[11px] text-fg-4">drag to turn · tap the front roll to open it</p>
           </div>
         </section>
+
+        {returning && (
+          <div className="pt-16">
+            <MatchStory onMatch={matchLook} />
+          </div>
+        )}
       </main>
 
       <AnimatePresence>
@@ -597,7 +604,7 @@ function RenameDialog({ project, onClose, onSave }: { project: ProjectCard | nul
 const SHELF = PRESET_CATEGORIES.map((id) => {
   const looks = BUILTIN_PRESETS.filter((p) => p.category === id);
   const roll = rollOf(id);
-  return { id, label: roll.name, mood: roll.mood, code: `roll ${roll.no}`, count: looks.length, first: looks[0] };
+  return { id, label: roll.name, mood: roll.mood, code: `roll ${roll.no}`, count: looks.length, first: looks.find((p) => p.name === roll.cover) ?? looks[0] };
 }).filter((c) => c.count > 0);
 
 /**

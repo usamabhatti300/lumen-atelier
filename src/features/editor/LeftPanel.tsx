@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { applyLibraryLook } from './lookSequence';
-import { ArrowRight, Loader2, Plus, Blend, X } from 'lucide-react';
+import { ArrowRight, Loader2, Plus, Blend, Star, X } from 'lucide-react';
 import { useState } from 'react';
 import { PresetBrowser, PresetFields } from '@/features/presets/PresetBrowser';
 import { Slider } from '@/components/ui/Slider';
@@ -9,10 +9,9 @@ import { Dialog } from '@/components/ui/Dialog';
 import { Segmented } from '@/components/ui/misc';
 import { useEditor } from '@/state/editorStore';
 import { usePresets } from '@/state/presetStore';
-import { adjustmentsToPresetValues } from '@/lib/presets/blend';
+import { MAX_LOOK_AMOUNT, adjustmentsToPresetValues } from '@/lib/presets/blend';
 import { engine } from '@/engine/controller';
 import { matchInWorker, matchSampleFor } from '@/lib/analysis/client';
-import type { PresetCategoryId } from '@/lib/schema/preset';
 import { PhotosPanel } from './PhotosPanel';
 import { describeAdaptation } from '@/lib/analysis/lookAdapt';
 
@@ -152,10 +151,10 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
     <Slider
       label="Amount"
       value={applied?.amount ?? 100}
-      range={{ min: 0, max: 100, default: 100, step: 1 }}
+      range={{ min: 0, max: MAX_LOOK_AMOUNT, default: 100, step: 1 }}
       fillFrom="min"
       format={(v) => `${Math.round(v)}%`}
-      onGestureStart={() => begin('Preset amount')}
+      onGestureStart={() => begin('Look amount')}
       onGestureEnd={end}
       onChange={setAmount}
     />
@@ -165,7 +164,7 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
       type="button"
       onClick={() => void matchToPhoto()}
       disabled={!!matching}
-      title="Compare this photo with the reference the preset came from and set the sliders to match it"
+      title="Compare this photo with the reference this look came from and set the sliders to match it"
       className={`flex shrink-0 items-center gap-1.5 rounded-full text-xs font-medium text-fg-2 transition-colors hover:bg-control hover:text-fg disabled:text-fg-4 ${compact ? 'h-8 bg-control px-3' : 'mb-1 h-8 px-2.5'}`}
       data-testid="match-preset-to-photo"
     >
@@ -187,46 +186,57 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
       : undefined;
   // Honest about adaptive looks: say what was changed to fit this photo.
   // The adaptation is already in the sliders, so say it is relative to the look as it was made.
-  const adaptNote = applied?.adapted
-    ? `Fitted to this photo: ${describeAdaptation(applied.adapted)} compared with the look as made. The sliders already include it.`
-    : undefined;
+  const adaptNote = applied?.adapted ? `Fitted to this photo: ${describeAdaptation(applied.adapted)}` : undefined;
+  const kept = usePresets((s) => !!applied && s.favorites.includes(applied.id));
+  const toggleKept = usePresets((s) => s.toggleFavorite);
+  const canKeep = usePresets((s) => !!applied && !!s.byId(applied.id));
 
-  // Phones: one line, only while a look is on (Amount · value · save · remove). The look's name is
-  // on the chip over the photo. It springs open and folds away, so the photo re-fits smoothly.
+  // Phones: one line (Amount · value · keep · save · remove). The look's name is on the chip over
+  // the photo. The row keeps its height with no look on, so choosing a look never moves the photo.
   if (compact)
     return (
-      <motion.div
-        initial={false}
-        animate={{ height: applied ? 48 : 0, opacity: applied ? 1 : 0 }}
-        transition={{ type: 'spring', stiffness: 420, damping: 40 }}
-        className="relative mx-3 shrink-0 overflow-hidden"
-        title={[adaptNote, overridesNote].filter(Boolean).join(' ') || undefined}
-      >
+      <div className="relative mx-3 h-12 shrink-0 overflow-hidden" title={[adaptNote, overridesNote].filter(Boolean).join(' ') || undefined}>
+        {!applied && (
+          <p className="flex h-12 items-center border-t border-line-soft pt-1 text-[13px] text-fg-4" data-testid="looks-hint">
+            Tap a look to try it. Hold one to see it large.
+          </p>
+        )}
         {applied && (
-          <div className="flex h-12 items-center gap-1 border-t border-line-soft pt-1">
+          <div className="flex h-12 items-center gap-0.5 border-t border-line-soft pt-1">
             <div className="min-w-0 flex-1">
               <Slider
                 label="Amount"
                 size="row"
                 value={applied.amount}
-                range={{ min: 0, max: 100, default: 100, step: 1 }}
+                range={{ min: 0, max: MAX_LOOK_AMOUNT, default: 100, step: 1 }}
                 fillFrom="min"
                 format={(v) => `${Math.round(v)}%`}
-                onGestureStart={() => begin('Preset amount')}
+                onGestureStart={() => begin('Look amount')}
                 onGestureEnd={end}
                 onChange={setAmount}
               />
             </div>
             {matchButton}
-            <button type="button" onClick={onSave} aria-label="Save look" title="Save as your own look" className="flex h-10 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 transition-colors hover:text-fg">
-              <Plus size={16} />
+            {canKeep && (
+              <button
+                type="button"
+                onClick={() => toggleKept(applied.id)}
+                aria-pressed={kept}
+                aria-label={kept ? `Remove ${applied.name} from Kept` : `Keep ${applied.name}`}
+                className={`flex h-11 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${kept ? 'text-accent' : 'text-fg-3 hover:text-fg'}`}
+              >
+                <Star size={16} fill={kept ? 'currentColor' : 'none'} />
+              </button>
+            )}
+            <button type="button" onClick={onSave} aria-label="Save look" title="Save as your own look" className="flex h-11 w-10 shrink-0 items-center justify-center rounded-full text-fg-3 transition-colors hover:text-fg">
+              <Plus size={17} />
             </button>
-            <button type="button" onClick={clear} aria-label="Remove preset" title="Remove look" className="-mr-1 flex h-10 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 transition-colors hover:text-fg">
-              <X size={15} />
+            <button type="button" onClick={clear} aria-label="Remove look" title="Remove look" className="-mr-1.5 flex h-11 w-10 shrink-0 items-center justify-center rounded-full text-fg-3 transition-colors hover:text-fg">
+              <X size={16} />
             </button>
           </div>
         )}
-      </motion.div>
+      </div>
     );
 
   return (
@@ -245,7 +255,7 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
               <p className="min-w-0 flex-1 truncate text-[13px] text-fg-3">
                 Applied <span className="font-medium text-fg">{applied.name}</span>
               </p>
-              <button type="button" onClick={clear} aria-label="Remove preset" title="Remove preset" className="-mr-1.5 flex h-7 w-7 items-center justify-center rounded-full text-fg-4 transition-colors hover:bg-control hover:text-fg coarse:h-9 coarse:w-9">
+              <button type="button" onClick={clear} aria-label="Remove look" title="Remove look" className="-mr-1.5 flex h-7 w-7 items-center justify-center rounded-full text-fg-4 transition-colors hover:bg-control hover:text-fg coarse:h-9 coarse:w-9">
                 <X size={14} />
               </button>
             </div>
@@ -267,13 +277,12 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
 function SavePresetDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [name, setName] = useState('My look');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<PresetCategoryId>('custom');
   const showToast = useEditor((s) => s.showToast);
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      title="Save look as preset"
+      title="Save look"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -284,21 +293,21 @@ function SavePresetDialog({ open, onClose }: { open: boolean; onClose: () => voi
             disabled={!name.trim()}
             onClick={async () => {
               const adj = useEditor.getState().edit.adjustments;
-              await usePresets.getState().create({ name, description, category, tags: [], adjustments: adjustmentsToPresetValues(adj) });
-              showToast(`Saved preset “${name.trim()}”.`, 'success');
+              await usePresets.getState().create({ name, description, category: 'custom', tags: [], adjustments: adjustmentsToPresetValues(adj) });
+              showToast(`Saved “${name.trim()}”. It is under Yours.`, 'success');
               onClose();
             }}
           >
-            Save preset
+            Save look
           </Button>
         </>
       }
     >
       <p className="px-5 pb-1 text-[13px] leading-relaxed text-fg-3">
-        Saves the tone, colour, curve, grading and effects settings. Crop, masks and retouching are specific to this photo
-        and are not included.
+        Saves this photo's light, colour, curve, grade and effects as a look under Yours. Crop, masks and retouching belong
+        to the photo and are left out.
       </p>
-      <PresetFields name={name} setName={setName} description={description} setDescription={setDescription} category={category} setCategory={setCategory} />
+      <PresetFields name={name} setName={setName} description={description} setDescription={setDescription} />
     </Dialog>
   );
 }

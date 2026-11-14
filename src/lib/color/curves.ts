@@ -80,13 +80,14 @@ export function sampleLut(lut: Float32Array, v: number): number {
  */
 export function blendCurves(a: CurvePoint[], b: CurvePoint[], t: number): CurvePoint[] {
   if (t <= 0) return a.map((p) => [...p] as CurvePoint);
-  if (t >= 1) return b.map((p) => [...p] as CurvePoint);
+  if (t === 1) return b.map((p) => [...p] as CurvePoint);
   const fa = createCurveEvaluator(a);
   const fb = createCurveEvaluator(b);
   const xs = new Set<number>([0, 1, ...a.map((p) => p[0]), ...b.map((p) => p[0])]);
   const sorted = [...xs].sort((p, q) => p - q);
   const picked = sorted.length > 16 ? downsample(sorted, 16) : sorted;
-  return picked.map((x) => [x, fa(x) * (1 - t) + fb(x) * t] as CurvePoint);
+  // Past t = 1 the curve carries on away from `a` (a look pushed harder), kept inside 0..1.
+  return picked.map((x) => [x, Math.min(1, Math.max(0, fa(x) * (1 - t) + fb(x) * t))] as CurvePoint);
 }
 
 function downsample(xs: number[], count: number): number[] {

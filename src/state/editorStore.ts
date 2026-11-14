@@ -126,6 +126,10 @@ export interface EditorState {
   beginGesture(label: string): void;
   endGesture(): void;
   setAdjustment(path: string, value: unknown, label?: string): void;
+  /** Puts back an earlier edit and its history as if nothing since had happened (crop Cancel). */
+  rewind(edit: EditState, history: EditorState['history']): void;
+  /** Several sliders in one undo step (Auto). Paths a live look controls count as hand edits. */
+  setAdjustments(values: Record<string, unknown>, label: string): void;
   resetAdjustment(path: string): void;
   resetAll(): void;
   commitEdit(label: string, updater: (e: EditState) => EditState): void;
@@ -345,6 +349,21 @@ export const useEditor = create<EditorState>()(
         });
       },
 
+      rewind(edit, history) {
+        set({ edit, history, gesture: null, saveState: 'unsaved' });
+      },
+
+      setAdjustments(values, label) {
+        changeDistinct(label, (e) => {
+          let next = e;
+          for (const [path, value] of Object.entries(values)) {
+            if (JSON.stringify(getPath(next.adjustments, path)) === JSON.stringify(value)) continue;
+            next = withOverride({ ...next, adjustments: setPath(next.adjustments, path, value) }, path);
+          }
+          return next;
+        });
+      },
+
       resetAdjustment(path) {
         const def = getPath(defaultAdjustments(), path);
         const range = rangeForPath(path);
@@ -399,7 +418,7 @@ export const useEditor = create<EditorState>()(
       },
 
       setPresetAmount(amount) {
-        change('Preset amount', (e) => {
+        change('Look amount', (e) => {
           const ap = e.appliedPreset;
           if (!ap) return e;
           return {
@@ -411,7 +430,7 @@ export const useEditor = create<EditorState>()(
       },
 
       clearAppliedPreset() {
-        change('Remove preset', (e) => (e.appliedPreset ? { ...e, adjustments: e.appliedPreset.baseline, appliedPreset: null } : e));
+        change('Remove look', (e) => (e.appliedPreset ? { ...e, adjustments: e.appliedPreset.baseline, appliedPreset: null } : e));
       },
 
       toggleAdjustmentsVisible() {

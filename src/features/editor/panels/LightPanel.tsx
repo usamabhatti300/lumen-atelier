@@ -1,12 +1,16 @@
 import { Section } from '@/components/ui/Section';
 import { AdjustmentSlider, TRACKS, fmtEv } from '../AdjustmentSlider';
 import { useEditor } from '@/state/editorStore';
+import { AutoButton } from '../AutoButton';
 import { defaultAdjustments, type Adjustments } from '@/lib/schema/adjustments';
+
+/** Built once, read-only: the selector below runs on every store update. */
+const DEFAULTS = defaultAdjustments();
 
 function useSectionModified(section: keyof Adjustments, keys?: string[]) {
   return useEditor((s) => {
     const cur = s.edit.adjustments[section] as unknown as Record<string, unknown>;
-    const def = defaultAdjustments()[section] as unknown as Record<string, unknown>;
+    const def = DEFAULTS[section] as unknown as Record<string, unknown>;
     return (keys ?? Object.keys(def)).some((k) => JSON.stringify(cur[k]) !== JSON.stringify(def[k]));
   });
 }
@@ -40,6 +44,10 @@ export function LightPanel() {
 
   return (
     <>
+      <div className="flex items-center justify-between gap-3 border-b border-line-soft px-4 py-2.5">
+        <p className="text-[13px] text-fg-3">Let Lumen balance this photo.</p>
+        <AutoButton />
+      </div>
       <Section title="White balance" modified={wbMod} onReset={resetWb}>
         <AdjustmentSlider path="basic.temperature" label="Temperature" track={TRACKS.temperature} />
         <AdjustmentSlider path="basic.tint" label="Tint" track={TRACKS.tint} />

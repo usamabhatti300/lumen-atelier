@@ -18,7 +18,7 @@
  */
 import { GLRenderer } from '@/lib/engine/gl/renderer';
 import { cpuRender } from '@/lib/engine/cpu/cpuRender';
-import { deriveDevelopParams, deriveLensParams, lensBlurPlan, lensRadiusPx, lensTilePadding, BLUR_RADII } from '@/lib/engine/params';
+import { deriveDevelopParams, deriveLensParams, lensBlurPlan, lensRadiusPx, lensTilePadding, streakReach, BLUR_RADII } from '@/lib/engine/params';
 import type { DepthRaster } from '@/lib/engine/cpu/cpuRender';
 import { apply, outputSize, outputToSourceMatrix, type Size } from '@/lib/engine/geometry';
 import { canvasToBlob, createCanvas } from '@/lib/image/decode';
@@ -29,7 +29,8 @@ import { upscaleSizeProblem, upscaleTileCount, type UpscaleFactor } from '@/lib/
 import { aiUpscale, loadUpscaler } from './aiUpscale';
 import { activeRemovals } from '@/lib/removal/removal';
 import { applyRemovalsToBitmap } from '@/lib/removal/inpaint';
-import { drawStamp, loadFinishFonts, type StampPlacement } from '@/lib/finish/stamp';
+import { loadFinishFonts, type StampPlacement } from '@/lib/finish/stamp';
+import { drawFinishMarks, type OverlayOptions } from '@/lib/finish/overlay';
 
 export type ExportFormat = 'image/jpeg' | 'image/png' | 'image/webp';
 
@@ -55,6 +56,8 @@ export interface ExportOptions {
   removalScope?: string;
   /** Finish step: burn the date stamp into the exported image (after any AI upscale, so it stays crisp). */
   stamp?: { placement: StampPlacement; date: string };
+  /** Finish step: burn a camcorder or viewfinder overlay into the exported image, with the stamp. */
+  overlay?: OverlayOptions | null;
 }
 
 export class ExportCancelled extends Error {
@@ -216,10 +219,10 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
       if (!bctx) throw new Error('This browser could not allocate an image of this size. Choose a smaller AI upscale.');
       bctx.putImageData(new ImageData(big.data as Uint8ClampedArray<ArrayBuffer>, big.width, big.height), 0, 0);
     }
-    if (opts.stamp) {
+    if (opts.stamp || opts.overlay) {
       await loadFinishFonts();
       const sctx = encodeFrom.getContext('2d') as CanvasRenderingContext2D | null;
-      if (sctx) drawStamp(sctx, { x: 0, y: 0, w: encodeFrom.width, h: encodeFrom.height }, opts.stamp.date, opts.stamp.placement);
+      if (sctx) drawFinishMarks(sctx, encodeFrom.width, encodeFrom.height, { stamp: opts.stamp, overlay: opts.overlay });
     }
     report?.(0.97, 'Encoding');
     const q = opts.format === 'image/png' ? undefined : Math.min(1, Math.max(0.01, opts.quality / 100));
@@ -276,9 +279,11 @@ async function renderTiles(
   const lensAlign = lensPx >= 0.5 ? lensBlurPlan(lensPx).factor : 1;
   const pad = Math.max(
     Math.ceil(
-      // Bloom/halation/dreamy blur the finished develop again, so their reach adds to the rest.
+      // Bloom/halation/dreamy/soft focus blur the finished develop again, so their reach adds to the rest;
+      // so does the length of the motion blur and shutter drag streaks, which run before them.
       (Math.max(BLUR_RADII.large * 3, BLUR_RADII.layerMax * maxLayerBlur * 3, BLUR_RADII.medium * 1.6 * 3, maxSpotReach) +
-        (deriveDevelopParams(edit.adjustments).glowActive ? BLUR_RADII.glow * 3 : 0)) *
+        (params.glowActive ? BLUR_RADII.glow * 3 : 0) +
+        streakReach(params.fx)) *
         longEdge,
     ) + 8,
     lensPx >= 0.5 ? lensTilePadding(lensPx) + 8 : 0,

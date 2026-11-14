@@ -37,6 +37,12 @@ export interface PortraitData {
   faces: number;
 }
 
+// The store gets these on every frame: keep the previous object while the size is unchanged, so
+// components that select them don't re-render on every slider tick.
+const keepSize = (prev: Size | null, width: number, height: number): Size =>
+  prev && prev.width === width && prev.height === height ? prev : { width, height };
+const keepCanvasSize = (prev: { w: number; h: number }, w: number, h: number) => (prev.w === w && prev.h === h ? prev : { w, h });
+
 interface CpuRequest {
   id: number;
   neutral: boolean;
@@ -45,6 +51,8 @@ interface CpuRequest {
 class EngineController {
   private canvas: HTMLCanvasElement | null = null;
   private renderer: GLRenderer | null = null;
+  /** The canvas whose GL context was lost; kept so its "restored" event can bring the GPU back. */
+  private lostCanvas: HTMLCanvasElement | null = null;
   private cpuWorker: Worker | null = null;
   private cpuSeq = 0;
   private cpuPending: CpuRequest | null = null;
@@ -173,11 +181,25 @@ class EngineController {
       return;
     }
     try {
-      this.renderer = new GLRenderer(this.canvas!);
-      this.renderer.onContextLost = () => {
+      const canvas = this.canvas!;
+      const renderer = new GLRenderer(canvas);
+      this.renderer = renderer;
+      renderer.onContextLost = () => {
+        // Not ours any more (disposed on a mode switch or after a failed render): nothing to do.
+        if (this.renderer !== renderer) return;
         this.renderer = null;
+        this.lostCanvas = canvas;
         this.useCpu('The GPU context was lost. Switched to CPU rendering.');
       };
+      // The browser can hand the context back (the renderer asks for that). A canvas keeps its
+      // context type, so go back to the GPU on a fresh canvas with a fresh renderer.
+      canvas.addEventListener('webglcontextrestored', () => {
+        if (this.lostCanvas !== canvas) return;
+        this.lostCanvas = null;
+        if (this.renderer || useSettings.getState().forceCpu) return;
+        this.switchMode('webgl');
+        if (this.renderer) useEditor.getState().showToast('The GPU is available again. Switched back to GPU rendering.', 'info');
+      });
       useEngine.setState({
         mode: 'webgl',
         maxTextureSize: this.renderer.maxTextureSize,
@@ -546,7 +568,12 @@ class EngineController {
         });
         const ms = performance.now() - t0;
         const c = this.canvas!;
-        useEngine.setState((s) => ({ lastRenderMs: ms, outputSize: out, frame: s.frame + 1, canvasSize: { w: c.width, h: c.height } }));
+        useEngine.setState((s) => ({
+          lastRenderMs: ms,
+          outputSize: keepSize(s.outputSize, out.width, out.height),
+          frame: s.frame + 1,
+          canvasSize: keepCanvasSize(s.canvasSize, c.width, c.height),
+        }));
         this.scheduleHistogram();
       } catch (e) {
         console.error('[engine] GPU render failed', e);
@@ -598,9 +625,9 @@ class EngineController {
     ctx.putImageData(img, 0, 0);
     useEngine.setState((s) => ({
       lastRenderMs: msg.ms,
-      outputSize: { width: msg.width, height: msg.height },
+      outputSize: keepSize(s.outputSize, msg.width, msg.height),
       frame: s.frame + 1,
-      canvasSize: { w: msg.width, h: msg.height },
+      canvasSize: keepCanvasSize(s.canvasSize, msg.width, msg.height),
       histogram: computeHistogram(img),
     }));
   }

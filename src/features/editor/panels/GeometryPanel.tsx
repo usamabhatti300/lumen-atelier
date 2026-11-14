@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { useEditor } from '@/state/editorStore';
 import { useEngine } from '@/engine/engineStore';
 import { applyAspect, fitCropToRotation, frameSize } from '@/lib/engine/geometry';
-import { defaultGeometry, type Geometry, type Rotate90 } from '@/lib/schema/adjustments';
+import { defaultGeometry, type EditState, type Geometry, type Rotate90 } from '@/lib/schema/adjustments';
 
 const ASPECTS: { label: string; value: number | 'original' | null }[] = [
   { label: 'Free', value: null },
@@ -18,6 +18,34 @@ const ASPECTS: { label: string; value: number | 'original' | null }[] = [
   { label: '16:9', value: 16 / 9 },
   { label: '9:16', value: 9 / 16 },
 ];
+
+/**
+ * The geometry from the moment the crop tool opened, so Cancel (or Escape) can put it back.
+ * Kept outside React: the tool can be opened from the panel, a shortcut or the More grid.
+ */
+let beforeCrop: { photoId: string | null; geometry: Geometry; edit: EditState; history: ReturnType<typeof useEditor.getState>['history'] } | null = null;
+useEditor.subscribe(
+  (s) => s.tool,
+  (tool, prev) => {
+    const s = useEditor.getState();
+    if (tool === 'crop' && prev !== 'crop') beforeCrop = { photoId: s.activePhotoId, geometry: structuredClone(s.edit.geometry), edit: s.edit, history: s.history };
+    else if (tool !== 'crop') beforeCrop = null;
+  },
+);
+
+/** Leaves the crop tool and restores the crop, rotation and flips it started with. */
+export function cancelCrop() {
+  const s = useEditor.getState();
+  const saved = beforeCrop;
+  if (saved && saved.photoId === s.activePhotoId && JSON.stringify(saved.geometry) !== JSON.stringify(s.edit.geometry)) {
+    // Only the crop changed since the tool opened (the usual case): rewind, so a cancelled crop
+    // leaves nothing to undo back into. Otherwise keep the other edits and just put the crop back.
+    const onlyCrop = JSON.stringify({ ...s.edit, geometry: null }) === JSON.stringify({ ...saved.edit, geometry: null });
+    if (onlyCrop) s.rewind(saved.edit, saved.history);
+    else s.setGeometry(saved.geometry, 'Cancel crop');
+  }
+  s.setUi({ tool: 'none' });
+}
 
 /** Largest crop for the current aspect that fits the straightened image. */
 export function maximalCrop(g: Geometry, full: { width: number; height: number }) {
@@ -62,15 +90,22 @@ export function GeometryPanel() {
   return (
     <>
       <Section title="Crop">
-        <Button
-          variant={tool === 'crop' ? 'primary' : 'secondary'}
-          size="sm"
-          icon={<Crop size={14} />}
-          className="mb-3 w-full"
-          onClick={() => setUi({ tool: tool === 'crop' ? 'none' : 'crop' })}
-        >
-          {tool === 'crop' ? 'Done cropping' : 'Adjust crop on photo'}
-        </Button>
+        <div className="mb-3 flex gap-2">
+          {tool === 'crop' && (
+            <Button variant="secondary" size="sm" className="flex-1" onClick={cancelCrop} data-testid="crop-cancel">
+              Cancel
+            </Button>
+          )}
+          <Button
+            variant={tool === 'crop' ? 'primary' : 'secondary'}
+            size="sm"
+            icon={<Crop size={14} />}
+            className="flex-1"
+            onClick={() => setUi({ tool: tool === 'crop' ? 'none' : 'crop' })}
+          >
+            {tool === 'crop' ? 'Done' : 'Adjust crop on photo'}
+          </Button>
+        </div>
         <div className="grid grid-cols-3 gap-1">
           {ASPECTS.map((a) => (
             <button
@@ -78,7 +113,7 @@ export function GeometryPanel() {
               type="button"
               onClick={() => setAspect(a.value)}
               aria-pressed={activeAspect(a.value)}
-              className={`h-7 rounded-xs border text-xs transition-colors ${
+              className={`h-7 rounded-xs border text-xs transition-colors coarse:h-10 ${
                 activeAspect(a.value) ? 'border-accent-fg/60 bg-accent/10 text-accent-fg' : 'border-line text-fg-2 hover:border-line-strong'
               }`}
             >

@@ -84,6 +84,10 @@ export const RANGES = {
     fringe: r(0, 100),
     dreamy: r(0, 100),
     flash: r(0, 100),
+    // "Blurry on purpose" effects. Same rule: one strength, 0 is off.
+    motionBlur: r(0, 100),
+    shutterDrag: r(0, 100),
+    softFocus: r(0, 100),
   },
 } as const;
 
@@ -201,6 +205,12 @@ export interface Adjustments {
     dreamy: number;
     /** On-camera flash: a bright centre, darker surroundings, cool and crisp. */
     flash: number;
+    /** The whole photo smeared along one direction, as if the camera moved during the exposure. */
+    motionBlur: number;
+    /** Flash and drag: the photo stays sharp and bright areas leave light trails. */
+    shutterDrag: number;
+    /** A gentle overall softness that keeps the picture's structure (not a glow; see dreamy). */
+    softFocus: number;
   };
 }
 
@@ -454,7 +464,7 @@ export interface LutRef {
 export interface AppliedPreset {
   id: string;
   name: string;
-  /** 0..100 */
+  /** 0..150 (100 = the look as made) */
   amount: number;
   /** Adjustments that were in effect before the preset was applied. */
   baseline: Adjustments;
@@ -556,6 +566,9 @@ export function defaultAdjustments(): Adjustments {
       fringe: 0,
       dreamy: 0,
       flash: 0,
+      motionBlur: 0,
+      shutterDrag: 0,
+      softFocus: 0,
     },
   };
 }
@@ -664,8 +677,20 @@ function sectionSchema<T extends Record<string, Range>>(ranges: T) {
   );
 }
 
-/** The photo effects (roadmap 2.5) came later: an edit saved before them gets their defaults. */
-export const LATER_EFFECTS = ['lightLeak', 'halation', 'bloom', 'flare', 'dust', 'fringe', 'dreamy', 'flash'] as const;
+/** The photo effects (roadmap 2.5 and the blur effects after it) came later: an edit saved before them gets their defaults. */
+export const LATER_EFFECTS = [
+  'lightLeak',
+  'halation',
+  'bloom',
+  'flare',
+  'dust',
+  'fringe',
+  'dreamy',
+  'flash',
+  'motionBlur',
+  'shutterDrag',
+  'softFocus',
+] as const;
 const effectsSchema = sectionSchema(RANGES.effects).extend(
   Object.fromEntries(LATER_EFFECTS.map((k) => [k, clampTo(RANGES.effects[k]).default(RANGES.effects[k].default)])) as Record<
     (typeof LATER_EFFECTS)[number],
@@ -883,7 +908,8 @@ export const EditStateSchema = z.object({
     .object({
       id: z.string().max(64),
       name: z.string().max(120),
-      amount: clampTo(r(0, 100, 100)),
+      // Up to 150: a look can be pushed past the strength it was made at.
+      amount: clampTo(r(0, 150, 100)),
       baseline: AdjustmentsSchema,
       values: PartialAdjustmentsSchema,
       overrides: z.array(z.string().max(64)).max(500),

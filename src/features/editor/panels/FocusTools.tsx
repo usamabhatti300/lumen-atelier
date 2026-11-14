@@ -11,6 +11,7 @@ import { useEditor } from '@/state/editorStore';
 import { getPath, HSL_BANDS, HSL_BAND_HUES, rangeForPath, type CurveChannel, type GradeZone, type HslBandName as HslBand } from '@/lib/schema/adjustments';
 import { CurveEditor } from '../CurveEditor';
 import { AdjustmentSlider, TRACKS, fmtEv } from '../AdjustmentSlider';
+import { AutoButton } from '../AutoButton';
 import { BAND_LABEL, bandColor, hslTrack } from './colorBands';
 import { WheelControl } from './ColorPanel';
 
@@ -59,9 +60,9 @@ export function FocusTools({ tab, onExpand }: { tab: 'adjust' | 'color'; onExpan
 /** Light on phones: a few named groups, each a short list of one-line sliders (label · track · value). */
 const LIGHT_GROUPS: { id: string; label: string; tools: string[] }[] = [
   { id: 'tone', label: 'Tone', tools: ['basic.exposure', 'basic.contrast', 'basic.highlights', 'basic.shadows'] },
-  { id: 'range', label: 'Range', tools: ['basic.whites', 'basic.blacks', 'basic.brightness'] },
+  { id: 'range', label: 'Whites & blacks', tools: ['basic.whites', 'basic.blacks', 'basic.brightness'] },
   { id: 'wb', label: 'White balance', tools: ['basic.temperature', 'basic.tint'] },
-  { id: 'colour', label: 'Colour', tools: ['basic.vibrance', 'basic.saturation', 'basic.monochrome'] },
+  { id: 'colour', label: 'Vibrance', tools: ['basic.vibrance', 'basic.saturation', 'basic.monochrome'] },
   { id: 'texture', label: 'Texture', tools: ['presence.texture', 'presence.clarity', 'presence.dehaze'] },
 ];
 const toolFor = (path: string) => LIGHT_TOOLS.find((t) => t.path === path)!;
@@ -103,7 +104,8 @@ function LightFocus({ onExpand }: { onExpand: () => void }) {
           return <AdjustmentSlider key={p} size="row" path={t.path} label={t.label} track={t.track} format={t.format} />;
         })}
       </motion.div>
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <AutoButton />
         <button
           type="button"
           onClick={reset}

@@ -30,7 +30,7 @@ const BACKLIT = scene([
 ]);
 
 const look = (values: PartialAdjustments) => ({ onPhoto: mergeAdjustments(defaultAdjustments(), values), intent: mergeAdjustments(defaultAdjustments(), values) });
-const golden = BUILTIN_PRESETS.find((p) => p.name === 'Golden Portrait Negative')!.adjustments;
+const golden = BUILTIN_PRESETS.find((p) => p.name === 'Sunday Negative')!.adjustments;
 
 function outMedian(lin: Float32Array, values: PartialAdjustments) {
   return computeMatchFeatures(sampleFromDisplay(renderPixels(lin, mergeAdjustments(defaultAdjustments(), values)))).lum[5];

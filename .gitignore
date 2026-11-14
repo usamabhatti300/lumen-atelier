@@ -28,3 +28,4 @@ public/models/*/
 .impeccable/review/
 .impeccable/questions/
 .impeccable/config.local.json
+.playwright-mcp/

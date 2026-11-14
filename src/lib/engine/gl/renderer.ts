@@ -8,6 +8,7 @@
  *     -> Gaussian blur pyramid (small / medium / large), downsampled for large radii
  *     -> develop (detail, WB, exposure, mixer, tone, OKLab colour, curves, levels, LUT)
  *     -> adjustment layers (masked local adjustments, optional blur)
+ *     -> motion blur, shutter drag (directional streaks), then soft focus / bloom / halation / dreamy
  *     -> output (crop / rotate / flip / straighten, vignette, grain, dither) [RGBA8]
  *     -> present (before/after, mask overlay) to the canvas
  *
@@ -21,9 +22,14 @@ import {
   MIN_BLUR_PX,
   deriveLensParams,
   deriveLocalParams,
+  dragPasses,
   lensBlurPlan,
   lensRadiusPx,
+  motionPasses,
+  streakDirection,
+  streakLengths,
   type DevelopParams,
+  type StreakPass,
 } from '../params';
 import { outputToSourceMatrix, toGlMat3, type Mat3, type Size } from '../geometry';
 import { CURVE_LUT_SIZE } from '../../color/curves';
@@ -33,6 +39,7 @@ import {
   blurFrag,
   copyFrag,
   developFrag,
+  dragFrag,
   glowFrag,
   layerFrag,
   lensCompositeFrag,
@@ -42,6 +49,7 @@ import {
   outputFrag,
   presentFrag,
   retouchFrag,
+  streakFrag,
 } from './shaders';
 
 export interface Rect {
@@ -482,10 +490,51 @@ export class GLRenderer {
       flip = !flip;
     }
 
-    // 5b. Bloom, halation and dreamy soft blur (roadmap 2.5), on the finished develop.
+    // Output geometry (the streak direction below is fixed on screen, so it needs it too).
+    const crop = req.cropOverride ?? edit.geometry.crop;
+    const mat = outputToSourceMatrix(req.fullSize, edit.geometry, crop);
+    const fullOut = {
+      width: crop.w * (edit.geometry.rotate90 % 2 ? req.fullSize.height : req.fullSize.width),
+      height: crop.h * (edit.geometry.rotate90 % 2 ? req.fullSize.width : req.fullSize.height),
+    };
+
+    // 5a. Motion blur, then shutter drag: directional streaks on the finished develop.
     const FX = params.fx;
+    if (globalOn && params.streakActive) {
+      const [dx, dy] = streakDirection(mat, fullOut, req.fullSize);
+      const len = streakLengths(FX);
+      const sfrag = streakFrag(f);
+      const run = (name: string, input: Target, p: StreakPass) => {
+        const px = p.step * longEdge * pxPerFull;
+        const t = this.ensureTarget(name, sw, sh, f);
+        this.pass('streak', sfrag, t, {
+          u_src: input.tex,
+          u_step: [(dx * px) / sw, (dy * px) / sh],
+          u_start: p.start,
+          u_decay: p.decay ? 1 : 0,
+          u_extract: p.extract ? 1 : 0,
+        });
+        return t;
+      };
+      if (FX.motionBlur > 0) {
+        const [a, b] = motionPasses(len.motion);
+        // The second pass lands in the free develop target, which becomes the current image.
+        cur = run(flip ? 'devA' : 'devB', run('fxStreakA', cur, a), b);
+        flip = !flip;
+      }
+      if (FX.shutterDrag > 0) {
+        const [a, b] = dragPasses(len.drag);
+        const trail = run('fxStreakB', run('fxStreakA', cur, a), b);
+        const next = this.ensureTarget(flip ? 'devA' : 'devB', sw, sh, f);
+        this.pass('drag', dragFrag(f), next, { u_cur: cur.tex, u_trail: trail.tex, u_amount: FX.shutterDrag });
+        cur = next;
+        flip = !flip;
+      }
+    }
+
+    // 5b. Soft focus, bloom, halation and dreamy soft blur (roadmap 2.5), on the finished develop.
     if (globalOn && params.glowActive) {
-      const halo = FX.halation > 0 ? this.blur('fxHalo', cur, radius(BLUR_RADII.halation, 2)) : cur;
+      const halo = FX.halation > 0 || FX.softFocus > 0 ? this.blur('fxHalo', cur, radius(BLUR_RADII.halation, 2)) : cur;
       const glow = FX.bloom > 0 || FX.dreamy > 0 ? this.blur('fxGlow', cur, radius(BLUR_RADII.glow, 4)) : cur;
       const next = this.ensureTarget(flip ? 'devA' : 'devB', sw, sh, f);
       this.pass('glow', glowFrag(f), next, {
@@ -493,6 +542,7 @@ export class GLRenderer {
         u_halo: halo.tex,
         u_glow: glow.tex,
         u_fx: [FX.bloom, FX.halation, FX.dreamy],
+        u_soft: FX.softFocus,
       });
       cur = next;
       flip = !flip;
@@ -501,16 +551,10 @@ export class GLRenderer {
     // 6. Output.
     const targetName = req.target ?? (neutral ? 'before' : 'after');
     const out = this.ensureTarget(targetName, req.out.width, req.out.height, false);
-    const crop = req.cropOverride ?? edit.geometry.crop;
-    const mat = outputToSourceMatrix(req.fullSize, edit.geometry, crop);
     const outRegion = req.outRegion ?? { x: 0, y: 0, w: 1, h: 1 };
     const outFull = {
       width: req.out.width / outRegion.w,
       height: req.out.height / outRegion.h,
-    };
-    const fullOut = {
-      width: crop.w * (edit.geometry.rotate90 % 2 ? req.fullSize.height : req.fullSize.width),
-      height: crop.h * (edit.geometry.rotate90 % 2 ? req.fullSize.width : req.fullSize.height),
     };
     const V = params.vignette;
     const G = params.grain;

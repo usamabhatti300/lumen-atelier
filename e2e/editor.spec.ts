@@ -101,32 +101,47 @@ test.describe('editor', () => {
     expect(alpha.corner).toBe(0);
   });
 
-  test('presets: real distinct previews, favourites and intensity', async ({ page }) => {
+  test('looks: picks for the photo, rolls, favourites, amount and search', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('gallery-file-input').setInputFiles({ name: 'a.jpg', mimeType: 'image/jpeg', buffer: await makeImage(page, 'target') });
     await waitForRender(page);
-    // One switch picks the collection; Rolls is the default, open on roll 01 (Editor's Picks).
+    // One switch picks the collection; Rolls is the default, open on the looks picked for this photo.
     await expect(page.getByRole('radio', { name: 'Rolls' })).toHaveAttribute('aria-checked', 'true');
-    await expect(page.getByRole('tab', { name: "Editor's Picks" })).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(51);
+    await expect(page.getByRole('tab', { name: 'For this photo' })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByText('picked for this photo')).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(6);
+    // Roll 01, Editor's Picks, is a short list of all-rounders.
+    await page.getByRole('tab', { name: "Editor's Picks" }).click();
+    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(4);
     await page.getByRole('button', { name: 'Apply Velvet Slide' }).click();
     await expect(page.getByText(/^Applied /)).toBeVisible();
     await setRange(page, 'Amount', 40);
     await expect(page.getByRole('slider', { name: 'Amount' })).toHaveValue('40');
-    await page.getByRole('button', { name: 'Add Velvet Slide to favourites' }).click();
+    await page.getByRole('button', { name: 'Keep Velvet Slide' }).click();
     await page.getByRole('radio', { name: 'Kept' }).click();
     await expect(page.getByRole('button', { name: 'Apply Velvet Slide' })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(1);
     // Search covers the whole library, not just the open tab. Rolls reopens the roll you were on.
     await page.getByRole('radio', { name: 'Rolls' }).click();
     await expect(page.getByRole('tab', { name: "Editor's Picks" })).toHaveAttribute('aria-selected', 'true');
-    await page.getByRole('searchbox', { name: 'Search presets' }).fill('bleach');
-    await expect(page.getByRole('button', { name: 'Apply Bleach Bypass' })).toBeVisible();
-    // Roll tabs filter (Monochrome Diary, the black & white roll, holds the four monochrome recipes).
-    await page.getByRole('searchbox', { name: 'Search presets' }).fill('');
+    await page.getByRole('searchbox', { name: 'Search looks' }).fill('bleach');
+    await expect(page.getByRole('button', { name: 'Apply Silver Retain' })).toBeVisible();
+    await expect(page.getByText('1 look for “bleach”')).toBeVisible();
+    // Clearing the search goes back to the roll you were on.
+    await page.getByRole('searchbox', { name: 'Search looks' }).fill('');
+    await expect(page.getByRole('tab', { name: "Editor's Picks" })).toHaveAttribute('aria-selected', 'true');
+    // Roll tabs filter (Monochrome Diary is the black & white roll).
     await page.getByRole('tab', { name: 'Monochrome Diary' }).click();
-    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(4);
-    await expect(page.getByRole('button', { name: 'Apply Platinum Noir' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(5);
+    await expect(page.getByRole('button', { name: 'Apply Tea Stain' })).toBeVisible();
+    // Every look, roll by roll.
+    await page.getByRole('tab', { name: 'All' }).click();
+    await expect(page.getByRole('button', { name: /^Apply / })).toHaveCount(54);
+    // The trend rolls are there, and a look can be pushed past 100%.
+    await page.getByRole('tab', { name: 'Pocket Digicam' }).click();
+    await page.getByRole('button', { name: 'Apply CCD Daylight' }).click();
+    await setRange(page, 'Amount', 150);
+    await expect(page.getByRole('slider', { name: 'Amount' })).toHaveValue('150');
   });
 
   test('masks: a radial mask affects only part of the image', async ({ page }) => {

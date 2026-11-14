@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { cancelCrop } from './panels/GeometryPanel';
 import { useEditor } from '@/state/editorStore';
 import { saveNow } from '@/engine/autosave';
 
@@ -76,6 +77,8 @@ export function useShortcuts({ onImport, onPaste }: { onImport: () => void; onPa
           s.setBrush({ size: Math.min(0.4, s.brush.size * 1.15) });
           break;
         case 'Escape':
+          // Escape in the crop tool discards the crop changes made since it opened.
+          if (s.tool === 'crop') cancelCrop();
           s.setUi({ tool: 'none', compare: 'off' });
           break;
         case 'ArrowRight':

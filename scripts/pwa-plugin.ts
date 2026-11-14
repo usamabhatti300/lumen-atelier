@@ -45,6 +45,11 @@ export function pwaPlugin(): Plugin {
       root = config.root;
       outDir = resolve(config.root, config.build.outDir);
     },
+    // Vite emits a hashed copy of ONNX Runtime's .wasm (~40 MB) for the `new URL(..., import.meta.url)`
+    // in its loader. The app never requests it: `wasmPaths` points at /ort/ (src/lib/ml/ort.ts).
+    generateBundle(_options, bundle) {
+      for (const name of Object.keys(bundle)) if (/ort-wasm.*\.wasm$/.test(name)) delete bundle[name];
+    },
     closeBundle() {
       if (!existsSync(join(outDir, 'index.html'))) return;
       const files = walk(outDir).map((abs) => ({ abs, rel: relative(outDir, abs).split(sep).join('/') }));

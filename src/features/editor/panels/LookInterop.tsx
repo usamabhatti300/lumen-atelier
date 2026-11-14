@@ -103,7 +103,7 @@ export function LookInterop() {
               { id: 'x', name: `${base} look`, category: 'custom', description: '', tags: [], origin: 'user', adjustments: adjustmentsToPresetValues(useEditor.getState().edit.adjustments), createdAt: now, updatedAt: now },
             ]);
             downloadText(json, `${base}.lumen-preset.json`);
-            setNotes({ title: 'Preset JSON exported. Import it on the Presets screen.', items: ['Masks, retouching, crop and LUTs are photo-specific and not included.'] });
+            setNotes({ title: 'Look exported as JSON. Import it on the Looks screen.', items: ['Masks, retouching, crop and LUTs are photo-specific and not included.'] });
           }}
         >
           JSON

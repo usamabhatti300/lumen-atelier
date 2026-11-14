@@ -78,7 +78,7 @@ export default function SettingsScreen() {
             checked={s.adaptiveLooks}
             onChange={(v) => s.update({ adaptiveLooks: v })}
             label="Adaptive looks"
-            description="Before a look is applied, the photo's exposure and white balance are evened out so the look reads as it was made to. The change shows in Light (exposure, temperature, tint) and can be edited. Matched looks are already fitted and are left as they are."
+            description="Before a look is applied, the photo's exposure is evened out, and a colour cast of its own is eased, so the look reads as it was made to. A look's own colour is never changed. What was changed shows in Light and can be edited. Matched looks are already fitted and are left as they are."
           />
           <Divider />
           <Toggle
@@ -95,6 +95,8 @@ export default function SettingsScreen() {
             description="For troubleshooting GPU problems. Much slower; portrait retouching and mask blur are unavailable."
           />
           <Divider />
+          <details className="group py-1">
+            <summary className="flex h-9 cursor-pointer list-none items-center text-[13px] font-medium text-fg-2 hover:text-fg coarse:h-11">Diagnostics</summary>
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 py-1 text-[13px]">
             <dt className="text-fg-3">Renderer</dt>
             <dd className="text-right text-fg">{engine.mode === 'webgl' ? 'WebGL2 (GPU)' : engine.mode === 'cpu' ? 'CPU (worker)' : 'Starts when you open a project'}</dd>
@@ -103,6 +105,7 @@ export default function SettingsScreen() {
             <dt className="text-fg-3">Float pipeline</dt>
             <dd className="text-right text-fg">{engine.mode === 'webgl' ? (engine.floatPipeline ? '16-bit float intermediates' : '8-bit fallback') : '–'}</dd>
           </dl>
+          </details>
           <div className="mt-4 rounded-md bg-raised-2 p-4">
             <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[13px] leading-relaxed text-fg-3">Measure full-pipeline render time on this device (2048 × 1365, a demanding edit).</p>
@@ -173,7 +176,7 @@ export default function SettingsScreen() {
                   Free and private: install <span className="text-fg">Ollama</span> and run{' '}
                   <code className="text-fg">ollama pull qwen3-vl:4b-instruct</code> (3.3 GB, Apache-2.0). The app uses it automatically while Ollama
                   is running, and the reference never leaves this computer. Or add <code className="text-fg">ANTHROPIC_API_KEY=…</code> to a{' '}
-                  <code className="text-fg">.env</code> file and restart the server to use Claude. Without either, presets are built from
+                  <code className="text-fg">.env</code> file and restart the server to use Claude. Without either, looks are built from
                   measurements only.
                 </p>
               )}
@@ -233,14 +236,14 @@ export default function SettingsScreen() {
           </>
         }
       >
-        <p className="px-5 pb-5 text-sm leading-relaxed text-fg-3">All projects, photos, edits, your presets and settings will be removed from this browser. This cannot be undone.</p>
+        <p className="px-5 pb-5 text-sm leading-relaxed text-fg-3">All edits, photos, the looks you saved and your settings will be removed from this browser. This cannot be undone.</p>
       </Dialog>
     </div>
   );
 }
 
 const PRIVACY = [
-  'Photos, edits, projects and presets are stored only in this browser (IndexedDB). There are no accounts and no analytics.',
+  'Photos, edits and looks are stored only in this browser (IndexedDB). There are no accounts and no analytics.',
   'Editing, portrait detection and masking run on this device.',
   'Only the reference-matching feature can send an image off the device, and only with your permission. With a local model (Ollama) nothing is sent.',
 ];

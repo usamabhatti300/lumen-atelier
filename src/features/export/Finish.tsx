@@ -1,16 +1,17 @@
 /**
  * Finish: the step between editing and export, at the top of the export dialog (DESIGN.md). The
- * user's own additions (the date stamp now; frames, text and stickers later) are shown here on a
- * preview of the exported image, never on the editing view. The preview is drawn by the same
- * functions as the export (`drawStamp`, `drawContactSheet`), so it matches the file.
+ * user's own additions (the date stamp and overlays now; frames, text and stickers later) are shown
+ * here on a preview of the exported image, never on the editing view. The preview is drawn by the
+ * same functions as the export (`drawFinishMarks`, `drawContactSheet`), so it matches the file.
  */
 import { useEffect, useRef } from 'react';
 import { Check } from 'lucide-react';
 import { Segmented, Toggle } from '@/components/ui/misc';
 import { useEditor } from '@/state/editorStore';
 import { engine } from '@/engine/controller';
-import { stampDateFor } from '@/engine/batch';
-import { drawStamp, isIsoDate, isoDate, loadFinishFonts, STAMP_PLACEMENTS, type StampOptions, type StampPlacement } from '@/lib/finish/stamp';
+import { overlayFor, stampDateFor } from '@/engine/batch';
+import { isIsoDate, isoDate, loadFinishFonts, STAMP_PLACEMENTS, type StampOptions, type StampPlacement } from '@/lib/finish/stamp';
+import { drawFinishMarks, OVERLAYS, stampAllowed, type OverlayChoice, type OverlayKind } from '@/lib/finish/overlay';
 import { contactSheetLayout, drawContactSheet, MAX_SHEET_FRAMES, SHEET_RATIOS, type SheetFrame, type SheetRatio } from '@/lib/finish/contactSheet';
 
 export type FinishMode = 'photo' | 'sheet';
@@ -18,8 +19,15 @@ export type FinishMode = 'photo' | 'sheet';
 /** The photo as it looks now: the live render for the open photo, else its thumbnail. */
 async function previewSource(id: string): Promise<{ image: CanvasImageSource; width: number; height: number } | null> {
   if (engine.getActivePhotoId() === id) {
-    const snap = engine.snapshot(1080);
-    if (snap) return { image: snap, width: snap.width, height: snap.height };
+    // The pixels arrive asynchronously; drawing the frame copy before they land gave a black preview.
+    const pixels = await engine.readRenderedAsync(1080).catch(() => null);
+    if (pixels) {
+      const c = document.createElement('canvas');
+      c.width = pixels.width;
+      c.height = pixels.height;
+      c.getContext('2d')?.putImageData(pixels, 0, 0);
+      return { image: c, width: c.width, height: c.height };
+    }
   }
   const url = useEditor.getState().photos.find((p) => p.id === id)?.thumbUrl;
   if (!url) return null;
@@ -38,16 +46,19 @@ export function FinishPreview({
   photoId,
   sheetIds,
   stamp,
+  overlay,
   ratio,
 }: {
   mode: FinishMode;
   photoId: string | undefined;
   sheetIds: string[];
   stamp: StampOptions | null;
+  /** Photo mode only: the contact sheet has its own numbering and takes no overlay. */
+  overlay: OverlayChoice | null;
   ratio: SheetRatio;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const key = `${mode}|${photoId}|${sheetIds.join(',')}|${stamp?.placement}|${stamp?.date}|${ratio}`;
+  const key = `${mode}|${photoId}|${sheetIds.join(',')}|${stamp?.placement}|${stamp?.date}|${overlay?.kind}|${overlay?.date}|${ratio}`;
 
   useEffect(() => {
     let alive = true;
@@ -64,7 +75,10 @@ export function FinishPreview({
         c.width = src.width;
         c.height = src.height;
         ctx.drawImage(src.image, 0, 0, src.width, src.height);
-        if (stamp) drawStamp(ctx, { x: 0, y: 0, w: src.width, h: src.height }, stampDateFor(photoId, stamp.date), stamp.placement);
+        drawFinishMarks(ctx, src.width, src.height, {
+          stamp: stamp ? { placement: stamp.placement, date: stampDateFor(photoId, stamp.date) } : null,
+          overlay: overlayFor(photoId, overlay),
+        });
         return;
       }
       const frames: SheetFrame[] = [];
@@ -118,7 +132,10 @@ export function StampControls({
   date,
   setDate,
   shownDate,
+  overlay = 'none',
 }: {
+  /** The overlay in use: it shows the date itself, so the date field stays and the camcorder takes the stamp's place. */
+  overlay?: OverlayKind;
   on: boolean;
   setOn: (v: boolean) => void;
   placement: StampPlacement;
@@ -129,10 +146,18 @@ export function StampControls({
   /** What the date field shows when no date is chosen (the photo's own date), or '' for several photos. */
   shownDate: string;
 }) {
+  const allowed = stampAllowed(overlay);
+  const stamped = on && allowed;
   return (
     <div>
-      <Toggle checked={on} onChange={setOn} label="Date stamp" description="The date in orange, like an old digital camera." />
-      {on && (
+      <Toggle
+        checked={stamped}
+        onChange={setOn}
+        disabled={!allowed}
+        label="Date stamp"
+        description={allowed ? 'The date in orange, like an old digital camera.' : 'The camcorder overlay shows the date itself.'}
+      />
+      {(stamped || overlay !== 'none') && (
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-3">
           <label className="flex items-center gap-2">
             <span className="label-caps text-fg-3">date</span>
@@ -144,6 +169,7 @@ export function StampControls({
               className="h-9 rounded-full bg-well px-3 font-mono text-[13px] text-fg ring-1 ring-line-soft [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-accent-fg coarse:h-10"
             />
           </label>
+          {stamped && (
           <Segmented
             label="Stamp placement"
             value={placement}
@@ -159,6 +185,7 @@ export function StampControls({
               ),
             }))}
           />
+          )}
           {date ? (
             <button type="button" onClick={() => setDate(null)} className="text-xs text-fg-2 underline-offset-2 hover:text-fg hover:underline">
               Use each photo's own date
@@ -168,6 +195,19 @@ export function StampControls({
           ) : null}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Overlay: a camcorder or viewfinder graphic burned into the photo. Off (None) each time. */
+export function OverlayControls({ value, onChange }: { value: OverlayKind; onChange: (v: OverlayKind) => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2" data-testid="finish-overlay">
+      <span className="min-w-0">
+        <span className="block text-sm text-fg">Overlay</span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-fg-3">{OVERLAYS.find((o) => o.value === value)?.description}</span>
+      </span>
+      <Segmented label="Overlay" value={value} onChange={onChange} options={OVERLAYS.map((o) => ({ value: o.value, label: o.label }))} />
     </div>
   );
 }

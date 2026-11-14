@@ -16,7 +16,8 @@ import { downloadBlob } from '@/state/presetStore';
 import { exportContactSheet, exportMany, editFor, stampDateFor, type BatchProgress } from '@/engine/batch';
 import { MAX_SHEET_FRAMES, sheetSize, type SheetRatio } from '@/lib/finish/contactSheet';
 import type { StampPlacement } from '@/lib/finish/stamp';
-import { FinishPreview, SheetControls, StampControls, type FinishMode } from './Finish';
+import { stampAllowed, type OverlayKind } from '@/lib/finish/overlay';
+import { FinishPreview, OverlayControls, SheetControls, StampControls, type FinishMode } from './Finish';
 import { exportPlanProblem, plannedRenderSize, upscaleTileCount, type ExportFormat } from '@/engine/exporter';
 import { UPSCALE_MODEL_ID } from '@/engine/aiUpscale';
 import { installedModelFiles, modelInstallState } from '@/lib/ml/client';
@@ -92,7 +93,11 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
   });
   const canSheet = photos.length >= 2;
   const sheet = mode === 'sheet' && canSheet;
-  const stamp = stampOn ? { placement, date: stampDate } : null;
+  // The overlay is opt-in each time too, and is left off the contact sheet (it has its own numbering).
+  const [overlayKind, setOverlayKind] = useState<OverlayKind>('none');
+  const overlay = !sheet && overlayKind !== 'none' ? { kind: overlayKind, date: stampDate } : null;
+  // One date at most: the camcorder shows the date itself, so the orange stamp is left out.
+  const stamp = stampOn && stampAllowed(overlay?.kind) ? { placement, date: stampDate } : null;
 
   useEffect(() => {
     if (!ids) return;
@@ -156,7 +161,7 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
       if (s.file) deliver(s.file);
       r = { done: s.file ? 1 : 0, errors: s.errors, cancelled: s.cancelled };
     } else {
-      r = await exportMany(ids, { format, quality, scale: aiUpscale ? 1 : Number(scale), aiUpscale, stamp: stamp ?? undefined }, ac.current.signal, setProgress, deliver);
+      r = await exportMany(ids, { format, quality, scale: aiUpscale ? 1 : Number(scale), aiUpscale, stamp: stamp ?? undefined, overlay: overlay ?? undefined }, ac.current.signal, setProgress, deliver);
     }
     setShareFiles(kept);
     setResult(r);
@@ -251,9 +256,11 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
                 />
               )}
             </div>
-            <FinishPreview mode={sheet ? 'sheet' : 'photo'} photoId={ids?.[0]} sheetIds={sheetIds} stamp={stamp} ratio={ratio} />
+            <FinishPreview mode={sheet ? 'sheet' : 'photo'} photoId={ids?.[0]} sheetIds={sheetIds} stamp={stamp} overlay={overlay} ratio={ratio} />
             {sheet && <SheetControls ratio={ratio} setRatio={setRatio} selected={sheetIds} setSelected={setSheetIds} />}
+            {!sheet && <OverlayControls value={overlayKind} onChange={setOverlayKind} />}
             <StampControls
+              overlay={overlay?.kind ?? 'none'}
               on={stampOn}
               setOn={setStampOn}
               placement={placement}

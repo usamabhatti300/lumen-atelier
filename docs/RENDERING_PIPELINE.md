@@ -45,7 +45,11 @@ Source space (oriented original, before crop):
     and **levels**. Optional imported **3D LUT** (`.cube`) with amount.
 11. **Adjustment layers**: per mask layer, local exposure, WB, contrast, highlights, shadows,
     saturation, clarity, dehaze, colour tint and blur, mixed by the rasterized mask × opacity.
-11b. **Glow effects** (roadmap 2.5, only when one is on): **bloom** (highlights of a blur at 2 % of
+11a. **Streak effects** (only when one is on; see "Motion blur and shutter drag" below): **motion
+    blur**, then **shutter drag**. Linear light, on the finished develop.
+11b. **Glow effects** (roadmap 2.5, only when one is on), in this order: **soft focus** (a mix of 65 %
+    × strength towards the 1.2 % blur, then contrast +0.12 × strength on encoded luminance so it does
+    not go flat; the sharp picture stays underneath), **bloom** (highlights of a blur at 2 % of
     the long edge added back), **halation** (a red rim where a 1.2 % blur is brighter than the pixel:
     light spilling past bright edges) and **dreamy soft blur** (a screen blend towards the 2 % blur).
     Linear light, on the finished develop; `glowStage` in pixel.ts, `glowFrag` in shaders.ts. Export
@@ -101,6 +105,30 @@ after retouching, before detail and develop, like a real lens.
   multiples of `f`, so the low-resolution grids line up and tiles match the whole-image render exactly
   (unit-tested). The 8-bit fallback (no float render targets) stores expanded colour as `sqrt(v/4)` and
   the CoC around 0.5.
+
+## Motion blur and shutter drag
+
+Both are directional streaks along one line, **12° above horizontal on screen** (to the right and
+slightly up). `streakDirection` (`params.ts`) maps that screen direction through the geometry matrix
+into source pixels, so rotating, flipping or straightening the photo does not turn the streak. Lengths
+are fractions of the full image's long edge (`STREAK`), so preview and export match.
+
+- **Sampling**: each streak is two passes of 16 taps (`streakFrag` in shaders.ts, `streakPass` in
+  cpu/cpuRender.ts, pass definitions in `motionPasses` / `dragPasses`). The first pass steps
+  `length / 16`, the second fills the gaps at `length / 256`, which together are 256 evenly spaced
+  bilinear samples: no visible copies even on a 360 px streak at full resolution. Taps are averaged
+  in linear light; the image between passes is display-encoded; edges clamp.
+- **Motion blur** (`effects.motionBlur`): an even box centred on the pixel, `length = 6 % × strength`
+  of the long edge. Replaces the image.
+- **Shutter drag** (`effects.shutterDrag`): `length = 10 % × strength`. The first pass keeps only
+  each tap's highlights (`lin × smoothstep(0.3, 0.8, luminance)`, `dragHighlight`) and reads from one
+  side only, with weights `(1 − i/16)²` (bright next to the light, fading along the trail). The trail
+  `T` is then laid over the untouched sharp image `x` as `1 − (1 − x) · exp(−T · k)`,
+  `k = 2.5 · √strength · (1 − 0.5 · smoothstep(0.3, 0.8, luminance(x)))`: a screen blend whose light
+  has a soft shoulder, halved on pixels that are themselves highlights (`dragComposite`, `dragFrag`).
+  Where no light reaches, the pixel is passed through untouched.
+- **Export tiles** are padded by `streakReach` (half the motion length plus the whole trail) on top of
+  the other blurs; taps are at fixed pixel offsets, so tiles join without seams.
 
 ## Colour-space assumptions
 

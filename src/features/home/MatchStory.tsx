@@ -309,7 +309,7 @@ function Stage({ p, onMatch }: { p: MotionValue<number>; onMatch: () => void }) 
           type="button"
           tabIndex={-1}
           onClick={onMatch}
-          className="pointer-events-auto mt-3 h-9 w-full rounded-full bg-accent text-[13px] font-medium text-on-accent shadow-offset-sm transition-transform active:scale-95"
+          className="pointer-events-auto mt-3 h-9 w-full rounded-full bg-fg text-[13px] font-medium text-ground transition-transform active:scale-95"
         >
           Match your own
         </button>

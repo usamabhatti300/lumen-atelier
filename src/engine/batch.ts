@@ -17,6 +17,7 @@ import { ExportCancelled, exportEdited, exportFileName, plannedRenderSize, type 
 import type { UpscaleFactor } from '@/lib/ml/upscale';
 import { canvasToBlob, createCanvas } from '@/lib/image/decode';
 import { defaultStampDate, isoDate, loadFinishFonts, type StampOptions } from '@/lib/finish/stamp';
+import { overlayOptionsFor, type OverlayChoice, type OverlayOptions } from '@/lib/finish/overlay';
 import { contactSheetLayout, drawContactSheet, MAX_SHEET_FRAMES, sheetFrameLongSide, type SheetFrame, type SheetRatio } from '@/lib/finish/contactSheet';
 
 export interface ExportSettings {
@@ -27,6 +28,8 @@ export interface ExportSettings {
   aiUpscale?: UpscaleFactor;
   /** Finish step: the date stamp (a null date means each photo's own date). */
   stamp?: StampOptions;
+  /** Finish step: the camcorder or viewfinder overlay (a null date means each photo's own date). */
+  overlay?: OverlayChoice;
 }
 
 /** The date a photo's stamp shows: the chosen date, else its capture date, else today. */
@@ -34,6 +37,12 @@ export function stampDateFor(id: string, chosen: string | null): string {
   if (chosen) return chosen;
   const meta = useEditor.getState().photos.find((p) => p.id === id);
   return defaultStampDate(meta?.exif?.dateTime);
+}
+
+/** What a photo's overlay shows, from its own EXIF (date, capture time, exposure): nothing is made up. */
+export function overlayFor(id: string, choice: OverlayChoice | null | undefined): OverlayOptions | null {
+  if (!choice) return null;
+  return overlayOptionsFor(choice, useEditor.getState().photos.find((p) => p.id === id)?.exif);
 }
 
 export async function editFor(id: string): Promise<EditState | null> {
@@ -125,6 +134,7 @@ export async function exportPhoto(
       signal,
       onProgress,
       stamp: opts.stamp ? { placement: opts.stamp.placement, date: stampDateFor(id, opts.stamp.date) } : undefined,
+      overlay: overlayFor(id, opts.overlay),
     });
     return { name: exportFileName(name, opts.format), blob };
   } finally {

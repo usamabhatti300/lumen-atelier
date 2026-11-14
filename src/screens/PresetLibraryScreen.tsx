@@ -1,4 +1,4 @@
-/** Preset library: browse, favourite, import/export, manage presets (no photo needed). */
+/** Look library: browse, keep, import/export and manage looks (no open photo needed). */
 import { DecodeText } from '@/components/fx/DecodeText';
 import { AfterimageCursor } from '@/components/fx/AfterimageCursor';
 import { Download, Upload } from 'lucide-react';
@@ -14,7 +14,9 @@ import { useEditor } from '@/state/editorStore';
 import { setPreviewSource } from '@/engine/presetThumbs';
 import { leafPaths } from '@/lib/schema/adjustments';
 import { BUILTIN_PRESETS } from '@/lib/presets/library';
-import { categoryTint } from '@/lib/presets/codes';
+import { ROLL_IDS } from '@/lib/presets/rolls';
+import { SAMPLE_PHOTO } from '@/lib/samples';
+import { getPhoto, listProjects } from '@/lib/storage/db';
 import type { Preset } from '@/lib/schema/preset';
 
 export default function PresetLibraryScreen() {
@@ -27,11 +29,29 @@ export default function PresetLibraryScreen() {
   const fromShelf = params.get('category');
   const initialCategory = PRESET_CATEGORY_IDS.includes(fromShelf as PresetCategoryId) ? (fromShelf as PresetCategoryId) : undefined;
   const [report, setReport] = useState<{ added: number; warnings: string[]; rejected: number } | null>(null);
+  const [onSample, setOnSample] = useState(false);
 
   useEffect(() => {
     void load();
-    // No photo on this screen: previews use the built-in test scene.
-    void setPreviewSource(null, null);
+    // Previews show the looks on your latest photo, or on the bundled sample before you have one.
+    let alive = true;
+    void (async () => {
+      const photoId = (await listProjects().catch(() => []))[0]?.photoIds[0];
+      const blob = photoId
+        ? (await getPhoto(photoId).catch(() => undefined))?.thumbnail
+        : await fetch(SAMPLE_PHOTO.thumbUrl)
+            .then((r) => (r.ok ? r.blob() : undefined))
+            .catch(() => undefined);
+      const bmp = blob ? await createImageBitmap(blob).catch(() => null) : null;
+      if (!alive) return bmp?.close();
+      if (!bmp) return void setPreviewSource(null, null);
+      setOnSample(!photoId);
+      await setPreviewSource(`library:${photoId ?? 'sample'}`, bmp, photoId ? undefined : 'sample');
+      bmp.close();
+    })();
+    return () => {
+      alive = false;
+    };
   }, [load]);
 
   return (
@@ -79,8 +99,8 @@ export default function PresetLibraryScreen() {
             <DecodeText text="Every" immediate /> <DecodeText text="roll" immediate delay={0.25} className="voice text-accent" />
           </h1>
           <p className="relative mt-4 max-w-2xl text-[15px] leading-relaxed text-fg-3">
-            Fourteen rolls of looks, starting with Editor's Picks, plus the looks you save or match from references. Previews here use a built-in test scene; in
-            a project they show your photo.
+            {ROLL_IDS.length} rolls of looks, each one made to change a photo, plus the looks you save or match from a reference.{' '}
+            {onSample ? 'Shown here on a sample photo; open one of yours to see them on it.' : 'Shown here on your latest photo.'}
           </p>
         </div>
         <div className="pb-16">
@@ -92,7 +112,7 @@ export default function PresetLibraryScreen() {
         {detail && (
           <div className="space-y-4 px-5 pb-5 text-sm">
             <p className="label-caps flex items-center gap-2 text-fg-3">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: categoryTint(detail.category) }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               {ALL_CATEGORY_LABELS[detail.category]}
             </p>
             {detail.description && <p className="leading-relaxed text-fg-2">{detail.description}</p>}
@@ -127,7 +147,7 @@ export default function PresetLibraryScreen() {
         {report && (
           <div className="space-y-2 px-5 pb-5 text-sm text-fg-3">
             <p className="text-fg">
-              Imported {report.added} preset{report.added === 1 ? '' : 's'}
+              Imported {report.added} look{report.added === 1 ? '' : 's'}
               {report.rejected ? `, skipped ${report.rejected}` : ''}.
             </p>
             {report.warnings.length > 0 && (

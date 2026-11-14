@@ -80,13 +80,19 @@ export default function EditorScreen() {
     initLensBlurAutoload();
     startAutosave();
     void (async () => {
-      const project = await getProject(projectId);
-      if (!project) {
-        showToast('That project no longer exists.', 'error');
+      const project = await getProject(projectId).catch(() => null);
+      if (project === null) {
+        // Storage is blocked or failed (private browsing, site data off): don't leave a blank editor.
+        showToast('This edit could not be opened: the browser is blocking storage for this site.', 'error');
         navigate('/');
         return;
       }
-      const records = await getPhotos(projectId);
+      if (!project) {
+        showToast('That edit no longer exists.', 'error');
+        navigate('/');
+        return;
+      }
+      const records = await getPhotos(projectId).catch(() => []);
       const order = new Map(project.photoIds.map((id, i) => [id, i]));
       records.sort((a, b) => (order.get(a.id) ?? 1e9) - (order.get(b.id) ?? 1e9));
       if (cancelled) return;
@@ -179,8 +185,9 @@ export default function EditorScreen() {
         if (!referenceOpen) void runImport([...e.dataTransfer.files]);
       }}
     >
-      {/* The photo's light behind the chrome; the photo itself sits on the near-neutral stage. */}
-      <Ambient src={ambientSrc} opacity={0.85} className="-z-10" still />
+      {/* The photo's light behind the chrome, kept faint: bars and rails beside a photo you are
+          colour-judging must stay close to neutral (audit 2026-11-14). */}
+      <Ambient src={ambientSrc} opacity={0.16} className="ambient-quiet -z-10" still />
       <TopBar onImport={openImport} onPaste={openPaste} />
       <input
         ref={fileInput}
@@ -205,7 +212,7 @@ export default function EditorScreen() {
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
                   className="glass-pane glass-edge-r shrink-0 overflow-hidden"
-                  aria-label="Presets and photos"
+                  aria-label="Looks and photos"
                 >
                   <div className="h-full w-[284px]">
                     <LeftPanel onOpenReference={() => setReference(true)} />
@@ -329,7 +336,13 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
   const isMore = sheet !== null && sheet !== 'presets' && sheet !== 'adjust' && sheet !== 'color';
   // A tab bar: tapping the open tab keeps it (close with ×, a drag down, or Escape).
   const open = (id: Sheet) => {
-    if (sheet === id || (id === 'tools' && isMore)) return;
+    if (sheet === id) return;
+    // Inside one of More's tools, More goes back to the grid of tools.
+    if (id === 'tools' && isMore) {
+      tick();
+      setSheet('tools');
+      return;
+    }
     if (id !== 'presets' && id !== 'tools' && id !== 'photos') selectRightTab(id);
     tick();
     setSheet(id);
@@ -375,6 +388,13 @@ const SHEET_TITLE: Partial<Record<Sheet, string>> = { presets: 'Looks', adjust: 
  */
 function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; setSheet: (s: Sheet | null) => void; side?: boolean }) {
   const [tall, setTall] = useState(false);
+  // Each tool opens at its own compact size: a sheet pulled tall for Light must not leave Crop or
+  // Remove working on a thumbnail of the photo.
+  const [tallFor, setTallFor] = useState(sheet);
+  if (sheet !== tallFor) {
+    setTallFor(sheet);
+    if (tall) setTall(false);
+  }
   const sheetEl = useRef<HTMLDivElement>(null);
   /** Height while the handle is being dragged (px), else null (the sheet sizes itself). */
   const [dragH, setDragH] = useState<number | null>(null);
@@ -467,7 +487,14 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
           {sheet !== 'presets' && (
             <div className={`flex h-11 shrink-0 items-center justify-between gap-2 pr-2 pl-4 ${inner}`}>
               {SHEET_TITLE[sheet] ? (
-                <h2 className="font-mono text-[13px] font-medium text-fg [font-stretch:100%]">{SHEET_TITLE[sheet]!.toLowerCase()}</h2>
+                <span className="flex min-w-0 items-center gap-1">
+                  {sheet === 'photos' && (
+                    <button type="button" aria-label="All tools" onClick={() => setSheet('tools')} className="-ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fg-2 active:scale-90 coarse:h-11 coarse:w-11">
+                      <ChevronLeft size={18} />
+                    </button>
+                  )}
+                  <h2 className="font-mono text-[13px] font-medium text-fg [font-stretch:100%]">{SHEET_TITLE[sheet]!.toLowerCase()}</h2>
+                </span>
               ) : (
                 <span className="flex min-w-0 items-center gap-1">
                   <button type="button" aria-label="All tools" onClick={() => setSheet('tools')} className="-ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fg-2 active:scale-90 coarse:h-11 coarse:w-11">
@@ -519,17 +546,18 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
 
 function MoreTabs({ value, onChange }: { value: RightTab; onChange: (t: RightTab) => void }) {
   const tabs: { id: RightTab; label: string }[] = [
-    { id: 'detail', label: 'Detail' },
-    { id: 'effects', label: 'Effects' },
-    { id: 'masks', label: 'Masks' },
-    { id: 'portrait', label: 'Portrait' },
-    { id: 'remove', label: 'Remove' },
+    // The same order as the More grid.
     { id: 'geometry', label: 'Crop' },
+    { id: 'masks', label: 'Masks' },
+    { id: 'remove', label: 'Remove' },
+    { id: 'portrait', label: 'Portrait' },
+    { id: 'effects', label: 'Effects' },
+    { id: 'detail', label: 'Detail' },
   ];
   return (
     <div className="no-scrollbar -ml-1 flex min-w-0 gap-1 overflow-x-auto">
       {tabs.map((t) => (
-        <button key={t.id} type="button" onClick={() => onChange(t.id)} aria-pressed={value === t.id} className={`h-9 shrink-0 rounded-full px-3.5 text-[13px] font-medium transition-colors ${value === t.id ? 'bg-fg text-ground' : 'text-fg-3 hover:text-fg'}`}>
+        <button key={t.id} type="button" onClick={() => onChange(t.id)} aria-pressed={value === t.id} className={`h-9 shrink-0 rounded-full px-3.5 text-[13px] font-medium transition-colors coarse:h-10 ${value === t.id ? 'bg-fg text-ground' : 'text-fg-3 hover:text-fg'}`}>
           {t.label}
         </button>
       ))}
@@ -570,8 +598,8 @@ const TOOLS: { id: RightTab | 'photos'; label: string; body: string }[] = [
   { id: 'remove', label: 'Remove', body: "Brush out what you don't want" },
   { id: 'portrait', label: 'Portrait', body: 'Skin, eyes and face light' },
   { id: 'effects', label: 'Effects', body: 'Light leaks, bloom, flare and dust' },
-  { id: 'detail', label: 'Detail', body: 'Sharpen, grain and noise' },
-  { id: 'detail', label: 'Lens blur', body: 'Soften the background' },
+  { id: 'detail', label: 'Detail', body: 'Sharpen and clean up noise' },
+  { id: 'detail', label: 'Lens blur', body: 'Soften the background (in Detail)' },
 ];
 
 function ToolGrid({ onPick }: { onPick: (t: RightTab | 'photos') => void }) {

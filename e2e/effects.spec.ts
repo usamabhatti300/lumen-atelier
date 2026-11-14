@@ -35,6 +35,21 @@ const RIGHT = { x: 0.78, y: 0.1, w: 0.2, h: 0.5 };
 const CENTRE = { x: 0.4, y: 0.4, w: 0.2, h: 0.2 };
 const CORNER = { x: 0, y: 0, w: 0.12, h: 0.12 };
 
+/** Every effect's slider label; the last three are the blur effects (motion blur, shutter drag, soft focus). */
+const EFFECTS = [
+  'Light leak',
+  'Lens flare',
+  'Bloom',
+  'Halation',
+  'Flash',
+  'Dreamy blur',
+  'Colour fringe',
+  'Dust & scratches',
+  'Motion blur',
+  'Shutter drag',
+  'Soft focus',
+];
+
 const shot = (page: Page) => page.locator('canvas.editor-canvas').screenshot();
 async function settle(page: Page) {
   await page.waitForTimeout(900);
@@ -42,18 +57,19 @@ async function settle(page: Page) {
 
 test.describe('effects', () => {
   test('each effect changes the photo, is the original again at 0, undoes and exports', async ({ page }) => {
+    test.setTimeout(720_000); // eleven effects under software rendering
     await page.goto('/');
     await page.getByTestId('gallery-file-input').setInputFiles({ name: 'fx.jpg', mimeType: 'image/jpeg', buffer: await makeImage(page, 'target', 900, 600) });
     await waitForRender(page);
     await page.getByRole('tab', { name: 'Effects' }).click();
-    for (const name of ['Light leak', 'Lens flare', 'Bloom', 'Halation', 'Flash', 'Dreamy blur', 'Colour fringe', 'Dust & scratches']) {
+    for (const name of EFFECTS) {
       await expect(page.getByRole('slider', { name, exact: true })).toHaveValue('0');
     }
     await settle(page);
     const original = await shot(page);
 
     // Every effect changes the render on its own.
-    for (const name of ['Light leak', 'Lens flare', 'Bloom', 'Halation', 'Flash', 'Dreamy blur', 'Colour fringe', 'Dust & scratches']) {
+    for (const name of EFFECTS) {
       await setRange(page, name, 100);
       await settle(page);
       expect(Buffer.compare(await shot(page), original), name).not.toBe(0);
@@ -79,6 +95,25 @@ test.describe('effects', () => {
     const flash = await regionMeans(page, await shot(page), [LEFT, RIGHT, CENTRE, CORNER]);
     expect(flash.means[2][1]).toBeGreaterThan(base.means[2][1] + 10);
     expect(flash.means[3][1]).toBeLessThan(base.means[3][1]);
+
+    await setRange(page, 'Flash', 0);
+
+    // Motion blur and soft focus soften the photo without changing how bright it is overall;
+    // shutter drag only ever adds light.
+    const all = [{ x: 0, y: 0, w: 1, h: 1 }];
+    const baseAll = (await regionMeans(page, original, all)).means[0][1];
+    for (const name of ['Motion blur', 'Soft focus']) {
+      await setRange(page, name, 100);
+      await settle(page);
+      const m = (await regionMeans(page, await shot(page), all)).means[0][1];
+      expect(Math.abs(m - baseAll), name).toBeLessThan(6);
+      await setRange(page, name, 0);
+    }
+    await setRange(page, 'Shutter drag', 100);
+    await settle(page);
+    expect((await regionMeans(page, await shot(page), all)).means[0][1]).toBeGreaterThanOrEqual(baseAll - 0.5);
+    await setRange(page, 'Shutter drag', 0);
+    await setRange(page, 'Flash', 100);
 
     // The section's reset puts the light effects back.
     await page.getByRole('button', { name: /reset light/i }).click();

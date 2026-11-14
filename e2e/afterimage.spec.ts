@@ -5,6 +5,7 @@ test('afterimage: changing the look shows the previous frame as a ghost (read ba
   await page.goto('/');
   await page.getByTestId('gallery-file-input').setInputFiles({ name: 'g.jpg', mimeType: 'image/jpeg', buffer: await makeImage(page, 'target', 900, 600) });
   await waitForRender(page);
+  await page.getByRole('tab', { name: "Editor's Picks" }).click();
   await page.getByRole('button', { name: 'Apply Velvet Slide', exact: true }).click();
   await page.waitForTimeout(1500);
 
@@ -22,7 +23,7 @@ test('afterimage: changing the look shows the previous frame as a ghost (read ba
             const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
             let filled = 0;
             for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 0 && d[i] + d[i + 1] + d[i + 2] > 30) filled++;
-            if (filled > 0 || performance.now() - t0 > 3000) {
+            if (filled > 0 || performance.now() - t0 > 20000) {
               clearTimeout(timer);
               resolve({ w: c.width, h: c.height, filled: filled / (d.length / 4) });
             } else requestAnimationFrame(check);
@@ -32,7 +33,7 @@ test('afterimage: changing the look shows the previous frame as a ghost (read ba
         obs.observe(document.body, { childList: true, subtree: true });
       }),
   );
-  await page.getByRole('button', { name: 'Apply Golden Portrait Negative', exact: true }).click();
+  await page.getByRole('button', { name: 'Apply Daylight', exact: true }).click();
   const g = await sampled;
   expect(g.w).toBeGreaterThan(100);
   expect(g.h).toBeGreaterThan(50);

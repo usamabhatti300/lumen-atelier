@@ -179,7 +179,13 @@ Self-hosted via Fontsource (OFL): `@fontsource-variable/geist`, `@fontsource-var
 
 Unchanged from the previous system (phone first; 16px gutter, 32px from `sm`; 56px app bar).
 
-**Home:** the wordmark (plus Looks and Settings icons), then only: "Any look. Made *yours.*", the two
+**Home (order changed 2026-11-14):** your photos come first once you have any. A first visit gets the
+full introduction: headline, one paragraph, the two actions, the hero photo, the "How a look travels"
+story, then the empty contact sheet and the rolls. With one or more edits: headline, the two actions,
+then **your edits** straight away, then the rolls, and the story last; the paragraph is dropped, and
+on phones so is the hero photo (the contact sheet already shows your photos).
+
+The wordmark (plus Looks and Settings icons), then: "Any look. Made *yours.*", the two
 actions (Match a look in lilac, Open a photo secondary) and one mono line ("free · private · on this
 device"). Below: **your edits** as a contact sheet (3 columns on phones: film frames with a sprocket
 edge, the cover, a frame number and an mm·dd date; the edit you were last in has the lilac edge; a ⋯
@@ -222,6 +228,15 @@ exported image, never on the editing view. (Agreed with the owner, 2026-11-08.)
 - **Date stamp**: off by default. Orange `'26 11 08` in Martian Mono with a faint bleed, sized from the
   photo's short side; the date defaults to the capture date (EXIF), else today, and is editable; four
   corners. The only place orange reaches a photo.
+- **Overlays**: one opt-in control, None (default) · Camcorder · Viewfinder, for single photos and
+  batches (not the contact sheet). Camcorder: a red recording dot and REC top left, a battery top
+  right, and bottom left the date (`NOV 08 2026`) with the capture time above it. Viewfinder: four
+  thin corner brackets, a centre cross and the date. White Martian Mono with a soft dark edge and one
+  red for the dot (`OVERLAY_COLORS`, the user's content, not interface colours); sized from the short
+  side; generic shapes, no brand look-alikes. Nothing is invented: the time and the exposure readout
+  (shutter, aperture, ISO) appear only when EXIF has them. One date at most: the camcorder's date
+  replaces the orange stamp (its switch is disabled and says so); with the viewfinder the stamp, if
+  on, is the date.
 - **Contact sheet**: up to 12 of the project's photos (tap frames to leave them out), each rendered
   with its own edit, on night black with the wordmark, "n frames · date", and per frame its number,
   look name and mm·dd date; rows shrink to their frames and the grid is centred. 4:5 (2160 × 2700) or
@@ -229,20 +244,47 @@ exported image, never on the editing view. (Agreed with the owner, 2026-11-08.)
 
 ## Looks and rolls
 
-The 14 preset categories are presented as numbered **rolls** (`src/lib/presets/rolls.ts`, a display
-layer only; presets keep their category ids): 01 Editor's Picks, 02 Late Showing, 03 Blue Hour Tapes,
-04 Basement Summer, 05 Soft Static, 06 Close Up, 07 Something Borrowed, 08 Front Row, 09 Golden
-Minutes, 10 Postcards, 11 Moss & Clay, 12 Flash at Midnight, 13 Monochrome Diary, 14 Feed Ready; plus
-**Yours** and **Matched**. Each has a two-word mood that also feeds search.
+**One word per thing (2026-11-14):** what a user reads is always a **look** (never "preset") in a
+**roll** (never "category"), with **Kept** (favourites), **Last roll** (recent) and **Yours** (looks you
+saved or matched). "Preset" survives only in code, file names and the JSON format.
 
-The browser has one switch: **Rolls · Kept · Last roll · Yours** (Kept = favourites; Last roll = the
-last 12 looks applied, newest first; Yours = looks you saved or matched). Under Rolls, a slim mono row
-of the numbered rolls (selected: ivory with a lilac underline) and "all"; coming back to Rolls reopens
-the roll you were on. Grids show the open roll's mood under it; the phone strip doesn't (fixed height).
-On phones the strip's frames have no captions (the chosen look's name is in the amount row), and the
-amount row appears only while a look is on (it springs open and folds away; no hint line). Home shows one cover per
-roll, rendered with its first look on your last photo. Applying a look to several photos (Photos tab)
-opens the same grid in a dialog instead of a dropdown.
+The library is a curated set of **54 looks in 12 rolls** (`src/lib/presets/library.ts`,
+`src/lib/presets/rolls.ts`): 01 Editor's Picks, 02 Basement Summer, 03 Late Showing, 04 Blue Hour
+Tapes, 05 Soft Static, 06 Golden Minutes, 07 Flash at Midnight, 08 Monochrome Diary, and four trend
+rolls added from the Gen Z research: 09 Pocket Digicam, 10 2016, 11 Camcorder, 12 Lofi Dusk; plus
+**Yours** and **Matched**. A look's **Amount runs to 150%**: past 100 every value the look sets
+carries on in the same direction (inside its range), so a gentle look can be pushed. Each has a short mood that also feeds search. Six rolls of the earlier 186-look library
+were retired (their category ids stay valid for looks people saved under them, which show under
+Yours). A look must change a photo visibly and differ visibly from every other look; the house rules
+are in the header of `library.ts` and are enforced by tests.
+
+The browser has one switch: **Rolls · Kept · Last roll · Yours**. Under Rolls, a slim mono row: in the
+editor it starts with **For this photo** (six looks picked from measured traits of the open photo,
+with the traits shown: "picked for this photo · hard light · muted"; see docs/AI_ARCHITECTURE.md),
+then the numbered rolls (selected: ivory with a lilac underline) and "all". A fresh photo opens on For
+this photo. Coming back to Rolls reopens the roll you were on, and clearing a search does too. While
+searching, the line under the rolls gives the count ("3 looks for "warm""). Grids show the open roll's
+mood; the phone strip doesn't (fixed height).
+
+**Tiles follow the photo's shape** in grids (between 4:5 and 3:2, from the first preview that loads),
+so a look is judged on the whole picture. Previews render at about twice their displayed size. On
+phones the strip's frames are 96 px wide with the name under each.
+
+**The phone amount row never changes height.** With no look on it shows one quiet line ("Tap a look to
+try it. Hold one to see it large."); with a look on: Amount · value · keep (star) · save (+) · remove
+(×). Choosing a look therefore never moves the photo. The look chip on the photo steps aside while a
+tool (crop, masks, remove, heal) is working on the photo, and carries no hint paragraph.
+
+Home shows one cover per roll, rendered with the roll's cover look on your last photo. The look
+library page (`/presets`) opens on "all" and shows the looks on your latest photo (the bundled sample
+before you have one). Applying a look to several photos (Photos tab) opens the same grid in a dialog.
+
+**Adaptive fit:** a library look is fitted to the photo's exposure, and to the photo's own colour cast
+only; a look's intended colour is never "corrected". The applied look says what was changed in one
+short line ("Fitted to this photo: exposure +0.09").
+
+**Auto** (Light): one button at the top of Light on desktop and in the phone's Light sheet (left of
+"Reset …"). It sets ordinary sliders, which light up lilac like any other change.
 
 ## Elevation & depth
 
@@ -355,9 +397,9 @@ Afterimage; the palette, type, wordmark and analog props are unchanged. It repla
   titles jump to a step and "replay" runs it again. What it shows: a reference is scanned, its palette breaks into particles that fly onto your photo,
   the look washes across it and an editable look card rises. Illustration only (a graded crop of
   the sample photo and descriptive readings).
-- **Look dissolve** (`LookDissolve`, editor): when a look lands, the previous frame breaks into
-  pixels behind a lilac burning front and drifts away, uncovering the new look. Replaces the CSS
-  ghost fade once three.js has loaded; the ghost canvas stays in the DOM (e2e reads it).
+- **Look dissolve: removed on 2026-11-15** (the owner: the particle look on a look change "doesn't
+  look good there"). A look change now uses only the quick afterimage ghost fade described under
+  Motion. Don't bring particles back to the editing view.
 - **Opening animation** (`components/fx/Intro.tsx`): continues from the phone's splash (the icon on
   the night ground). "lu" locks on through flickering glyphs, a shutter flash fires and the lilac
   copy slides out to its hard offset, the mark spells out "lumen" with "atelier" under it, then it
@@ -391,3 +433,36 @@ Afterimage; the palette, type, wordmark and analog props are unchanged. It repla
 - **Home, larger screens**: the empty part of "Your edits" explains dropping photos in.
 - **Performance**: the editor's ambient light holds still and follows the photo, not each edit
   (its glass panels would otherwise re-blur every frame).
+
+## Audit pass (2026-11-14, later)
+
+From `PRODUCT_AUDIT_AND_IMPROVEMENT_PLAN.md`. These refine the rules above.
+
+- **Neutral beside the photo.** In the editor the ambient light is faint and unsaturated
+  (`.ambient-quiet`, opacity 0.16, aurora 0.08): bars and rails next to a photo being colour-judged
+  read as night-black, not as a tint of the photo. Home and the other screens are unchanged.
+- **One lilac action per screen** is enforced again: home's story button is ivory (Match a look in
+  the hero is the lilac one).
+- **Crop** has Cancel beside Done, and Escape cancels: both restore the crop, rotation and flips the
+  tool opened with.
+- **The dock's More** returns to the grid of tools from inside any of them; Photos has the same back
+  chevron as the other tools; the tool chips follow the grid's order.
+- **Touch targets**: the collection switch, roll tabs, search and the amount row's buttons are 44 px on
+  coarse pointers.
+- **Compare readout**: "let go for {look} · {amount}%" sits on a dark chip like "original".
+- **Export preview** waits for the rendered pixels (it was drawn before they arrived, and came out black).
+- **Motion**: home's entrance is CSS (`[data-reveal]`, staggered by `--reveal-i`); GSAP is gone. Slider
+  readouts don't count up while another slider is being dragged. The hero uses about four times the
+  particles, so the photo reads as a photo.
+- **Phone Light groups** are Tone, Whites & blacks, White balance, Vibrance, Texture (the last two
+  names replaced "Range" and a second "Colour").
+- **Effects** (trend pass, 2026-11-14): the panel opens with **one-tap tiles**, each showing what the
+  effect does to the open photo at its one-tap strength; a tap adds it, another takes it off (lilac
+  edge and its value while on). The sliders stay below for exact strength, in three groups: Light,
+  Blur (Motion blur, Shutter drag, Soft focus, Dreamy blur) and Lens & film.
+- **After the second audit** (`POST_IMPLEMENTATION_AUDIT.md`): a cancelled crop rewinds, so there is
+  nothing to undo back into; each phone tool opens at its own compact sheet size (a sheet pulled
+  tall for one tool does not stay tall for the next); Auto reports what it changed in a toast
+  ("Auto: exposure +0.08 · shadows +18"); the star is labelled Keep / Remove from Kept; the roll row
+  turns with the mouse wheel; the adaptive fit never brightens a photo whose top 3% of pixels is
+  already near white.

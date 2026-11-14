@@ -1,6 +1,6 @@
 # Handoff: read this first in a new session
 
-_Last updated: 2026-11-14 (newest: new app icon and opening animation). Owner: Usama (usama@doppellabs.ai)._
+_Last updated: 2026-11-15 (newest: trend features 1-3 of 8). Owner: Usama (usama@doppellabs.ai)._
 
 ## What this project is
 
@@ -31,6 +31,36 @@ i7-8665U with 16 GB RAM and Intel UHD 620, so local inference is CPU-only (slow)
 To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run dev`. Never use `VITE_` for secrets.
 
 ## State as of the last session
+
+- **2026-11-15 (newest): trend features.** After Gen Z trend research the owner approved eight
+  picks, in this order, and asked for the first three, which are **built** (details and tests in
+  PROJECT_STATUS.md): (1) digicam kit: roll 09 Pocket Digicam + Camcorder / Viewfinder overlays in
+  Finish; (2) Motion blur, Shutter drag, Soft focus + one-tap effect tiles; (3) rolls 10 "2016",
+  11 Camcorder, 12 Lofi Dusk + look Amount to 150%. **Still to build, in order:** (4) photo dump
+  mode (up to 20 photos, one look fitted to each, export as a carousel set); (5) frames and
+  borders (film strip, instant-photo style, white border with date, 4:5 and 9:16 with blurred
+  fill); (6) scrapbook: cut-out stickers from subject selection + collage layouts; (7) look card
+  (9:16 before/after with the look's name) + look links / QR (settings only, never the photo);
+  (8) camera with live looks (**ask where its entry goes**; proposed: a "Shoot" button on home).
+  Roll and look names from this pass are proposals the owner has not objected to. **Not committed.**
+
+- **2026-11-14 (newest): product audit and improvement pass** (the owner's brief: audit everything,
+  curate the looks, add what earns its place, implement, test, audit again). Read
+  `PRODUCT_AUDIT_AND_IMPROVEMENT_PLAN.md` (findings, roadmap, decisions that are the owner's) and
+  `POST_IMPLEMENTATION_AUDIT.md` (second audit: what is still not at the level of the big editors).
+  Done: **41 looks in 8 rolls** instead of 186 in 14 (`library.ts` header has the house rules;
+  tests enforce them), **For this photo** picks, **Auto** in Light, the adaptive white-balance fix,
+  home leads with your edits, near-neutral editor chrome, crop cancel, export preview fix, one
+  vocabulary (look / roll), engineering clean-up (see PROJECT_STATUS.md for the list and tests).
+  **Not committed** at the end of that session unless the owner asked.
+  **Waiting on the owner:** (1) keep or remove the Lit showpieces he asked for the same morning
+  (opening animation on later opens, 3D rolls ring, custom cursor, decode text, liquid glass): both
+  audits recommend removing them, and they were kept and only made cheaper; (2) rolls were
+  renumbered 01-08 (the old numbers were documented as fixed); (3) the names of the 7 new and 7
+  renamed looks. **Next, in order:** Match a look (shorter result page, analyse on drop, an
+  evaluation set; a same-scene test came back warmer and less saturated than the reference), the
+  engine items (highlight shoulder, grain, tint fade and skin protection, monochrome before
+  grading, a Fade slider: each in both renderers with tests), effect tiles, social export sizes.
 
 - **2026-11-14 (newest): home hero and story, after owner feedback.** Home has no coloured ambient
   light any more: a black, grained top (`.home-void`). The particle photo hero stays (the owner

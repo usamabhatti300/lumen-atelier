@@ -1,7 +1,7 @@
 # Lumen Atelier
 
 A local-first photo editing studio for photographers and creators. It has GPU colour grading,
-portrait retouching, masks, 186 original presets, and **reference matching**: give it a
+portrait retouching, masks, 54 curated looks, and **reference matching**: give it a
 photo whose look you love and it builds an editable preset you can refine and reuse.
 
 > The preset approximates a reference's look from the finished image. A JPEG doesn't contain its
@@ -115,11 +115,13 @@ it out, but browsers won't install it or keep it offline from a plain-http addre
   visibility toggle, and autosave with session recovery.
 - **Compare**: before/after split (draggable), side by side, hold for before; fit, 100% and wheel zoom
   with pan; live RGB histogram with clipping readout.
-- **Presets**: 186 original presets with real previews rendered on your photo, in 14 categories. The
-  **Signature Collection** (51 premium looks, tuned not to blow out skies) is the first, default tab;
-  the others include Cinematic, Film & Analog, Matte & Muted, Portrait, Wedding & Romance, Golden Hour,
-  Earthy & Forest, Street & Flash and Black & White. Search covers the whole library; also favourites,
-  intensity, and your own presets (create, duplicate, rename, delete, JSON import/export). See
+- **Looks**: 54 original looks in 12 rolls (Editor's Picks, colour film, cinema, cool and pastel, matte
+  and earthy, golden hour, flash and night, black and white, and four trend rolls: Pocket Digicam,
+  2016, Camcorder, Lofi Dusk), with real previews rendered on your photo. A look's Amount runs to 150%. Each look is tested to change a photo visibly, to differ from every other look and not to
+  blow out a bright sky. **For this photo** lists six looks picked from measured traits of the open
+  photo; **Auto** in Light balances exposure, white balance, highlights, shadows and colour in one
+  tap. Search covers the whole library; also Kept (favourites), Last roll, Amount, and your own
+  looks (save, duplicate, rename, delete, JSON import/export). See
   `docs/PRESET_LIBRARY_NOTES.md`.
 - **Reference matching**: crop or trim the reference (screenshot borders are detected), staged
   analysis with cancel and retry, palette and tonal-zone readout, plain-language description,
@@ -183,7 +185,7 @@ models** shows each model's size, licence and download state, and can check the 
 Code: project licence TBD by the owner. Third-party: React, Vite, Tailwind, Motion, Zustand, Zod,
 idb, Lucide (MIT/ISC); GSAP (standard "no charge" GreenSock licence); ONNX Runtime Web (MIT); Transformers.js
 (Apache-2.0); MediaPipe Tasks Vision and its models (Apache-2.0); the AI models listed above under their own
-licences; Geist, Geist Mono and Instrument Serif (SIL OFL, self-hosted). The built-in presets are original
+licences; Geist and Martian Mono (SIL OFL, self-hosted). The built-in presets are original
 works and imply no affiliation with film manufacturers or other preset makers; the category codes are our
 own.
 

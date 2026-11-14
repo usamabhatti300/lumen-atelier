@@ -1,5 +1,12 @@
 # Preset library notes
 
+> **Superseded on 2026-11-14.** The 186-look library described below was replaced by a curated set
+> of 41 looks in 8 rolls (`src/lib/presets/library.ts`; reasons, measurements and the full
+> keep / retune / cut list are in `PRODUCT_AUDIT_AND_IMPROVEMENT_PLAN.md`, section 5). This file and
+> the recipe documents it refers to (`PHOTO_EDITOR_SIGNATURE_PRO_PRESETS.md`, `PREMIUM_PRESETS.md`,
+> `PRO_PRESET_LIBRARY.md`) are kept as history only. House rules for new looks are in the header of
+> `library.ts` and enforced by `src/lib/presets/blend.test.ts`.
+
 _Last updated: 2026-10-11._ Covers the recipes from `docs/PHOTO_EDITOR_SIGNATURE_PRO_PRESETS.md` (80 recipes,
 "Signature Pro"). Earlier additions are recorded in `docs/PREMIUM_PRESETS.md` and at the end of
 `docs/PRO_PRESET_LIBRARY.md`.

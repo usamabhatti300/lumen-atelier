@@ -84,10 +84,12 @@ export interface ThumbRecord {
 export const THUMB_CACHE_MAX = 2000;
 
 let dbPromise: Promise<IDBPDatabase<AtelierDB>> | null = null;
+/** Look previews written this session (the cache limit is checked every 50th write). */
+let thumbWrites = 0;
 
 export function getDb(): Promise<IDBPDatabase<AtelierDB>> {
   if (!dbPromise) {
-    dbPromise = openDB<AtelierDB>(DB_NAME, DB_VERSION, {
+    const opening = openDB<AtelierDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           const projects = db.createObjectStore('projects', { keyPath: 'id' });
@@ -106,6 +108,11 @@ export function getDb(): Promise<IDBPDatabase<AtelierDB>> {
         }
       },
     });
+    dbPromise = opening;
+    // A failed open (blocked, storage unavailable) must not be remembered: the next call tries again.
+    opening.catch(() => {
+      if (dbPromise === opening) dbPromise = null;
+    });
   }
   return dbPromise;
 }
@@ -113,6 +120,7 @@ export function getDb(): Promise<IDBPDatabase<AtelierDB>> {
 /** For tests: reset the cached connection. */
 export function _resetDbForTests() {
   dbPromise = null;
+  thumbWrites = 0;
 }
 
 export const newId = (prefix = '') =>
@@ -228,12 +236,6 @@ export async function updatePhotoEdit(id: string, edit: EditState, thumbnail?: B
   await tx.done;
 }
 
-export async function renamePhoto(id: string, name: string): Promise<void> {
-  const db = await getDb();
-  const p = await db.get('photos', id);
-  if (p) await db.put('photos', { ...p, name, updatedAt: Date.now() });
-}
-
 export async function deletePhoto(id: string): Promise<void> {
   const db = await getDb();
   const tx = db.transaction(['photos', 'originals'], 'readwrite');
@@ -274,11 +276,6 @@ export async function putLut(lut: LutRecord): Promise<void> {
 export async function getLut(id: string): Promise<LutRecord | undefined> {
   const db = await getDb();
   return db.get('luts', id);
-}
-
-export async function listLuts(): Promise<LutRecord[]> {
-  const db = await getDb();
-  return db.getAll('luts');
 }
 
 // --- Settings ----------------------------------------------------------------
@@ -331,6 +328,9 @@ export async function putCachedThumb(key: string, source: string, blob: Blob): P
   try {
     const db = await getDb();
     await db.put('thumbs', { key, source, blob, at: Date.now() });
+    // Counting the store after every write is wasted work: check the limit on the first write of a
+    // session and then every 50th, so the cache overshoots by at most 49 previews.
+    if (thumbWrites++ % 50 !== 0) return;
     const count = await db.count('thumbs');
     if (count > THUMB_CACHE_MAX) {
       const tx = db.transaction('thumbs', 'readwrite');

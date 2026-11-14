@@ -29,8 +29,9 @@ test('mobile: swipe on the photo steps through the open roll without breaking ho
   await page.goto('/');
   await page.getByTestId('gallery-file-input').setInputFiles({ name: 'w.jpg', mimeType: 'image/jpeg', buffer: await makeImage(page, 'target', 900, 600) });
   await waitForRender(page);
-  // The Looks sheet opens on a fresh photo with roll 01; wait until its looks are listed.
-  await expect(page.getByRole('button', { name: 'Apply Golden Portrait Negative', exact: true })).toBeVisible();
+  // The Looks sheet opens on a fresh photo; open roll 01 so the swipe order is known.
+  await page.getByRole('tab', { name: "Editor's Picks" }).click();
+  await expect(page.getByRole('button', { name: 'Apply Daylight', exact: true })).toBeVisible();
   // Let the first previews fill: under software rendering the page is too busy for a while to
   // report a quick swipe as quick.
   await page.waitForFunction(() => [...document.querySelectorAll('button[aria-label^="Apply "] img')].filter((i) => (i as HTMLImageElement).src).length >= 4, null, { timeout: 120_000 });
@@ -39,26 +40,26 @@ test('mobile: swipe on the photo steps through the open roll without breaking ho
 
   // Swipe left: the first look of the roll; again: the second; right: back to the first.
   await drag(cdp, page, c, -140, 6);
-  await expect(look(page)).toContainText('Golden Portrait Negative');
+  await expect(look(page)).toContainText('Daylight');
   await settle(page);
   await drag(cdp, page, c, -140, -4);
-  await expect(look(page)).toContainText('Velvet Slide');
+  await expect(look(page)).toContainText('Clean Studio');
   await settle(page);
   await drag(cdp, page, c, 140, 0);
-  await expect(look(page)).toContainText('Golden Portrait Negative');
+  await expect(look(page)).toContainText('Daylight');
   await settle(page);
 
   // A mostly vertical drag is not a swipe.
   await drag(cdp, page, c, 40, 160);
   await page.waitForTimeout(500);
-  await expect(look(page)).toContainText('Golden Portrait Negative');
+  await expect(look(page)).toContainText('Daylight');
 
   // Press and hold still shows the original, and letting go doesn't change the look.
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: c.x, y: c.y }] });
   await expect(page.getByText('original', { exact: true })).toBeVisible();
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await expect(page.getByText('original', { exact: true })).toHaveCount(0);
-  await expect(look(page)).toContainText('Golden Portrait Negative');
+  await expect(look(page)).toContainText('Daylight');
 
   // A sideways two-finger pinch zooms; it never steps the look.
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: c.x - 30, y: c.y }, { x: c.x + 30, y: c.y }] });
@@ -68,10 +69,10 @@ test('mobile: swipe on the photo steps through the open roll without breaking ho
   }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await settle(page);
-  await expect(look(page)).toContainText('Golden Portrait Negative');
+  await expect(look(page)).toContainText('Daylight');
 
   // Zoomed in, a sideways drag pans the photo instead of changing the look.
   await drag(cdp, page, c, -140, 0);
   await page.waitForTimeout(500);
-  await expect(look(page)).toContainText('Golden Portrait Negative');
+  await expect(look(page)).toContainText('Daylight');
 });

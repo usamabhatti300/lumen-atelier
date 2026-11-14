@@ -65,10 +65,10 @@ export function AppSettings() {
           {offlineReady ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-success" /> : <CloudDownload size={16} className="mt-0.5 shrink-0 text-fg-2" />}
           <span>
             {offlineReady
-              ? 'The editor is saved on this device and opens without a connection. Editing, presets, masks, reference matching from measurements and export all work offline.'
+              ? 'The editor is saved on this device and opens without a connection. Editing, looks, masks, matching a look from measurements and export all work offline.'
               : import.meta.env.PROD
                 ? 'Preparing offline use… (reload once if this does not change)'
-                : 'Offline use is set up by the built app (npm run build, then npm start). Not available in development.'}
+                : 'Offline use switches on in the installed app. This is a development copy, where it is off.'}
           </span>
         </p>
         {status?.available && (
@@ -123,7 +123,7 @@ export function AppSettings() {
         )}
         {progress === null && persisted === false && (
           <p className="mt-3 text-xs text-fg-4">
-            The browser may clear this site's storage (projects, photos, presets) when the device runs low on space.{' '}
+            The browser may clear this site's storage (edits, photos, looks) when the device runs low on space.{' '}
             <button
               type="button"
               className="font-medium text-accent-fg underline underline-offset-2 hover:no-underline"

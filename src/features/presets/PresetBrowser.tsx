@@ -3,17 +3,18 @@ import { AnimatePresence, motion } from 'motion/react';
 import { publishLookSequence } from '@/features/editor/lookSequence';
 import { isoDate, stampText } from '@/lib/finish/stamp';
 import { Check, Copy, Download, MoreHorizontal, Pencil, Search, Star, Trash2, Blend, X } from 'lucide-react';
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { usePresets, ALL_CATEGORY_LABELS, downloadText } from '@/state/presetStore';
 import { useEditor } from '@/state/editorStore';
 import { presetThumb, thumbSourceListeners, previewSourceId } from '@/engine/presetThumbs';
-import { PRESET_CATEGORY_IDS, type Preset, type PresetCategoryId } from '@/lib/schema/preset';
+import type { Preset, PresetCategoryId } from '@/lib/schema/preset';
 import { Dialog } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
-import { rollOf } from '@/lib/presets/rolls';
+import { ROLL_IDS, rollOf } from '@/lib/presets/rolls';
+import { usePhotoPicks } from './usePhotoPicks';
 
-type Filter = 'all' | 'favorites' | 'recent' | 'yours' | PresetCategoryId;
+type Filter = 'all' | 'foryou' | 'favorites' | 'recent' | 'yours' | PresetCategoryId;
 type Mode = 'rolls' | 'kept' | 'recent' | 'yours';
 
 const MODES: { id: Mode; label: string }[] = [
@@ -54,8 +55,16 @@ export function PresetBrowser({
   const recent = usePresets((s) => s.recent);
   const all = usePresets((s) => s.all);
   const [query, setQuery] = useState('');
-  // Roll 01 (Editor's Picks, the Signature category) is the default tab.
-  const [filter, setFilter] = useState<Filter>(initialFilter ?? 'signature');
+  // In the editor the browser opens on the looks picked for the open photo; elsewhere on roll 01.
+  const inEditor = variant !== 'page' && !!onApply;
+  const [filter, setFilter] = useState<Filter>(initialFilter ?? (inEditor ? 'foryou' : variant === 'page' ? 'all' : 'signature'));
+  const picks = usePhotoPicks(inEditor);
+  // Grid tiles take the photo's shape (between 4:5 and 3:2), so a look is judged on the whole
+  // picture, not on a tall slice of a wide photo. The first preview to load gives the shape.
+  const [tileRatio, setTileRatio] = useState<number | null>(null);
+  const onPreviewSize = useCallback((w: number, h: number) => {
+    if (w > 0 && h > 0) setTileRatio(Math.min(1.5, Math.max(0.8, w / h)));
+  }, []);
   const [editing, setEditing] = useState<Preset | null>(null);
   const [deleting, setDeleting] = useState<Preset | null>(null);
   const appliedId = useEditor((s) => s.edit.appliedPreset?.id);
@@ -75,6 +84,12 @@ export function PresetBrowser({
       const roll = rollOf(p.category);
       return `${p.name} ${p.description} ${p.tags.join(' ')} ${ALL_CATEGORY_LABELS[p.category]} ${roll.name} ${roll.mood}`.toLowerCase().includes(q);
     };
+    // For this photo: the measured picks, best first (roll 01 until the photo has been measured).
+    if (filter === 'foryou') {
+      const byId = new Map(all().map((p) => [p.id, p]));
+      const chosen = picks?.ids.map((id) => byId.get(id)).filter((p): p is Preset => !!p) ?? [];
+      return (chosen.length ? chosen : all().filter((p) => p.category === 'signature')).filter(matches);
+    }
     // Last roll keeps the order the looks were applied in, newest first.
     if (filter === 'recent') {
       const byId = new Map(all().map((p) => [p.id, p]));
@@ -87,13 +102,12 @@ export function PresetBrowser({
       return matches(p);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, filter, favorites, recent, user, all]);
+  }, [query, filter, favorites, recent, user, all, picks]);
 
   // The editor's browser tells a swipe on the photo which looks to step through (roadmap 2.1).
-  const publishes = variant !== 'page' && !!onApply;
   useEffect(() => {
-    if (publishes) publishLookSequence(presets.map((p) => p.id));
-  }, [publishes, presets]);
+    if (inEditor) publishLookSequence(presets.map((p) => p.id));
+  }, [inEditor, presets]);
 
   // Frame numbers ("04·07": roll 4, frame 7) are stable: counted over the whole library, not the filtered view.
   const numbers = useMemo(() => {
@@ -118,9 +132,10 @@ export function PresetBrowser({
     if (m === mode) return;
     setFilter(m === 'kept' ? 'favorites' : m === 'recent' ? 'recent' : m === 'yours' ? 'yours' : lastRoll);
   };
-  const rolls: Filter[] = [...PRESET_CATEGORY_IDS.filter((c) => c !== 'custom' && c !== 'reference'), 'all'];
+  const rolls: Filter[] = [...(inEditor ? (['foryou'] as const) : []), ...ROLL_IDS, 'all'];
   const stamp = useMemo(() => dateStamp(), []);
-  const roll = mode === 'rolls' && filter !== 'all' ? rollOf(filter) : null;
+  const roll = mode === 'rolls' && filter !== 'all' && filter !== 'foryou' ? rollOf(filter) : null;
+  const hasQuery = query.trim().length > 0;
   // Keep the open roll's tab fully in view (it never sits cut off at the edge).
   const rollTabs = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -138,7 +153,7 @@ export function PresetBrowser({
         {strip && !searching ? null : (
         <label className="relative block">
           <Search size={15} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-fg-4" />
-          <span className="sr-only">Search presets</span>
+          <span className="sr-only">Search looks</span>
           <input
             type="search"
             value={query}
@@ -146,6 +161,8 @@ export function PresetBrowser({
               setQuery(e.target.value);
               // Search the whole library, not only the open category (Kept and Last roll stay filters).
               if (e.target.value.trim() && mode === 'rolls' && filter !== 'all') setFilter('all');
+              // Clearing the search goes back to the roll you were on.
+              else if (!e.target.value.trim() && mode === 'rolls' && filter === 'all' && lastRoll !== 'all') setFilter(lastRoll);
             }}
             placeholder={`Search ${all().length} looks`}
             autoFocus={strip}
@@ -175,7 +192,7 @@ export function PresetBrowser({
                 role="radio"
                 aria-checked={mode === m.id}
                 onClick={() => pickMode(m.id)}
-                className={`relative h-8 flex-1 rounded-full px-2 text-[12.5px] font-medium whitespace-nowrap transition-colors coarse:h-9 ${mode === m.id ? 'text-fg' : 'text-fg-4 hover:text-fg-2'}`}
+                className={`relative h-8 flex-1 rounded-full px-2 text-[13px] font-medium whitespace-nowrap transition-colors coarse:h-11 ${mode === m.id ? 'text-fg' : 'text-fg-4 hover:text-fg-2'}`}
               >
                 {mode === m.id && (
                   <motion.span
@@ -191,9 +208,9 @@ export function PresetBrowser({
           {strip && !searching && (
             <button
               type="button"
-              aria-label="Search presets"
+              aria-label="Search looks"
               onClick={() => setSearching(true)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 hover:text-fg coarse:h-10 coarse:w-10"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-fg-3 hover:text-fg coarse:h-11 coarse:w-11"
             >
               <Search size={16} />
             </button>
@@ -204,8 +221,12 @@ export function PresetBrowser({
         {mode === 'rolls' && (
           <div
             ref={rollTabs}
+            // A mouse wheel turns the row sideways (it has no visible scrollbar).
+            onWheel={(e) => {
+              if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
+            }}
             role="tablist"
-            aria-label="Preset categories"
+            aria-label="Rolls"
             className={`no-scrollbar flex gap-4 overflow-x-auto ${variant === 'page' ? '-mx-4 px-4 sm:mx-0 sm:flex-wrap sm:gap-x-5 sm:gap-y-1 sm:px-0' : '-mx-3 px-3 [mask-image:linear-gradient(90deg,transparent,#000_12px,#000_calc(100%-36px),transparent)]'}`}
           >
             {rolls.map((f) => (
@@ -218,12 +239,14 @@ export function PresetBrowser({
                   setFilter(f);
                   setLastRoll(f);
                 }}
-                className={`flex h-8 shrink-0 items-baseline gap-1.5 border-b-[1.5px] pt-2 font-mono text-[11px] lowercase whitespace-nowrap transition-colors [font-stretch:87.5%] coarse:h-9 ${
+                className={`flex h-8 shrink-0 items-baseline gap-1.5 border-b-[1.5px] pt-2 font-mono text-[11px] lowercase whitespace-nowrap transition-colors [font-stretch:87.5%] coarse:h-11 coarse:pt-3.5 ${
                   filter === f ? 'border-accent text-fg' : 'border-transparent text-fg-4 hover:text-fg-2'
                 }`}
               >
                 {f === 'all' ? (
                   'All'
+                ) : f === 'foryou' ? (
+                  'For this photo'
                 ) : (
                   <>
                     <span aria-hidden className={filter === f ? 'text-accent-fg' : 'text-fg-4/70'}>
@@ -238,8 +261,19 @@ export function PresetBrowser({
         )}
         {/* The open roll's mood (grids only; the phone strip keeps its fixed height). */}
         {!strip && (
-          <p className="label-caps truncate text-fg-3">
-            {roll ? (
+          <p className={`label-caps text-fg-3 ${filter === 'foryou' ? '' : 'truncate'}`}>
+            {hasQuery ? (
+              `${presets.length} ${presets.length === 1 ? 'look' : 'looks'} for “${query.trim()}”`
+            ) : filter === 'foryou' ? (
+              picks ? (
+                <>
+                  <span className="text-fg">picked for this photo</span>
+                  {picks.traits && ` · ${picks.traits}`}
+                </>
+              ) : (
+                'a good place to start'
+              )
+            ) : roll ? (
               <>
                 {roll.no !== '—' && <span className="text-fg-2">roll {roll.no} · </span>}
                 <span className="text-fg">{roll.name.toLowerCase()}</span> · {roll.mood}
@@ -247,7 +281,7 @@ export function PresetBrowser({
             ) : filter === 'recent' ? (
               'the looks you used last, newest first'
             ) : filter === 'favorites' ? (
-              'looks you starred'
+              'looks you kept with the star'
             ) : filter === 'yours' ? (
               'looks you saved or matched'
             ) : (
@@ -276,7 +310,8 @@ export function PresetBrowser({
                 ? 'no-scrollbar flex gap-2 overflow-x-auto overscroll-x-contain px-3 pt-2 pb-3'
                 : `grid ${variant === 'panel' ? 'grid-cols-2 gap-2' : 'grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'}`
             }
-            aria-label="Presets"
+            aria-label="Looks"
+            style={strip || !tileRatio ? undefined : ({ '--tile-ratio': String(tileRatio) } as React.CSSProperties)}
           >
             {presets.map((p) => (
               <PresetCard
@@ -285,14 +320,15 @@ export function PresetBrowser({
                 active={appliedId === p.id}
                 favorite={favorites.includes(p.id)}
                 onApply={canApply ? onApply : undefined}
-                onEdit={() => setEditing(p)}
-                onDelete={() => setDeleting(p)}
+                onEdit={setEditing}
+                onDelete={setDeleting}
                 large={variant === 'page'}
                 strip={strip}
                 actionVerb={actionVerb}
                 catalogue={numbers.get(p.id)}
                 stamp={stamp}
                 onPeek={strip ? setPeek : undefined}
+                onPreviewSize={strip ? undefined : onPreviewSize}
               />
             ))}
           </ul>
@@ -303,7 +339,7 @@ export function PresetBrowser({
       <Dialog
         open={!!deleting}
         onClose={() => setDeleting(null)}
-        title="Delete preset?"
+        title="Delete look?"
         footer={
           <>
             <Button variant="ghost" onClick={() => setDeleting(null)}>
@@ -316,7 +352,7 @@ export function PresetBrowser({
                 setDeleting(null);
               }}
             >
-              Delete preset
+              Delete look
             </Button>
           </>
         }
@@ -342,7 +378,10 @@ const PresetCard = memo(function PresetCard({
   catalogue,
   stamp,
   onPeek,
+  onPreviewSize,
 }: {
+  /** Grids only: reports a loaded preview's pixel size (the photo's shape). */
+  onPreviewSize?: (w: number, h: number) => void;
   /** Strip only: press and hold shows the look large (null when let go). */
   onPeek?: (p: { preset: Preset; url: string | null } | null) => void;
   actionVerb: string;
@@ -354,8 +393,8 @@ const PresetCard = memo(function PresetCard({
   active: boolean;
   favorite: boolean;
   onApply?: (p: Preset) => void;
-  onEdit: () => void;
-  onDelete: () => void;
+  onEdit: (p: Preset) => void;
+  onDelete: (p: Preset) => void;
   large: boolean;
 }) {
   const [thumb, setThumb] = useState<{ key: string; url: string } | null>(null);
@@ -404,7 +443,7 @@ const PresetCard = memo(function PresetCard({
   // about to try. Press and hold for a large preview without applying it.
   if (strip) {
     return (
-      <li ref={item} className="w-[84px] shrink-0">
+      <li ref={item} className="w-[96px] shrink-0">
         <button
           type="button"
           onClick={(e) => {
@@ -438,7 +477,7 @@ const PresetCard = memo(function PresetCard({
           onContextMenu={(e) => e.preventDefault()}
           disabled={!onApply}
           aria-pressed={active}
-          aria-label={`${onApply ? actionVerb : 'Preset'} ${preset.name}`}
+          aria-label={`${onApply ? actionVerb : 'Look'} ${preset.name}`}
           title={preset.description ? `${preset.name}: ${preset.description}` : preset.name}
           className={`relative flex w-full flex-col gap-1.5 rounded-[8px] border bg-well px-1 pt-2 pb-1.5 text-left transition-[transform,box-shadow,border-color] duration-200 select-none [-webkit-touch-callout:none] enabled:active:scale-[0.95] ${
             active ? 'border-accent shadow-offset-sm' : 'border-line'
@@ -478,11 +517,11 @@ const PresetCard = memo(function PresetCard({
         onClick={() => onApply?.(preset)}
         disabled={!onApply}
         aria-pressed={active}
-        aria-label={`${onApply ? actionVerb : 'Preset'} ${preset.name}`}
+        aria-label={`${onApply ? actionVerb : 'Look'} ${preset.name}`}
         title={preset.description ? `${preset.name}: ${preset.description}` : preset.name}
         className={`tilt relative block w-full overflow-hidden bg-raised-2 text-left transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] enabled:active:scale-[0.95] ${
-          strip ? 'aspect-[3/4] rounded-md' : large ? 'aspect-[4/5] rounded-lg' : 'aspect-[4/5] rounded-md'
-        } ${active ? 'shadow-selected' : 'shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] enabled:hover:-translate-y-0.5'}`}
+          large ? 'rounded-lg' : 'rounded-md'
+        } aspect-[var(--tile-ratio,0.8)] ${active ? 'shadow-selected' : 'shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] enabled:hover:-translate-y-0.5'}`}
       >
         <AnimatePresence>
           {url && (
@@ -490,6 +529,7 @@ const PresetCard = memo(function PresetCard({
               key={url}
               src={url}
               alt=""
+              onLoad={(e) => onPreviewSize?.(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)}
               initial={{ opacity: 0, scale: 1.06 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -498,9 +538,9 @@ const PresetCard = memo(function PresetCard({
           )}
         </AnimatePresence>
         {!url && <span className="skeleton absolute inset-0" />}
-        <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+        <span aria-hidden className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
         <span aria-hidden className="tilt-light" />
-        {catalogue && (
+        {catalogue && !active && (
           <span className={`absolute top-0 left-0 font-mono font-medium text-white/80 [text-shadow:0_1px_3px_rgb(0_0_0/0.7)] ${strip ? 'p-1.5 text-[11px]' : 'p-2 text-[11px]'}`}>
             {catalogue}
           </span>
@@ -510,7 +550,7 @@ const PresetCard = memo(function PresetCard({
             initial={{ scale: 0, rotate: -90 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: 'spring', stiffness: 520, damping: 22 }}
-            className={`absolute flex items-center justify-center rounded-full bg-accent text-on-accent shadow-offset-sm ${strip ? 'top-1.5 right-1.5 h-5 w-5' : 'top-2 right-2 h-6 w-6'}`}
+            className={`absolute flex items-center justify-center rounded-full bg-accent text-on-accent shadow-offset-sm ${strip ? 'top-1.5 left-1.5 h-5 w-5' : 'top-2 left-2 h-6 w-6'}`}
           >
             <Check size={strip ? 12 : 14} strokeWidth={3} />
           </motion.span>
@@ -527,11 +567,12 @@ const PresetCard = memo(function PresetCard({
         </span>
       </button>
       {large && preset.description && <p className="mt-2 line-clamp-2 px-0.5 text-[13px] leading-snug text-fg-3">{preset.description}</p>}
-      <div className={`absolute right-1.5 flex gap-1 ${strip ? 'hidden' : ''} ${active ? 'top-10' : 'top-1.5'}`}>
+      {/* The chosen look's check takes the frame number's corner, so these never sit over the tile's middle. */}
+      <div className={`absolute top-1.5 right-1.5 flex gap-1 ${strip ? 'hidden' : ''}`}>
         <motion.button
           type="button"
           whileTap={{ scale: 0.75 }}
-          aria-label={favorite ? `Remove ${preset.name} from favourites` : `Add ${preset.name} to favourites`}
+          aria-label={favorite ? `Remove ${preset.name} from Kept` : `Keep ${preset.name}`}
           aria-pressed={favorite}
           onClick={() => toggleFavorite(preset.id)}
           className={`flex h-7 w-7 items-center justify-center rounded-full bg-black/55 backdrop-blur-md transition-opacity coarse:h-8 coarse:w-8 ${
@@ -559,14 +600,14 @@ const PresetCard = memo(function PresetCard({
             <MenuButton icon={<Copy size={12} />} label="Duplicate" onClick={() => { setMenu(false); void duplicate(preset.id); }} />
             <MenuButton
               icon={<Download size={12} />}
-              label="Export JSON"
+              label="Export as a file"
               onClick={() => {
                 setMenu(false);
                 downloadText(usePresets.getState().exportJson([preset.id]), `${preset.name.replace(/[^\w-]+/g, '_')}.lumen-preset.json`);
               }}
             />
-            {isUser && <MenuButton icon={<Pencil size={12} />} label="Rename / edit" onClick={() => { setMenu(false); onEdit(); }} />}
-            {isUser && <MenuButton icon={<Trash2 size={12} />} label="Delete" danger onClick={() => { setMenu(false); onDelete(); }} />}
+            {isUser && <MenuButton icon={<Pencil size={12} />} label="Rename" onClick={() => { setMenu(false); onEdit(preset); }} />}
+            {isUser && <MenuButton icon={<Trash2 size={12} />} label="Delete" danger onClick={() => { setMenu(false); onDelete(preset); }} />}
           </CardMenu>
         )}
       </AnimatePresence>
@@ -631,12 +672,11 @@ function PresetEditDialog({ preset, onClose }: { preset: Preset | null; onClose:
   // Remounted per preset (key), so initial state comes straight from the preset.
   const [name, setName] = useState(preset?.name ?? '');
   const [description, setDescription] = useState(preset?.description ?? '');
-  const [category, setCategory] = useState<PresetCategoryId>(preset?.category ?? 'custom');
   return (
     <Dialog
       open={!!preset}
       onClose={onClose}
-      title="Edit preset"
+      title="Edit look"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
@@ -646,16 +686,16 @@ function PresetEditDialog({ preset, onClose }: { preset: Preset | null; onClose:
             variant="primary"
             disabled={!name.trim()}
             onClick={async () => {
-              if (preset) await usePresets.getState().update(preset.id, { name: name.trim().slice(0, 80), description: description.slice(0, 400), category });
+              if (preset) await usePresets.getState().update(preset.id, { name: name.trim().slice(0, 80), description: description.slice(0, 400) });
               onClose();
             }}
           >
-            Save preset
+            Save
           </Button>
         </>
       }
     >
-      <PresetFields name={name} setName={setName} description={description} setDescription={setDescription} category={category} setCategory={setCategory} />
+      <PresetFields name={name} setName={setName} description={description} setDescription={setDescription} />
     </Dialog>
   );
 }
@@ -665,15 +705,11 @@ export function PresetFields({
   setName,
   description,
   setDescription,
-  category,
-  setCategory,
 }: {
   name: string;
   setName: (v: string) => void;
   description: string;
   setDescription: (v: string) => void;
-  category: PresetCategoryId;
-  setCategory: (v: PresetCategoryId) => void;
 }) {
   return (
     <div className="space-y-4 px-5 pb-5">
@@ -692,7 +728,7 @@ export function PresetFields({
       </div>
       <div>
         <label htmlFor="preset-desc" className="mb-1.5 block text-xs font-medium text-fg-3">
-          Description
+          Note (optional)
         </label>
         <textarea
           id="preset-desc"
@@ -702,23 +738,6 @@ export function PresetFields({
           onChange={(e) => setDescription(e.target.value)}
           className="w-full rounded-sm border border-line bg-well px-3.5 py-2.5 text-sm text-fg outline-none transition-colors focus:border-accent/60"
         />
-      </div>
-      <div>
-        <label htmlFor="preset-cat" className="mb-1.5 block text-xs font-medium text-fg-3">
-          Category
-        </label>
-        <select
-          id="preset-cat"
-          value={category}
-          onChange={(e) => setCategory(e.target.value as PresetCategoryId)}
-          className="h-11 w-full rounded-sm border border-line bg-well px-3 text-sm text-fg outline-none transition-colors focus:border-accent/60"
-        >
-          {PRESET_CATEGORY_IDS.map((c) => (
-            <option key={c} value={c}>
-              {ALL_CATEGORY_LABELS[c]}
-            </option>
-          ))}
-        </select>
       </div>
     </div>
   );

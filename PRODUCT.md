@@ -39,7 +39,9 @@ and filmstrip. Exports go to the photo library / downloads / share sheet.
 - Screens: home/gallery, editor (presets, light, colour, curves, HSL, effects, masks, portrait, remove,
   lens blur, geometry, upscale export; on touch, a swipe on the photo steps through looks), reference studio (match a look), preset library, settings (AI models, app
   & offline).
-- 75+ original "Signature Pro" presets in 14 categories; user presets saved locally (IndexedDB).
+- 54 original looks in 12 rolls: 41 in 8 rolls curated on 2026-11-14 from an earlier library of 186,
+  plus four trend rolls (Pocket Digicam, 2016, Camcorder, Lofi Dusk). Each look is tested to change
+  a photo visibly and to differ from the others. Looks you save are stored locally (IndexedDB). In the interface a preset is always called a **look**, a category a **roll**.
 - Optional AI style interpretation (Claude API or local Ollama); without it, measurements only.
 - Engineering rules in AGENTS.md (pixel maths, no fake progress, Zod-validated AI output) stay binding.
 - Analysis can take minutes on CPU; the measured look applies first and refines in the background.
@@ -55,7 +57,7 @@ and filmstrip. Exports go to the photo library / downloads / share sheet.
 ## Evidence on Hand
 
 No testimonials, user counts, reviews or press exist; do not invent any. Preset names and categories are
-real (docs/PHOTO_EDITOR_SIGNATURE_PRO_PRESETS.md). One bundled sample photo (CC0, a
+real (`src/lib/presets/library.ts`). One bundled sample photo (CC0, a
 street in A Coruña, `public/samples/`, credited in README) is used on a first visit; no other photography
 licensed for marketing use is in the repo.
 

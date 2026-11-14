@@ -1,55 +1,19 @@
 /**
  * The readout of which look is loaded and at what amount. Desktop: a row under the photo, with the
  * photo's pixel size. Phones (`overlay`): a small chip floating in the stage's bottom-left corner,
- * shown only while a look is on, so it never costs the photo a row. The name rises in (readout-in)
- * whenever the look changes.
+ * shown only while a look is on and no tool is working on the photo, so it never costs the photo a
+ * row or covers a tool's controls. The name rises in (readout-in) whenever the look changes.
  */
-import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useState } from 'react';
 import { useEditor } from '@/state/editorStore';
-import { describeAdaptation } from '@/lib/analysis/lookAdapt';
-
-/**
- * The "what next" hint under the chip, after the first two looks of a visit. Kept outside React so
- * a re-mount of the readout (layout changes as the sheet opens) neither restarts nor loses it.
- */
-const lookHint = { count: 0, id: '', text: '', until: 0 };
-
-function useLookHint(id: string | undefined) {
-  const [hint, setHint] = useState<string | null>(null);
-  useEffect(() => {
-    if (!id) return;
-    const now = performance.now();
-    if (lookHint.id !== id) {
-      if (lookHint.count >= 2) return;
-      lookHint.count++;
-      const adapted = useEditor.getState().edit.appliedPreset?.adapted;
-      lookHint.id = id;
-      lookHint.text = adapted
-        ? `Fitted to this photo (${describeAdaptation(adapted)}). Drag Amount to make it softer.`
-        : 'Drag Amount below to make it softer or stronger.';
-      lookHint.until = now + 4000;
-    }
-    const left = lookHint.until - now;
-    if (left <= 0) return;
-    const show = window.setTimeout(() => setHint(lookHint.text), 200);
-    const hide = window.setTimeout(() => setHint(null), left);
-    return () => {
-      window.clearTimeout(show);
-      window.clearTimeout(hide);
-      setHint(null);
-    };
-  }, [id]);
-  return hint;
-}
 
 export function LookReadout({ overlay = false }: { overlay?: boolean }) {
   const photo = useEditor((s) => s.photos.find((p) => p.id === s.activePhotoId));
   const preset = useEditor((s) => s.edit.appliedPreset);
-  const hint = useLookHint(overlay ? preset?.id : undefined);
+  // Crop, masks, remove and heal put their own controls on the photo; the chip steps aside for them.
+  const toolActive = useEditor((s) => s.tool !== 'none');
   if (!photo) return null;
   if (overlay) {
-    if (!preset) return null;
+    if (!preset || toolActive) return null;
     return (
       <div
         className="pointer-events-none absolute bottom-2 left-2 z-10 max-w-[70%]"
@@ -65,18 +29,6 @@ export function LookReadout({ overlay = false }: { overlay?: boolean }) {
           <span className="font-mono text-[11px] text-accent-fg">{Math.round(preset.amount)}%</span>
           {preset.adapted && <span className="text-[11px] text-fg-3">· fitted</span>}
         </span>
-        <AnimatePresence>
-          {hint && (
-            <motion.p
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="surface-float mt-1.5 rounded-xl px-2.5 py-1.5 text-[12px] leading-snug text-fg-2"
-            >
-              {hint}
-            </motion.p>
-          )}
-        </AnimatePresence>
       </div>
     );
   }

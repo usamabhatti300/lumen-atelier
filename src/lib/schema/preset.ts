@@ -30,6 +30,10 @@ export const PRESET_CATEGORY_IDS = [
   'street',
   'bw',
   'social',
+  'digicam',
+  'y2016',
+  'camcorder',
+  'lofi',
   'custom',
   'reference',
 ] as const;

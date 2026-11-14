@@ -235,7 +235,7 @@ function EmptyState({ dragOver, onChoose, onPaste, message }: { dragOver: boolea
           </motion.span>
           <h3 className="display relative text-[2.1rem] text-fg sm:text-[2.6rem]">Add a reference photo</h3>
           <p className="relative mt-3 max-w-sm text-[15px] leading-relaxed text-fg-3">
-            Pick a photo whose look you love. The studio turns its colours and tones into an editable preset for your photo.
+            Pick a photo whose look you love. Lumen turns its colours and tones into a look you can put on your photo and keep editing.
           </p>
           <ul className="relative mt-5 flex flex-wrap justify-center gap-1.5" aria-label="Good references">
             {['Saved posts', 'Screenshots', 'Film stills', 'Your best shots'].map((t) => (
@@ -257,7 +257,7 @@ function EmptyState({ dragOver, onChoose, onPaste, message }: { dragOver: boolea
           <span className="relative mt-4 text-xs text-fg-4 coarse:hidden">or drop it here, or press Ctrl+V. You can crop out app bars next.</span>
         </div>
         <p className="mx-auto mt-5 max-w-md text-center text-xs leading-relaxed text-fg-4">
-          The preset approximates the look from the finished image. The original editing settings cannot be recovered from a JPEG.
+          The result approximates the look from the finished image. The original editing settings cannot be recovered from a JPEG.
         </p>
         {message && (
           <p role="alert" className="mx-auto mt-4 flex max-w-md gap-2 rounded-md border border-danger/30 bg-danger/10 px-4 py-2.5 text-sm text-fg">
@@ -279,7 +279,7 @@ function StudioBar({ onRefine }: { onRefine: () => void }) {
   const running = useReference((s) => s.running);
   const stages = useReference((s) => s.stages);
   const anyError = Object.values(stages).some((s) => s.state === 'error');
-  const runningStage = stages.measure.state === 'running' ? 'Measuring the light' : stages.build.state === 'running' ? 'Building the preset' : 'Reading the style';
+  const runningStage = stages.measure.state === 'running' ? 'Measuring the light' : stages.build.state === 'running' ? 'Building the look' : 'Reading the style';
   return (
     <div className="shrink-0 border-t border-line-soft bg-ground px-4 pt-3 pb-[max(env(safe-area-inset-bottom),12px)] sm:px-6">
       <div className="flex min-h-11 items-center gap-3">
@@ -611,7 +611,7 @@ function LookCard({ result }: { result: MappingResult }) {
               </ul>
             )}
             <button type="button" onClick={() => setShowWhy(!showWhy)} aria-expanded={showWhy} className="mt-4 -ml-1 rounded-full px-1 py-1 text-[13px] font-medium text-fg-2 underline decoration-fg-4 underline-offset-4 hover:text-fg coarse:py-2.5">
-              {showWhy ? 'Hide' : 'Show'} how the preset was built
+              {showWhy ? 'Hide' : 'Show'} how the look was built
             </button>
             <AnimatePresence initial={false}>
               {showWhy && (
@@ -677,7 +677,7 @@ function AnalysisPane() {
                 : 'AI is not configured on this server, so the look is built from measurements only.'
           }
         />
-        <StageRow label="Preset generation" stage={stages.build} detail="Converts the analysis into editable settings with fixed, documented rules." last />
+        <StageRow label="Building the look" stage={stages.build} detail="Converts the analysis into editable settings with fixed, documented rules." last />
       </ul>
 
     </section>
@@ -833,33 +833,64 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
   }, [ready, effectiveMode, match, adaptation]);
 
   // Live preview of the real render.
+  // The pixels come back from the GPU asynchronously (a synchronous read stalls the page). One read
+  // at a time: frames that arrive meanwhile ask for one more read when it lands, so the newest
+  // frame always ends up on screen and results never arrive out of order.
+  const liveRead = useRef({ busy: false, again: false });
   useEffect(() => {
-    const c = canvas.current;
-    if (!c || !activePhotoId) return;
-    const img = engine.readRendered(1100);
-    if (!img) return;
-    c.width = img.width;
-    c.height = img.height;
-    c.getContext('2d')?.putImageData(img, 0, 0);
+    if (!canvas.current || !activePhotoId) return;
+    const st = liveRead.current;
+    if (st.busy) {
+      st.again = true;
+      return;
+    }
+    const run = () => {
+      st.busy = true;
+      st.again = false;
+      void engine
+        .readRenderedAsync(1100)
+        .catch(() => null)
+        .then((img) => {
+          st.busy = false;
+          const c = canvas.current; // null once the studio has closed
+          if (!c) return;
+          if (img) {
+            c.width = img.width;
+            c.height = img.height;
+            c.getContext('2d')?.putImageData(img, 0, 0);
+          }
+          if (st.again) run();
+        });
+    };
+    run();
   }, [frame, activePhotoId]);
 
   // Generic look: compare the result with the reference (debounced). The matched look already did this in its loop.
   useEffect(() => {
     if (!isApplied || mode !== 'generic') return;
+    let stale = false;
     const t = window.setTimeout(() => {
-      const img = engine.readRendered(600);
-      if (!img) return;
-      void statsInWorker({ width: img.width, height: img.height, data: img.data })
-        .then((s) => setSuggestions(suggestRefinements(refStats, s)))
+      void engine
+        .readRenderedAsync(600)
+        .then((img) => {
+          // A newer frame (or closing the studio) starts its own comparison.
+          if (stale || !img) return;
+          return statsInWorker({ width: img.width, height: img.height, data: img.data }).then((s) =>
+            setSuggestions(suggestRefinements(refStats, s)),
+          );
+        })
         .catch(() => undefined);
     }, 700);
-    return () => window.clearTimeout(t);
+    return () => {
+      stale = true;
+      window.clearTimeout(t);
+    };
   }, [frame, isApplied, refStats, mode]);
 
   const save = () =>
     saveLook().catch((e: unknown) => {
       // Never fail silently: storage can be full or blocked (e.g. a private window).
-      showToast(`Could not save the preset: ${e instanceof Error ? e.message : 'unknown error'}.`, 'error');
+      showToast(`The look could not be saved: ${e instanceof Error ? e.message : 'unknown error'}.`, 'error');
     });
 
   const saveLook = async () => {
@@ -891,7 +922,14 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
       },
     });
     setSaved(preset.name);
-    showToast(`Saved “${preset.name}” to your presets. Apply it to any photo from the Presets panel, then use “Match to this photo”.`, 'success');
+    // The look on the photo is now the saved one: its chip carries the name you gave it.
+    if (isApplied)
+      useEditor.getState().commitEdit('Save look', (e) =>
+        e.appliedPreset
+          ? { ...e, appliedPreset: { ...e.appliedPreset, id: preset.id, name: e.appliedPreset.name.includes('matched') ? `${preset.name} · matched` : preset.name } }
+          : e,
+      );
+    showToast(`Saved “${preset.name}”. It is under Yours in Looks, ready for any photo.`, 'success');
   };
 
   const target = photos.find((p) => p.id === activePhotoId);
@@ -919,7 +957,7 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
             onChange={setMode}
             options={[
               { value: 'matched', label: 'Matched to this photo', title: 'Compares this photo with the reference and sets the sliders to close the gap' },
-              { value: 'generic', label: 'Generic look', title: 'The reusable look as measured from the reference, independent of this photo' },
+              { value: 'generic', label: 'As measured', title: 'The reusable look as measured from the reference, independent of this photo' },
             ]}
           />
         )}
@@ -995,7 +1033,7 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
                 value={applied!.amount}
                 range={{ min: 0, max: 100, default: 100, step: 1 }}
                 format={(v) => `${Math.round(v)}%`}
-                onGestureStart={() => begin('Preset amount')}
+                onGestureStart={() => begin('Look amount')}
                 onGestureEnd={end}
                 onChange={setAmount}
               />
@@ -1004,7 +1042,7 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
 
           <div className="mt-4 rounded-lg bg-raised p-4">
             <label htmlFor="ref-preset-name" className="mb-2 block text-sm font-medium text-fg">
-              Save as preset
+              Save as a look
             </label>
             <div className="flex gap-2">
               <input
@@ -1039,8 +1077,8 @@ function ApplyPane({ result, refStats, working, onImportTarget }: ApplyPaneProps
             </AnimatePresence>
             <p className="mt-2.5 text-xs leading-relaxed text-fg-4">
               Saves the reusable look at the current intensity, plus the reference's colour statistics so it can be matched
-              to any other photo later (“Match to this photo” in the Presets panel). This photo's matched settings are not
-              saved; to keep hand-refined settings, use “Save look” in the Presets panel.
+              to any other photo later (“Match to this photo” in Looks). This photo's matched settings are not
+              saved; to keep hand-refined settings, use “Save look” in Looks.
             </p>
           </div>
 
@@ -1194,7 +1232,7 @@ function ConsentDialog() {
           This app does not store the image on the server. Anthropic processes it under its API data policies. Only use
           references you are allowed to share.
         </p>
-        <p className="text-xs text-fg-4">You can change this any time in Settings → Privacy. Choosing “Measurements only” builds the preset from pixel statistics alone.</p>
+        <p className="text-xs text-fg-4">You can change this any time in Settings → Privacy. Choosing “Measurements only” builds the look from measurements of the photo alone.</p>
       </div>
     </Dialog>
   );

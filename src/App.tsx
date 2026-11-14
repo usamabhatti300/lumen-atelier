@@ -7,6 +7,7 @@ import { GalleryScreen } from '@/screens/GalleryScreen';
 import { PwaPrompts } from '@/pwa/PwaUi';
 import { LiquidGlass } from '@/components/fx/LiquidGlass';
 import { Intro } from '@/components/fx/Intro';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Secondary screens are split out of the initial bundle.
 const EditorScreen = lazy(() => import('@/screens/EditorScreen'));
@@ -19,6 +20,10 @@ export function App() {
 
   useEffect(() => {
     void useSettings.getState().load();
+    // Failed background work (storage, model loads) should at least leave a trace.
+    const onRejection = (e: PromiseRejectionEvent) => console.error('[app] Unhandled promise rejection', e.reason);
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => window.removeEventListener('unhandledrejection', onRejection);
   }, []);
 
   useEffect(() => {
@@ -39,15 +44,17 @@ export function App() {
   return (
     <>
     <MotionConfig reducedMotion={motion === 'reduced' ? 'always' : motion === 'full' ? 'never' : 'user'}>
-      <Suspense fallback={<div className="h-full bg-ground" />}>
-        <Routes>
-          <Route path="/" element={<GalleryScreen />} />
-          <Route path="/project/:projectId" element={<EditorScreen />} />
-          <Route path="/presets" element={<PresetLibraryScreen />} />
-          <Route path="/settings" element={<SettingsScreen />} />
-          <Route path="*" element={<GalleryScreen />} />
-        </Routes>
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<div className="h-full bg-ground" />}>
+          <Routes>
+            <Route path="/" element={<GalleryScreen />} />
+            <Route path="/project/:projectId" element={<EditorScreen />} />
+            <Route path="/presets" element={<PresetLibraryScreen />} />
+            <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="*" element={<GalleryScreen />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
       <Toasts />
       <PwaPrompts />
       <LiquidGlass />

@@ -17,6 +17,7 @@ import {
   type LensBlur,
   type LocalAdjustments,
 } from '../schema/adjustments';
+import type { Mat3, Size } from './geometry';
 
 export interface DevelopParams {
   wb: [number, number, number];
@@ -77,9 +78,14 @@ export interface DevelopParams {
     fringe: number;
     dreamy: number;
     flash: number;
+    motionBlur: number;
+    shutterDrag: number;
+    softFocus: number;
   };
-  /** Bloom, halation or dreamy blur is on (needs the glow pass). */
+  /** Bloom, halation, dreamy blur or soft focus is on (needs the glow pass). */
   glowActive: boolean;
+  /** Motion blur or shutter drag is on (needs the streak passes). */
+  streakActive: boolean;
 }
 
 const GRADE_CHROMA = 0.11;
@@ -143,6 +149,9 @@ export function deriveDevelopParams(adj: Adjustments): DevelopParams {
     fringe: e.fringe / 100,
     dreamy: e.dreamy / 100,
     flash: e.flash / 100,
+    motionBlur: e.motionBlur / 100,
+    shutterDrag: e.shutterDrag / 100,
+    softFocus: e.softFocus / 100,
   };
 
   return {
@@ -192,7 +201,8 @@ export function deriveDevelopParams(adj: Adjustments): DevelopParams {
       roughness: adj.effects.grainRoughness / 100,
     },
     fx,
-    glowActive: fx.bloom > 0 || fx.halation > 0 || fx.dreamy > 0,
+    glowActive: fx.bloom > 0 || fx.halation > 0 || fx.dreamy > 0 || fx.softFocus > 0,
+    streakActive: fx.motionBlur > 0 || fx.shutterDrag > 0,
   };
 }
 
@@ -341,3 +351,81 @@ export const BLUR_RADII = {
 
 /** Minimum blur radius in pixels, so detail controls still act on small previews. */
 export const MIN_BLUR_PX = { small: 0.75, medium: 1.5, large: 4 };
+
+/**
+ * Motion blur and shutter drag: directional streaks on the finished develop.
+ * Each is two passes of `taps` samples along the same line: a coarse pass with
+ * taps `length / taps` apart, then a fine pass that fills the gaps between them
+ * (`length / taps²` apart), which together are `taps²` evenly spaced samples.
+ */
+export const STREAK = {
+  /** Samples per pass (the GLSL loop count; 16 x 16 = 256 samples along the streak). */
+  taps: 16,
+  /** Direction on screen, degrees above horizontal (to the right and slightly up). */
+  angleDeg: 12,
+  /** Motion blur streak length at 100, as a fraction of the long edge. */
+  motionLength: 0.06,
+  /** Shutter drag trail length at 100, as a fraction of the long edge. */
+  dragLength: 0.1,
+  /** Linear-light luminance range over which a pixel counts as a light that leaves a trail. */
+  dragLow: 0.3,
+  dragHigh: 0.8,
+  /** Trail strength at 100 (scaled by the square root of the amount). */
+  dragGain: 2.5,
+} as const;
+
+/**
+ * The streak direction as a unit vector in source pixels (x right, y down), for a direction fixed
+ * on screen: rotating, flipping or straightening the photo does not turn the streak with it.
+ * `mat` is outputToSourceMatrix, `fullOut` the full-resolution output size it belongs to.
+ */
+export function streakDirection(mat: Mat3, fullOut: Size, fullSize: Size): [number, number] {
+  const a = (STREAK.angleDeg * Math.PI) / 180;
+  const du = Math.cos(a) / fullOut.width;
+  const dv = -Math.sin(a) / fullOut.height;
+  const x = (mat[0] * du + mat[1] * dv) * fullSize.width;
+  const y = (mat[3] * du + mat[4] * dv) * fullSize.height;
+  const len = Math.hypot(x, y);
+  return len > 1e-9 ? [x / len, y / len] : [Math.cos(a), -Math.sin(a)];
+}
+
+/** Streak lengths as fractions of the long edge. */
+export function streakLengths(fx: DevelopParams['fx']): { motion: number; drag: number } {
+  return { motion: fx.motionBlur * STREAK.motionLength, drag: fx.shutterDrag * STREAK.dragLength };
+}
+
+/** How far the streak passes read from a pixel, as a fraction of the long edge (export tile padding). */
+export function streakReach(fx: DevelopParams['fx']): number {
+  const l = streakLengths(fx);
+  return l.motion / 2 + l.drag;
+}
+
+export interface StreakPass {
+  /** Distance between taps along the direction, as a fraction of the long edge. */
+  step: number;
+  /** Position of the first tap, in steps. Tap i reads the photo at -(start + i) * step along the direction. */
+  start: number;
+  /** Weights fall off as (1 - i / taps)² instead of being equal. */
+  decay: boolean;
+  /** Keep only the highlights of each tap (dragHighlight in pixel.ts). */
+  extract: boolean;
+}
+
+/** The two passes of motion blur: an even box of `length`, centred on the pixel. */
+export function motionPasses(length: number): [StreakPass, StreakPass] {
+  const n = STREAK.taps;
+  const start = -(n - 1) / 2;
+  return [
+    { step: length / n, start, decay: false, extract: false },
+    { step: length / (n * n), start, decay: false, extract: false },
+  ];
+}
+
+/** The two passes of shutter drag: highlights only, one-sided, fading with distance from the light. */
+export function dragPasses(length: number): [StreakPass, StreakPass] {
+  const n = STREAK.taps;
+  return [
+    { step: length / n, start: 0, decay: true, extract: true },
+    { step: length / (n * n), start: 0.5, decay: false, extract: false },
+  ];
+}

@@ -169,7 +169,16 @@ function drawComponent(
   }
 }
 
+// The editor store replaces a layer's `components` array whenever a component changes (never
+// mutates it), so the serialised form can be remembered per array instead of rebuilt every frame.
+const componentsJson = new WeakMap<object, string>();
+
 /** Stable key for caching rasterized masks. */
 export function maskKey(layer: Pick<MaskLayer, 'components'>, segVersion: number, objectVersion = 0): string {
-  return `${segVersion}:${objectVersion}:${JSON.stringify(layer.components)}`;
+  let json = componentsJson.get(layer.components);
+  if (json === undefined) {
+    json = JSON.stringify(layer.components);
+    componentsJson.set(layer.components, json);
+  }
+  return `${segVersion}:${objectVersion}:${json}`;
 }

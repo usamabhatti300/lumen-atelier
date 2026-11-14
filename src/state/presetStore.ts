@@ -1,6 +1,7 @@
 /** Preset library state: built-in presets, user presets (IndexedDB), favourites. */
 import { create } from 'zustand';
-import { BUILTIN_PRESETS, CATEGORY_LABELS } from '@/lib/presets/library';
+import { BUILTIN_PRESETS, migrateLookIds } from '@/lib/presets/library';
+import { ROLLS } from '@/lib/presets/rolls';
 import {
   deletePresetRecord,
   getSetting,
@@ -9,16 +10,18 @@ import {
   putPreset,
   setSetting,
 } from '@/lib/storage/db';
-import { parsePresetFile, serializePresets, type Preset, type PresetCategoryId } from '@/lib/schema/preset';
+import { PRESET_CATEGORY_IDS, parsePresetFile, serializePresets, type Preset, type PresetCategoryId } from '@/lib/schema/preset';
 import type { PartialAdjustments } from '@/lib/schema/adjustments';
 import { useEditor } from './editorStore';
 
-export const ALL_CATEGORY_LABELS: Record<PresetCategoryId, string> = {
-  ...CATEGORY_LABELS,
-  custom: 'My presets',
-  reference: 'From references',
-};
+/** What a look's category is called on screen: its roll's name (Yours and Matched for your own). */
+export const ALL_CATEGORY_LABELS = Object.fromEntries(PRESET_CATEGORY_IDS.map((c) => [c, ROLLS[c].name])) as Record<PresetCategoryId, string>;
 
+/** The kinds of photo each built-in look was made for (recommend.ts). */
+export const BUILTIN_SUITS = BUILTIN_PRESETS.map((p) => ({ id: p.id, category: p.category, suits: p.suits }));
+
+
+/** Built-ins in shelf order: roll by roll, frame by frame. */
 const BUILTINS: Preset[] = BUILTIN_PRESETS.map((p) => ({
   id: p.id,
   name: p.name,
@@ -61,25 +64,25 @@ export const usePresets = create<PresetState>((set, get) => ({
 
   async load() {
     if (get().loaded) return;
-    const [user, favorites, recent] = await Promise.all([
-      listUserPresets(),
-      getSetting<string[]>('favorites'),
-      getSetting<string[]>('recentLooks'),
+    // Storage can be unavailable (private mode, blocked site data): the built-in looks still work.
+    const [user, storedFavorites, storedRecent] = await Promise.all([
+      listUserPresets().catch(() => [] as Preset[]),
+      getSetting<string[]>('favorites').catch(() => undefined),
+      getSetting<string[]>('recentLooks').catch(() => undefined),
     ]);
+    const known = new Set([...user.map((p) => p.id), ...BUILTINS.map((p) => p.id)]);
+    const favorites = migrateLookIds(storedFavorites ?? [], known);
     // Looks applied before the store finished loading stay at the front.
-    const early = get().recent;
-    set({
-      user,
-      favorites: favorites ?? [],
-      recent: [...new Set([...early, ...(recent ?? [])])].slice(0, RECENT_LIMIT),
-      loaded: true,
-    });
+    const recent = migrateLookIds([...get().recent, ...(storedRecent ?? [])], known).slice(0, RECENT_LIMIT);
+    set({ user, favorites, recent, loaded: true });
+    if (storedFavorites && favorites.length !== storedFavorites.length) void setSetting('favorites', favorites).catch(() => undefined);
+    if (storedRecent && recent.join() !== storedRecent.join()) void setSetting('recentLooks', recent).catch(() => undefined);
   },
 
   noteApplied(id) {
     const next = [id, ...get().recent.filter((r) => r !== id)].slice(0, RECENT_LIMIT);
     set({ recent: next });
-    void setSetting('recentLooks', next);
+    void setSetting('recentLooks', next).catch(() => undefined);
   },
 
   all() {
@@ -96,7 +99,7 @@ export const usePresets = create<PresetState>((set, get) => ({
       ...input,
       origin: input.origin ?? 'user',
       id: newId('u_'),
-      name: input.name.trim().slice(0, 80) || 'Untitled preset',
+      name: input.name.trim().slice(0, 80) || 'Untitled look',
       createdAt: now,
       updatedAt: now,
     };
@@ -133,15 +136,15 @@ export const usePresets = create<PresetState>((set, get) => ({
       favorites: get().favorites.filter((f) => f !== id),
       recent: get().recent.filter((r) => r !== id),
     });
-    void setSetting('favorites', get().favorites);
-    void setSetting('recentLooks', get().recent);
+    void setSetting('favorites', get().favorites).catch(() => undefined);
+    void setSetting('recentLooks', get().recent).catch(() => undefined);
   },
 
   toggleFavorite(id) {
     const favs = get().favorites;
     const next = favs.includes(id) ? favs.filter((f) => f !== id) : [...favs, id];
     set({ favorites: next });
-    void setSetting('favorites', next);
+    void setSetting('favorites', next).catch(() => undefined);
   },
 
   async importFile(text) {

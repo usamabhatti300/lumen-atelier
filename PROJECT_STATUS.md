@@ -9,7 +9,104 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-14 (newest): home hero background and the story.** Owner feedback: the hero's coloured
+**2026-11-15 (newest): trend features, the first three of eight** (the owner asked for Gen Z trend
+research, then "build the top three"; the eight picks and their order are in HANDOFF.md).
+
+1. **Digicam kit.** A new roll, 09 Pocket Digicam (CCD Daylight, Mall 2004, Blue Screen, and Pocket
+   Flash moved in from roll 07), and **overlays** in the Finish step: Camcorder (REC dot, battery,
+   date, and the time only when the photo's EXIF has one) and Viewfinder (corner brackets, a centre
+   cross, the date, and real EXIF exposure values when present; nothing is invented). Drawn by one
+   function for preview and export (`src/lib/finish/overlay.ts`), burned in after any AI upscale,
+   per photo in batch export, hidden for the contact sheet. With Camcorder on, the orange date
+   stamp is off (one date at most).
+2. **"Blurry on purpose" effects**, in the schema, both renderers and export tiling: Motion blur,
+   Shutter drag (highlights leave one-sided light trails) and Soft focus. Formulas in
+   `docs/RENDERING_PIPELINE.md`. The Effects panel now opens with **one-tap tiles** that show each
+   effect on the open photo; the sliders stay below.
+3. **Trend rolls and stronger looks.** Rolls 10 "2016" (Golden Feed, Blog Matte, Cali Haze, Pool
+   Party), 11 Camcorder (Home Video, Tape Sunset, Night Shot) and 12 Lofi Dusk (Lofi Dusk, Rooftop
+   Pink, Arcade): the library is now **54 looks in 12 rolls**. A look's **Amount runs to 150%**
+   (values carry on past the look, clamped to their ranges; `MAX_LOOK_AMOUNT`).
+
+Also from the second audit (`POST_IMPLEMENTATION_AUDIT.md`): the adaptive exposure fit no longer
+brightens a photo whose top 3% of pixels is already near white (nine looks were blown out by about
++1.2 EV on the sample; now at most +0.55 there), a cancelled crop rewinds instead of adding
+history, Auto reports what it changed, each phone tool opens at its own compact sheet size, and
+the remaining "preset" / "favourites" wording is gone.
+
+Tests run after the last change: typecheck clean; lint 0 errors (13 warnings). Vitest **310 passed,
+1 failed, 1 skipped**: the failure is `match.test.ts` "is fast enough for the UI" (4.2–5.0 s against
+a 4 s limit), which **fails the same way on the untouched previous commit** on this laptop today
+(5.5 s): the machine is thermally throttled after hours of test runs; the code under it did not
+change. New unit tests: 14 overlays, 10 blur effects and schema, 1 look strength, library rules
+for the 54 looks. Playwright (after the final edits unless noted): `effects` (11 effects; its
+timeout was raised to 12 min for software rendering), `mobile-effects`, `audit-pass` (7),
+`editor` (7), `mobile-audit-pass` (3), `mobile` (4), `mobile-sheet`, `mobile-swipe`, `afterimage`
+passed; `finish` (2) and `mobile-finish` passed in the overlays work (before the last library edit,
+which does not touch them). Two tests were changed for reasons other than their subject: the
+phone strip test uses one atomic tap (two separate touch commands arrived more than 380 ms apart
+on the throttled machine, which is a press-and-hold), and it now expands Colour itself.
+**Not re-run in this session after these features:** `critical-journey`, `reference-name`,
+`reference-replace`, `export-rotated`, `home-sample`, `intro`, `lens-blur`, `network-isolation`,
+`portrait-auto`, `preview-cache`, `remove`, `select-object`, `upscale`, `adaptive-looks`,
+`mobile-home-sample`, `mobile-intro`, and `test:e2e:pwa` (they passed in the full run earlier the
+same day, before the trend features). The GPU path of the blur effects was checked in headless
+Chromium against the CPU path (max 1 level apart for the streak effects), not on a real GPU.
+Checked by eye at 1440 px only: effect tiles, both overlays, the 13 new looks on the sample.
+**Not checked:** the new features at 390 px by eye, a real phone, the overlays on a portrait photo.
+
+**2026-11-14: full product audit and improvement pass.** Reports:
+`PRODUCT_AUDIT_AND_IMPROVEMENT_PLAN.md` (three independent audits: design walk-through, technical,
+and a measured review of all 186 looks) and `POST_IMPLEMENTATION_AUDIT.md` (a second, independent
+audit of the result). What changed:
+
+- **Looks**: the library is now **41 looks in 8 rolls** (was 186 in 14). Measured first: 45 of the 186
+  were under 2.5 ΔE from the untouched photo and the set collapsed to about 75 distinct looks; 20
+  clipped highlights, 15 crushed shadows, about 20 broke skin. 5 looks kept, 29 retuned, 7 new
+  (Daylight, Open Shade, Tungsten Hours, Sherbet, Pocket Flash, Newsprint, Tea Stain); several now
+  use the 2.5 effects (flash, halation, bloom, fringe, dreamy). House rules are in the header of
+  `library.ts` and tested (`blend.test.ts`): every look changes a test palette by more than 2% RMS,
+  no two looks render alike, none clips a bright sky, no positive Whites, vignette ≥ −22.
+  Kept and Last roll carry over (`LOOK_ALIASES`, `migrateLookIds`); edits made with removed looks
+  are unaffected (an applied look stores its own values); retired category ids stay valid.
+- **For this photo** (`src/lib/presets/recommend.ts`): the first roll in the editor, six looks picked
+  from measured traits of the photo. **Auto** in Light (`src/lib/analysis/autoEnhance.ts`). Rules
+  for both in `docs/AI_ARCHITECTURE.md`. No AI, no new library.
+- **Adaptive looks fixed**: white balance is fitted to the photo's own cast only (least colourful
+  quarter of its pixels, caps ±18 / ±10). Before, the fit measured through the look and undid graded
+  looks (Teal and Orange got temperature +15, tint +20), and a pale sky read as a cast.
+- **Bugs fixed**: the export preview was black (drawn before the pixels arrived; this happened on
+  every device, not only under software rendering); crop had no cancel; the dock's More was dead
+  inside a tool; the look chip covered tool controls; the photo moved when a look was applied on
+  phones; the star button sat over the middle of a selected tile.
+- **Home**: your edits come right after the two actions once you have any; the story moves below;
+  GSAP removed (CSS entrance); hero uses about four times the particles.
+- **Editor**: near-neutral chrome beside the photo; one vocabulary (look, roll); 44 px targets in the
+  looks sheet and phone top bar; previews about twice as sharp; tiles follow the photo's shape; the
+  look library page shows looks on a real photo.
+- **Engineering**: 40 MB of duplicate ONNX runtime files no longer emitted; `gsap`, `@gsap/react`,
+  `@react-three/fiber`, `class-variance-authority`, `jsdom` removed; root error boundary; storage
+  failures no longer leave blank screens; Match a look reads the render asynchronously; engine store
+  keeps size objects stable; mask keys cached; WebGL context restore (untested: no way to trigger a
+  real loss here); thumbnail renderer recovers from context loss.
+  Entry chunk 874 kB → 753 kB (276 → 242 kB gzip).
+
+Tests run after the last change: typecheck clean; lint 0 errors (13 warnings, all
+`react-refresh/only-export-components`); Vitest **286 passed, 1 skipped** (24 new: looks library
+rules, id migration, traits and picks, Auto). Playwright: the full suite ran once (39 tests, 57 min):
+35 passed, 4 failed. The four: a test using a group name this pass renamed (test updated); the star
+button over a selected tile (fixed); `afterimage` and the `finish` contact-sheet colour check, which
+**also fail on the previous commit** (the ghost's pixels now take longer than the test's 3 s under
+software rendering since the dissolve was added, so the wait is 20 s; the sheet's corner colour
+expectation predated the Lit ground colour `#0a090e`). After the fixes: `adaptive-looks`, `afterimage`,
+`finish` (2), `mobile` (4), and the new `audit-pass` (7) and `mobile-audit-pass` (3) all passed.
+**Not re-run after the final small edits** (cast share 0.25, top-bar button size, dead CSS removal):
+the other 25 specs; `test:e2e:pwa` was not run in this pass. Production build passes.
+Not checked on a real phone. Not measured: main-thread long tasks before/after on a production
+build (AGENTS.md asks for this for background work; the picks take a few ms per photo and previews
+are about 1.8× the pixels each but 41 instead of 186).
+
+**2026-11-14: home hero background and the story.** Owner feedback: the hero's coloured
 ambient gradient looked wrong, and the scroll-pinned "How a look travels" confused. Home now has a
 black, lightly grained top (`.home-void`) instead of the ambient light; the particle photo stays (a
 frame-stream replacement was tried and rejected by the owner). `MatchStory` plays by itself once
@@ -264,7 +361,7 @@ component in this redesign needed one); React Three Fiber still installed and un
 | 1 Foundation | Done | Vite 8 + React 19 + TS 6 (strict) + Tailwind 4, design tokens, workspace, dev runner |
 | 2 Working editor | Done | Import (drag/drop, picker, multi), GPU render, basic adjustments, undo/redo, export |
 | 3 Advanced colour | Done | HSL ×8, RGB curves, 3-way + global wheels, mixer, levels, versioned schema |
-| 4 Preset library | Done | 186 original presets in 14 categories (Signature Collection: 51, first/default tab), real previews, search, categories, favourites, intensity. Notes: `docs/PRESET_LIBRARY_NOTES.md` |
+| 4 Preset library | Done | 54 curated looks in 12 rolls (2026-11-15; 186 in 14 before the 2026-11-14 curation), real previews, picks for the open photo, search, Kept, Last roll, Amount. History: `docs/PRESET_LIBRARY_NOTES.md` |
 | 5 Reference → preset | Done | Stats worker, optional Claude interpretation, deterministic mapping, adaptation, suggestions, save |
 | 6 Portrait & masks | Done | MediaPipe landmarks + segmentation, retouch tools, healing, brush/gradient/segment masks, layers |
 | 7 Persistence & interop | Done | IndexedDB projects + autosave/recovery, preset JSON, `.cube` import/export, XMP export, batch apply/export |
@@ -502,8 +599,6 @@ Default project names are "Edit 8 Nov" (no middle dot).
   both sides (use the eye toggle).
 - WebGPU is not available in headless Chromium, so automated tests cover the WASM path only. WebGPU
   has to be confirmed in a real browser (Settings → AI models → Check AI runtime).
-- The production build also emits ORT's WASM binary as a hashed asset (27 MB, unused, because the app
-  loads it from `/ort/`). Harmless, but it adds to `dist/` size.
 - The AI path has been tested with mocked provider responses; a live call needs a real
   `ANTHROPIC_API_KEY`, which wasn't available in this environment.
 

@@ -15,7 +15,7 @@
 import { linearSrgbToOklab, oklabToLinearSrgb } from '../color/oklab';
 import { linearToSrgb, luminance, srgbToLinear } from '../color/srgb';
 import { CURVE_LUT_SIZE, sampleLut } from '../color/curves';
-import { LENS, type DevelopParams, type LensParams, type LensPlan, type LocalParams } from './params';
+import { LENS, STREAK, type DevelopParams, type LensParams, type LensPlan, type LocalParams } from './params';
 
 export type RGB = [number, number, number];
 
@@ -443,13 +443,21 @@ export function screenAdd(lin: RGB, add: RGB): RGB {
 export const HALATION_TINT: RGB = [1.0, 0.28, 0.08];
 
 /**
- * Bloom, halation and dreamy soft blur, on display-encoded values. `halo` and `glow` are the
- * photo blurred at BLUR_RADII.halation and BLUR_RADII.glow at this pixel.
+ * Soft focus, bloom, halation and dreamy soft blur, on display-encoded values. `halo` and `glow`
+ * are the photo blurred at BLUR_RADII.halation and BLUR_RADII.glow at this pixel.
  */
 export function glowStage(disp: RGB, halo: RGB, glow: RGB, F: DevelopParams['fx']): RGB {
   const x0 = toLin(disp);
   let x: RGB = [...x0];
   const g = toLin(glow);
+  if (F.softFocus > 0) {
+    // A soft copy laid over the sharp one (the structure stays), with a little contrast put back.
+    const h = toLin(halo);
+    const t = F.softFocus * 0.65;
+    x = [mix(x[0], h[0], t), mix(x[1], h[1], t), mix(x[2], h[2], t)];
+    const p = encodeY(lum(x));
+    x = setLuminance(x, decodeY(Math.max(applyContrast(p, 0.12 * F.softFocus), 0)));
+  }
   if (F.bloom > 0) {
     const m = smoothstep(0.25, 0.9, lum(g)) * F.bloom * 1.2;
     x = [x[0] + g[0] * m, x[1] + g[1] * m, x[2] + g[2] * m];
@@ -466,6 +474,33 @@ export function glowStage(disp: RGB, halo: RGB, glow: RGB, F: DevelopParams['fx'
     x = [0, 1, 2].map((k) => mix(x[k], mix(soft[k], g[k], 0.35), t)) as RGB;
   }
   return toDisp(softClip(x));
+}
+
+/** Weight of tap `i` of a streak pass (see STREAK in params.ts): equal, or fading away from the light. */
+export function streakWeight(i: number, decay: boolean): number {
+  if (!decay) return 1;
+  const q = 1 - i / STREAK.taps;
+  return q * q;
+}
+
+/** The part of a linear-light pixel that leaves a trail in shutter drag: its highlights. */
+export function dragHighlight(lin: RGB): RGB {
+  const m = smoothstep(STREAK.dragLow, STREAK.dragHigh, lum(lin));
+  return [lin[0] * m, lin[1] * m, lin[2] * m];
+}
+
+/**
+ * Shutter drag's blend: the trail (display-encoded, from the two streak passes) is added over the
+ * sharp photo as 1 - (1 - x) * exp(-a), a screen blend whose light has a soft shoulder, so it
+ * approaches white without clipping. A pixel that is itself a highlight takes half the trail.
+ */
+export function dragComposite(disp: RGB, trail: RGB, amount: number): RGB {
+  if (amount <= 0) return disp;
+  const t = toLin(trail);
+  if (t[0] <= 0 && t[1] <= 0 && t[2] <= 0) return disp; // no light reaches this pixel: untouched
+  const x = toLin(disp);
+  const k = STREAK.dragGain * Math.sqrt(amount) * (1 - 0.5 * smoothstep(STREAK.dragLow, STREAK.dragHigh, lum(x)));
+  return toDisp([0, 1, 2].map((c) => 1 - (1 - x[c]) * Math.exp(-t[c] * k)) as RGB);
 }
 
 /** Chromatic aberration: red is sampled at (1 + k) and blue at (1 - k) of the distance from the frame's centre. */

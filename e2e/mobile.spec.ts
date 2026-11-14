@@ -19,10 +19,11 @@ test('mobile: compact controls, presets sheet and reference entry point', async 
   const nav = page.getByRole('navigation', { name: 'Editing tools' });
   await expect(nav).toBeVisible();
   await nav.getByRole('button', { name: 'Looks' }).click();
-  // Roll 01, Editor's Picks, is the default tab in the mobile looks sheet too.
-  await expect(page.getByRole('tab', { name: "Editor's Picks" })).toHaveAttribute('aria-selected', 'true');
-  await page.getByRole('button', { name: 'Apply Golden Hour Glow', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Apply Golden Hour Glow', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  // The looks picked for this photo are the default tab in the mobile looks sheet too.
+  await expect(page.getByRole('tab', { name: 'For this photo' })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('tab', { name: "Editor's Picks" }).click();
+  await page.getByRole('button', { name: 'Apply Clean Studio', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Apply Clean Studio', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Close panel' }).click();
   await nav.getByRole('button', { name: 'Match look' }).click();
   await expect(page.getByText('Add a reference photo')).toBeVisible();
@@ -64,6 +65,7 @@ test('mobile: every editor feature is reachable by touch', async ({ page }) => {
 
   // Looks sheet: the strip and the preset amount; the project's photos are in More → Photos.
   await nav.getByRole('button', { name: 'Looks' }).click();
+  await page.getByRole('tab', { name: "Editor's Picks" }).click();
   await page.getByRole('button', { name: 'Apply Velvet Slide', exact: true }).click();
   await expect(sheet.getByRole('slider', { name: 'Amount' })).toBeVisible();
   await nav.getByRole('button', { name: 'More' }).click();
@@ -177,15 +179,18 @@ test('mobile touch: scrolling panels never changes edits; strip, curve and slide
 
   // Presets: a sideways strip of small film frames; a tap applies.
   await nav.getByRole('button', { name: 'Looks' }).click();
-  const strip = page.locator('[data-testid="compact-sheet"] ul[aria-label="Presets"]');
+  const strip = page.locator('[data-testid="compact-sheet"] ul[aria-label="Looks"]');
   const sb = (await strip.boundingBox())!;
   expect(sb.height).toBeGreaterThan(70);
   await t.swipe(sb.x + sb.width * 0.8, sb.y + sb.height / 2, -sb.width * 0.5, 0);
   await expect.poll(() => strip.evaluate((e) => e.scrollLeft)).toBeGreaterThan(40);
   const card = strip.locator('li > button').first();
+  // Let the swipe's momentum die before going back to the start (it would carry the strip on under the tap).
+  await page.waitForTimeout(900);
   await strip.evaluate((e) => (e.scrollLeft = 0));
-  const cb = (await card.boundingBox())!;
-  await t.tap(cb.x + cb.width / 2, cb.y + cb.height / 2);
+  await expect.poll(() => strip.evaluate((e) => e.scrollLeft)).toBe(0);
+  // One atomic tap: two separate touch commands can arrive more than 380 ms apart on a slow machine, which is a press-and-hold (preview), not a tap.
+  await card.tap();
   await expect(card).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Close panel' }).click();
 
@@ -204,7 +209,7 @@ test('mobile touch: scrolling panels never changes edits; strip, curve and slide
   expect(Number(await exposure.inputValue())).toBeGreaterThan(Number(focusStart));
   // The edited group is marked in the row; picking another group swaps the sliders.
   await expect(sheet.getByRole('tab', { name: /Tone.*edited/ })).toBeVisible();
-  await sheet.getByRole('tab', { name: /^Range/ }).click();
+  await sheet.getByRole('tab', { name: /^Whites & blacks/ }).click();
   await expect(page.getByRole('slider', { name: 'Whites', exact: true })).toBeVisible();
   await expect(exposure).toHaveCount(0);
   // Reset puts the group back to its defaults and clears the mark.
@@ -240,6 +245,10 @@ test('mobile touch: scrolling panels never changes edits; strip, curve and slide
 
   // Colour: a swipe on the curve scrolls without adding points; a tap adds one; double tap removes it.
   await nav.getByRole('button', { name: 'Colour' }).click();
+  // Each tool opens at its own compact size (a sheet pulled tall for Light doesn't stay tall).
+  await expect(sheet).toHaveAttribute('data-expanded', 'false');
+  await sheet.getByRole('button', { name: 'All', exact: true }).click();
+  await expect(sheet).toHaveAttribute('data-expanded', 'true');
   await scroller.evaluate((e) => (e.scrollTop = 0));
   const curve = page.locator('svg[aria-label="master tone curve"]');
   const handles = page.getByTestId('curve-point-handle');

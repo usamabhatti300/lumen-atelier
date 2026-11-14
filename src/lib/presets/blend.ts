@@ -18,10 +18,14 @@ import {
   type Adjustments,
   type CurvePoint,
   type GradeWheel,
+  rangeForPath,
   type PartialAdjustments,
 } from '../schema/adjustments';
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/** A look's Amount runs past 100: at 150 every value it sets goes half as far again. */
+export const MAX_LOOK_AMOUNT = 150;
 
 export function blendWheel(a: GradeWheel, b: GradeWheel, t: number): GradeWheel {
   const ax = Math.cos((a.hue * Math.PI) / 180) * a.saturation;
@@ -33,11 +37,18 @@ export function blendWheel(a: GradeWheel, b: GradeWheel, t: number): GradeWheel 
   const sat = Math.hypot(x, y);
   let hue = sat > 1e-6 ? (Math.atan2(y, x) * 180) / Math.PI : t < 0.5 ? a.hue : b.hue;
   if (hue < 0) hue += 360;
-  return { hue: Math.round(hue * 10) / 10, saturation: sat, luminance: lerp(a.luminance, b.luminance, t) };
+  // Past t = 1 the blend extrapolates; keep the result inside the wheel's range.
+  return {
+    hue: Math.round(hue * 10) / 10,
+    saturation: Math.min(100, sat),
+    luminance: Math.min(100, Math.max(-100, lerp(a.luminance, b.luminance, t))),
+  };
 }
 
 /**
- * Computes adjustments for a preset at `amount` (0..100) on top of `baseline`.
+ * Computes adjustments for a preset at `amount` (0..150) on top of `baseline`.
+ * Up to 100 each value moves from the baseline toward the look's; past 100 it carries on in the
+ * same direction (clamped to the control's range, curves to 0..1), so a look can be pushed harder.
  * `current` and `overrides` preserve manual edits made after applying.
  */
 export function blendPreset(
@@ -47,7 +58,7 @@ export function blendPreset(
   current?: Adjustments,
   overrides: string[] = [],
 ): Adjustments {
-  const t = Math.min(1, Math.max(0, amount / 100));
+  const t = Math.min(MAX_LOOK_AMOUNT / 100, Math.max(0, amount / 100));
   const target = mergeAdjustments(baseline, values);
   let out: Adjustments = structuredClone(baseline);
   const overrideSet = new Set(overrides);
@@ -68,7 +79,9 @@ export function blendPreset(
     if (parts[0] === 'curves') {
       out = setPath(out, path, blendCurves(a as CurvePoint[], b as CurvePoint[], t));
     } else if (typeof a === 'number' && typeof b === 'number') {
-      out = setPath(out, path, lerp(a, b, t));
+      const v = lerp(a, b, t);
+      const range = t > 1 ? rangeForPath(path) : undefined;
+      out = setPath(out, path, range ? Math.min(range.max, Math.max(range.min, v)) : v);
     }
   }
   for (const zone of wheelZones) {

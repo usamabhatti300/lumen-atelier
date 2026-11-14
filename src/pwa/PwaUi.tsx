@@ -15,7 +15,7 @@ export function PwaPrompts() {
   const wasOnline = useRef(online);
 
   useEffect(() => {
-    if (wasOnline.current && !online) showToast('You are offline. Editing, presets and export keep working on this device; AI style interpretation needs a connection.', 'info');
+    if (wasOnline.current && !online) showToast('You are offline. Editing, looks and export keep working on this device; AI style interpretation needs a connection.', 'info');
     wasOnline.current = online;
   }, [online, showToast]);
 

@@ -33,6 +33,20 @@ describe('edit state schema', () => {
     expect(reviveEdit({ junk: true })).toEqual({ edit: defaultEditState(), repaired: true });
   });
 
+  it('loads an edit saved before motion blur, shutter drag and soft focus with them at 0', () => {
+    const old = JSON.parse(JSON.stringify(defaultEditState()));
+    for (const k of ['motionBlur', 'shutterDrag', 'softFocus']) delete old.adjustments.effects[k];
+    old.adjustments.effects.bloom = 25;
+    const parsed = EditStateSchema.parse(old);
+    expect(parsed.adjustments.effects).toMatchObject({ bloom: 25, motionBlur: 0, shutterDrag: 0, softFocus: 0 });
+    // Out-of-range values are clamped like every other control.
+    old.adjustments.effects.motionBlur = 250;
+    old.adjustments.effects.softFocus = -5;
+    const clamped = EditStateSchema.parse(old).adjustments.effects;
+    expect(clamped.motionBlur).toBe(100);
+    expect(clamped.softFocus).toBe(0);
+  });
+
   it('normalizes curves (sorted, deduped)', () => {
     expect(normalizeCurve([[1, 1], [0.5, 0.4], [0, 0], [0.5, 0.6]])).toEqual([[0, 0], [0.5, 0.6], [1, 1]]);
   });

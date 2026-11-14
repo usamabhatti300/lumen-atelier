@@ -52,7 +52,10 @@ they made, or bring a friend.
 
 - **Long-press to see the original** (was 2.3): press and hold with a finger, mouse or pen, with a
   readout ("original", "let go for {look} · {amount}").
-- **Collections** (part of 2.4): the 14 categories are numbered **rolls**, plus **Kept**
+- **Curated library** (2026-11-14): 41 looks in 8 rolls replaced the 186 in 14; **For this photo**
+  (picks from measured traits) and **Auto** in Light were added. See
+  `PRODUCT_AUDIT_AND_IMPROVEMENT_PLAN.md`.
+- **Collections** (part of 2.4): the categories are numbered **rolls**, plus **Kept**
   (favourites), **Last roll** (recent looks) and **Yours**. Roll covers on home use your last photo.
 - **Visible previews first** (part of 1.5): only tiles on or near the screen render.
 - **Match result leads with your photo** (part of 1.6), with a measured info list

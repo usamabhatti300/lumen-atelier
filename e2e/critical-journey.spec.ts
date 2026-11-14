@@ -41,7 +41,7 @@ test('reference to preset to export', async ({ page }) => {
   await expect(page.getByRole('slider', { name: 'Intensity' })).toHaveValue('80');
 
   // Save the preset.
-  await page.getByLabel('Save as preset').fill('E2E Reference Look');
+  await page.getByLabel('Save as a look').fill('E2E Reference Look');
   await page.getByTestId('save-reference-preset').click();
   await expect(page.getByText('Saved as “E2E Reference Look”.')).toBeVisible();
   await page.getByRole('button', { name: 'Refine in the editor' }).click();
@@ -58,7 +58,7 @@ test('reference to preset to export', async ({ page }) => {
   await expect(page.getByRole('slider', { name: 'Exposure', exact: true })).toHaveValue('0.3');
 
   // Remove the preset, then reapply the saved one from the library.
-  await page.getByRole('button', { name: 'Remove preset' }).click();
+  await page.getByRole('button', { name: 'Remove look' }).click();
   await page.getByRole('radio', { name: 'Yours' }).click();
   await page.getByRole('button', { name: 'Apply E2E Reference Look' }).click();
   await expect(page.getByText('E2E Reference Look', { exact: true }).first()).toBeVisible();
