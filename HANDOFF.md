@@ -32,7 +32,14 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
 
 ## State as of the last session
 
-- **2026-11-14 (newest): new app icon (`public/icons/lumen-*`, Lit-style "lu") and an opening
+- **2026-11-14 (newest): home hero and story, after owner feedback.** Home has no coloured ambient
+  light any more: a black, grained top (`.home-void`). The particle photo hero stays (the owner
+  likes it; a replacement was tried and rejected). "How a look travels" plays by itself once in
+  view, with clickable steps and replay, instead of scroll pinning. The owner also asked for a
+  speed/crash pass and then withdrew it ("working fine on deployed"); nothing was changed for speed.
+  **Open:** `e2e/mobile.spec.ts` touch test fails at the looks strip (not diagnosed); the editor
+  still uses the ambient light (asked the owner whether to darken it too).
+- **2026-11-14: new app icon (`public/icons/lumen-*`, Lit-style "lu") and an opening
   animation (`src/components/fx/Intro.tsx`)**, at the owner's request (the phone showed the old
   logo). See PROJECT_STATUS.md. The phone needs the hosted copy updated to show either.
 

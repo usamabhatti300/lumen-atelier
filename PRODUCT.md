@@ -36,8 +36,8 @@ and filmstrip. Exports go to the photo library / downloads / share sheet.
 
 ## Capabilities and Constraints
 
-- Screens: home/gallery, editor (presets, light, colour, curves, HSL, masks, portrait, remove, lens blur,
-  geometry, upscale export), reference studio (match a look), preset library, settings (AI models, app
+- Screens: home/gallery, editor (presets, light, colour, curves, HSL, effects, masks, portrait, remove,
+  lens blur, geometry, upscale export; on touch, a swipe on the photo steps through looks), reference studio (match a look), preset library, settings (AI models, app
   & offline).
 - 75+ original "Signature Pro" presets in 14 categories; user presets saved locally (IndexedDB).
 - Optional AI style interpretation (Claude API or local Ollama); without it, measurements only.

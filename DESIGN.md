@@ -325,8 +325,8 @@ Afterimage; the palette, type, wordmark and analog props are unchanged. It repla
 "no glows, gradients or glass" rule.
 
 - **Ambient light** (`components/fx/Ambient.tsx`): a heavily blurred, slowly drifting copy of the
-  current photo behind the chrome, with film grain. Home uses the hero photo; the editor uses the
-  active photo's thumbnail. It never sits over the photo.
+  current photo behind the chrome, with film grain. The editor uses the active photo's thumbnail.
+  It never sits over the photo. **Home does not use it** (see "Home is a darkroom" below).
 - **Glass** (`glass-pane` for chrome, `glass-card` for cards inside it): top bars, side panels,
   sheets, filmstrip, dock and tab bars. The photo stage (`stage-lit`) stays near-neutral black at
   the centre, so colour judgement on the photo stays honest; the light only reaches its rim.
@@ -369,7 +369,7 @@ Afterimage; the palette, type, wordmark and analog props are unchanged. It repla
   mark changes.
 - **Reduced motion** (system or in-app): the hero shows the plain photo, the ring does not turn by
   itself or spring, the light does not drift, cards stay flat, no sheen, no view-transition
-  movement, no decoding, no custom cursor, no dissolve, and the scroll story is a still picture.
+  movement, no decoding, no custom cursor, no dissolve, no opening animation, and the story is a still picture.
 
 ## UX pass (2026-11-14)
 

@@ -102,6 +102,14 @@ it out, but browsers won't install it or keep it offline from a plain-http addre
   vibrance, saturation, B&W, texture, clarity, dehaze, sharpening, noise reduction, vignette and grain;
   HSL (8 bands); RGB tone curves; 3-way + global colour wheels; channel mixer; levels; `.cube` LUTs;
   crop, aspect presets, 90° rotation, flip and straighten.
+- **Effects** (More → Effects on phones, the Effects tab on desktop): light leak, lens flare, bloom,
+  halation, flash, dreamy blur, colour fringe, and dust and scratches. One slider each, off at 0,
+  drawn in code (no downloads), saved with the edit and rendered at full resolution on export.
+- **Swipe between looks** (touch): swipe left or right on the photo to step through the looks the
+  browser is showing; holding still shows the original, pinching zooms.
+- **Home and opening**: a short logo animation when the app opens (tap to skip; off with reduced
+  motion), a hero that shows your last photo, and a short story of how "Match a look" works that
+  plays when it comes into view.
 - **Non-destructive**: originals are never modified; edits are versioned JSON, with bounded,
   gesture-grouped undo/redo, per-control and full reset, copy/paste settings, an adjustments
   visibility toggle, and autosave with session recovery.

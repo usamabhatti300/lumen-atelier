@@ -9,6 +9,11 @@ touch and accessibility notes.
 one lilac accent (`#c8b8ff`) for the one main action, changed values and the chosen look, and the
 afterimage: a hard, unblurred lilac offset. Orange (`#f2994a`) for date stamps only. Geist + Martian Mono.
 
+**Since 2026-11-14, "Lit"** sits on top of Afterimage: glass chrome, ambient light behind the
+editor's panels, motion and an opening animation. Home is a darkroom (black, no ambient colour).
+DESIGN.md, section "Lit: depth and motion", is the source of truth for all of it, including what
+reduced motion turns off.
+
 ## Tokens (`src/styles/index.css`, Tailwind v4 `@theme`)
 
 Role tokens, not literal colours: `well` < `ground` / `ground-2` < `raised` / `raised-2`, `control` /
