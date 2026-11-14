@@ -55,7 +55,7 @@ export function ZoneScale({
         {ROMAN.map((r, i) => (
           <div key={r} className="flex-1">
             <div className="h-3 rounded-[1px] ring-1 ring-black/10" style={{ background: zoneGrey(i) }} />
-            {labels && <div className="mt-1 text-center font-mono text-[8.5px] tracking-wider text-fg-4">{r}</div>}
+            {labels && <div className="mt-1 text-center font-mono text-[9.5px] tracking-wider text-fg-4">{r}</div>}
           </div>
         ))}
       </div>

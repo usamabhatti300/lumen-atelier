@@ -9,7 +9,8 @@
  * finger landed; a vertical swipe scrolls the panel; a tap changes nothing.
  */
 import { RotateCcw } from 'lucide-react';
-import { memo, useId, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { motionReduced } from '@/lib/haptics';
 import type { Range } from '@/lib/schema/adjustments';
 
 export interface SliderProps {
@@ -62,7 +63,13 @@ export const Slider = memo(function Slider({
   const pct = ((value - range.min) / span) * 100;
   const origin = fillFrom === 'min' ? 0 : ((Math.min(Math.max(range.default, range.min), range.max) - range.min) / span) * 100;
   const d = decimals(range.step);
-  const display = format ? format(value) : (value > 0 && range.min < 0 ? '+' : '') + value.toFixed(d);
+  // While you drag, the readout follows exactly; when the value jumps (a look lands, a reset, an
+  // undo), the number counts to it and the fill glides there.
+  const [pressed, setPressed] = useState(false);
+  const shown = useCountTo(value, pressed, range.step);
+  const fmt = (v: number) => (format ? format(v) : (v > 0 && range.min < 0 ? '+' : '') + v.toFixed(d));
+  const display = fmt(value);
+  const shownText = fmt(shown);
   const changed = Math.abs(value - range.default) > range.step / 2;
 
   const commitDraft = () => {
@@ -100,6 +107,7 @@ export const Slider = memo(function Slider({
         return;
       }
       t.active = true;
+      setPressed(true);
       e.currentTarget.setPointerCapture(e.pointerId);
       onGestureStart?.();
     }
@@ -110,10 +118,12 @@ export const Slider = memo(function Slider({
     const t = touch.current;
     if (!t || t.id !== e.pointerId) return;
     touch.current = null;
+    setPressed(false);
     if (t.active) onGestureEnd?.();
   };
 
   const endDrag = () => {
+    setPressed(false);
     if (!dragging.current) return;
     dragging.current = false;
     onGestureEnd?.();
@@ -164,7 +174,7 @@ export const Slider = memo(function Slider({
             changed ? 'text-accent-fg' : 'text-fg-4'
           }`}
         >
-          {display}
+          {shownText}
         </button>
       )}
       {lg && (
@@ -208,7 +218,7 @@ export const Slider = memo(function Slider({
         />
         {!track && (
           <div
-            className="pointer-events-none absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-accent transition-[left,width] duration-75"
+            className={`pointer-events-none absolute top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-accent shadow-[0_0_10px_rgb(200_184_255/0.55)] transition-[left,width] ${pressed ? 'duration-75' : 'duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]'}`}
             style={fillStyle}
           />
         )}
@@ -230,6 +240,7 @@ export const Slider = memo(function Slider({
           aria-valuetext={display}
           onPointerDown={() => {
             dragging.current = true;
+            setPressed(true);
             onGestureStart?.();
           }}
           onPointerUp={endDrag}
@@ -242,3 +253,30 @@ export const Slider = memo(function Slider({
     </div>
   );
 });
+
+/** The readout's number: follows `value` exactly while `live`, otherwise counts to it (~420 ms). */
+function useCountTo(value: number, live: boolean, step: number) {
+  const [shown, setShown] = useState(value);
+  const from = useRef(value);
+  useEffect(() => {
+    const start = from.current;
+    if (live || motionReduced() || Math.abs(value - start) <= step * 1.5) {
+      from.current = value;
+      setShown(value);
+      return;
+    }
+    let raf = 0;
+    const t0 = performance.now();
+    const run = (now: number) => {
+      const k = Math.min(1, (now - t0) / 420);
+      const e = 1 - Math.pow(1 - k, 3);
+      const v = start + (value - start) * e;
+      from.current = v;
+      setShown(k < 1 ? Math.round(v / step) * step : value);
+      if (k < 1) raf = requestAnimationFrame(run);
+    };
+    raf = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(raf);
+  }, [value, live, step]);
+  return shown;
+}

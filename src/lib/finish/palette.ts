@@ -4,7 +4,7 @@
  * `src/styles/index.css`; `palette.test.ts` fails if they drift apart.
  */
 export const FINISH_COLORS = {
-  ground: '#0d0c10',
+  ground: '#0a090e',
   fg: '#f0ebe1',
   fg3: '#a6a1af',
   accent: '#c8b8ff',

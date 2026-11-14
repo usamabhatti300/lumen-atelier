@@ -55,7 +55,13 @@ export const Histogram = memo(function Histogram({ slim = false }: { slim?: bool
 
 type EngineState = ReturnType<typeof useEngine.getState>;
 
+/**
+ * Below the graph: only what needs attention. Clipping shows when more than 0.5% of the photo is
+ * pure black or pure white; the preview size is a tooltip, not a reading.
+ */
 function HistogramFooter({ hist, out }: { hist: EngineState['histogram']; out: EngineState['outputSize'] }) {
+  const lo = hist ? hist.clippedShadows * 100 : 0;
+  const hi = hist ? hist.clippedHighlights * 100 : 0;
   return (
     <>
       <div className="mt-1 flex h-[3px] gap-px overflow-hidden rounded-full" aria-hidden>
@@ -63,15 +69,24 @@ function HistogramFooter({ hist, out }: { hist: EngineState['histogram']; out: E
           <div key={i} className="flex-1" style={{ background: zoneGrey(i) }} />
         ))}
       </div>
-      <div className="mt-2 flex justify-between font-mono text-[10.5px] text-fg-4">
-        <span title="Share of pixels clipped to black">
-          <ChevronLeft size={10} className="-mr-0.5 inline align-[-1px]" aria-hidden /> {hist ? (hist.clippedShadows * 100).toFixed(1) : '–'}%
-        </span>
-        <span>
-          {out ? `preview ${out.width}×${out.height}` : ''}
-        </span>
-        <span title="Share of pixels clipped to white">{hist ? (hist.clippedHighlights * 100).toFixed(1) : '–'}% <ChevronRight size={10} className="-ml-0.5 inline align-[-1px]" aria-hidden /></span>
-      </div>
+      {(lo > 0.5 || hi > 0.5) && (
+        <div className="mt-2 flex justify-between text-[11.5px] text-fg-3" title={out ? `Preview ${out.width} × ${out.height}` : undefined}>
+          <span>
+            {lo > 0.5 && (
+              <>
+                <ChevronLeft size={11} className="-mr-0.5 inline align-[-1px]" aria-hidden /> {lo.toFixed(1)}% pure black
+              </>
+            )}
+          </span>
+          <span>
+            {hi > 0.5 && (
+              <>
+                {hi.toFixed(1)}% pure white <ChevronRight size={11} className="-ml-0.5 inline align-[-1px]" aria-hidden />
+              </>
+            )}
+          </span>
+        </div>
+      )}
     </>
   );
 }

@@ -620,7 +620,7 @@ function LookCard({ result }: { result: MappingResult }) {
                     <li key={i} className="rounded-md bg-well px-3.5 py-2.5">
                       <p className="flex flex-wrap items-center gap-2 text-xs font-medium text-fg-2">
                         {e.area}
-                        <span className="rounded-full bg-control px-2 font-mono text-[10px] tracking-wide text-fg-3 uppercase">{e.basis.replace('+', ' + ')}</span>
+                        <span className="rounded-full bg-control px-2 font-mono text-[11px] tracking-wide text-fg-3 uppercase">{e.basis.replace('+', ' + ')}</span>
                         {e.weak && <span className="text-[11px] text-fg-3">low confidence</span>}
                       </p>
                       <p className="mt-1 text-[13px] leading-relaxed text-fg-3">{e.text}</p>

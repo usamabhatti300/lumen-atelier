@@ -68,7 +68,7 @@ export function LightPanel() {
             type="button"
             onClick={() => setAdj('basic.monochrome', mono ? 0 : 100, 'Black & white')}
             aria-pressed={mono}
-            className={`mr-1 rounded-xs px-1.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase ${
+            className={`mr-1 rounded-xs px-1.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase ${
               mono ? 'bg-fg text-on-accent' : 'text-fg-4 hover:text-fg'
             }`}
           >

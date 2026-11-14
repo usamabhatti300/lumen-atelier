@@ -3,7 +3,7 @@
  * renders interactive overlays (before/after divider, crop, mask tools, heal).
  */
 import { stepLook, swipeDirection } from './lookSequence';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ComponentType } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, ImagePlus, Loader2 } from 'lucide-react';
 import { engine } from '@/engine/controller';
@@ -261,6 +261,17 @@ export function Viewport({ onImport }: { onImport: () => void }) {
     [ghost],
   );
   const land = useRef<HTMLDivElement>(null);
+  // The dissolve (three.js) loads in the background when the editor opens; until it has arrived the
+  // ghost uses the plain CSS fade.
+  const [Dissolve, setDissolve] = useState<ComponentType<{ source: HTMLCanvasElement; onStart?: () => void; onDone: () => void }> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void import('@/components/fx/LookDissolve').then((m) => alive && setDissolve(() => m.default), () => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const [dissolving, setDissolving] = useState<number | null>(null);
 
   const onTouchUp = (e: React.PointerEvent) => {
     const s = swipe.current;
@@ -335,28 +346,35 @@ export function Viewport({ onImport }: { onImport: () => void }) {
           <div
             key={ghost.key}
             aria-hidden
-            className="afterimage-ghost"
-            onAnimationEnd={() => setGhost((g) => (g?.key === ghost.key ? null : g))}
+            className={`afterimage-ghost ${Dissolve ? 'is-dissolving' : ''}`}
+            onAnimationEnd={() => !Dissolve && setGhost((g) => (g?.key === ghost.key ? null : g))}
           >
-            <div ref={mountGhost} className="h-full w-full" />
+            <div ref={mountGhost} className="h-full w-full" style={{ opacity: Dissolve && dissolving === ghost.key ? 0 : 1 }} />
+            {Dissolve && (
+              <Dissolve
+                source={ghost.canvas}
+                onStart={() => setDissolving(ghost.key)}
+                onDone={() => setGhost((g) => (g?.key === ghost.key ? null : g))}
+              />
+            )}
           </div>
         )}
         {activePhotoId && !loading && compare === 'split' && tool !== 'crop' && <SplitDivider box={box} />}
         {compare === 'split' && tool !== 'crop' && (
           <div className="pointer-events-none absolute top-2.5 flex w-full justify-between px-2.5">
-            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium text-fg">Before</span>
-            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium text-fg">After</span>
+            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[11px] font-medium text-fg">Before</span>
+            <span className="surface-float rounded-full px-2.5 py-1 font-mono text-[11px] font-medium text-fg">After</span>
           </div>
         )}
         {compare === 'side' && (
           <div className="pointer-events-none absolute top-2.5 flex w-full px-2.5">
-            <span className="w-1/2"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium text-fg">Before</span></span>
-            <span className="w-1/2 text-right"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[10px] font-medium text-fg">After</span></span>
+            <span className="w-1/2"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[11px] font-medium text-fg">Before</span></span>
+            <span className="w-1/2 text-right"><span className="surface-float rounded-full px-2.5 py-1 font-mono text-[11px] font-medium text-fg">After</span></span>
           </div>
         )}
         {/* Holding the photo: a camera-style readout says what you're looking at, and what you'll return to. */}
         {compare === 'before' && (
-          <span className="pointer-events-none absolute top-2.5 left-2.5 flex flex-col items-start gap-1 font-mono text-[10px] text-fg [text-shadow:0_1px_2px_rgb(0_0_0/0.8)]">
+          <span className="pointer-events-none absolute top-2.5 left-2.5 flex flex-col items-start gap-1 font-mono text-[11px] text-fg [text-shadow:0_1px_2px_rgb(0_0_0/0.8)]">
             <span className="surface-float flex items-center gap-1.5 rounded-full px-2.5 py-1">
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-fg" />
               original

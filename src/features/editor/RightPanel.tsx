@@ -12,15 +12,16 @@ import { MasksPanel } from './panels/MasksPanel';
 import { PortraitPanel } from './panels/PortraitPanel';
 import { RemovePanel } from './panels/RemovePanel';
 
+/** The everyday tools first (top row), the specialist ones second. */
 export const RIGHT_TABS: { id: RightTab; label: string; icon: typeof SlidersHorizontal }[] = [
   { id: 'adjust', label: 'Light', icon: SlidersHorizontal },
   { id: 'color', label: 'Colour', icon: Palette },
-  { id: 'detail', label: 'Detail', icon: Sparkle },
+  { id: 'geometry', label: 'Crop', icon: Crop },
   { id: 'effects', label: 'Effects', icon: Aperture },
+  { id: 'detail', label: 'Detail', icon: Sparkle },
   { id: 'masks', label: 'Masks', icon: Layers },
   { id: 'portrait', label: 'Portrait', icon: ScanFace },
   { id: 'remove', label: 'Remove', icon: Eraser },
-  { id: 'geometry', label: 'Crop', icon: Crop },
 ];
 
 export function PanelContent({ tab }: { tab: RightTab }) {
@@ -49,7 +50,7 @@ export function RightPanel() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <Histogram />
-      <div role="tablist" aria-label="Adjustment panels" className="mx-1.5 mb-1 grid shrink-0 grid-cols-8 rounded-lg bg-raised p-1 ring-1 ring-line-soft">
+      <div role="tablist" aria-label="Adjustment panels" className="glass-card mx-2 mb-1.5 grid shrink-0 grid-cols-4 gap-0.5 rounded-xl p-1">
         {RIGHT_TABS.map((t) => (
           <button
             key={t.id}
@@ -59,14 +60,14 @@ export function RightPanel() {
             aria-selected={tab === t.id}
             aria-controls="right-tabpanel"
             onClick={() => selectRightTab(t.id)}
-            className={`relative flex min-w-0 flex-col items-center gap-1 rounded-md py-2 text-[10px] font-medium tracking-[-0.03em] transition-colors ${
+            className={`relative flex min-w-0 items-center justify-center gap-1.5 rounded-lg py-2 text-[12px] font-medium transition-colors ${
               tab === t.id ? 'text-fg' : 'text-fg-3 hover:text-fg'
             }`}
           >
             {tab === t.id && (
               <motion.span layoutId="right-tab-pill" className="absolute inset-0 rounded-md bg-control-2" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />
             )}
-            <t.icon size={16} strokeWidth={tab === t.id ? 2 : 1.6} className={`relative ${tab === t.id ? 'text-accent' : ''}`} />
+            <t.icon size={15} strokeWidth={tab === t.id ? 2 : 1.6} className={`relative shrink-0 ${tab === t.id ? 'text-accent' : ''}`} />
             <span className="relative">{t.label}</span>
           </button>
         ))}

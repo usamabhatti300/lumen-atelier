@@ -179,9 +179,9 @@ export function MasksPanel() {
                   >
                     <Layers size={12} className="shrink-0 text-fg-4" />
                     <span className={`truncate text-xs ${l.visible ? 'text-fg' : 'text-fg-4'}`}>{l.name}</span>
-                    {warnings[l.id] && <span className="text-[10px] text-danger">!</span>}
+                    {warnings[l.id] && <span className="text-[11px] text-danger">!</span>}
                   </button>
-                  <span className="tabular text-[10px] text-fg-4">{Math.round(l.opacity)}%</span>
+                  <span className="tabular text-[11px] text-fg-4">{Math.round(l.opacity)}%</span>
                   <button type="button" aria-label={`Move ${l.name} up`} onClick={() => moveLayer(l.id, 1)} className="coarse:p-2.5 rounded-xs p-0.5 text-fg-4 hover:text-fg">
                     <ArrowUp size={12} />
                   </button>

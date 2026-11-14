@@ -1,6 +1,6 @@
 # Handoff: read this first in a new session
 
-_Last updated: 2026-11-10 (newest: roadmap 2.5, Effects tool). Owner: Usama (usama@doppellabs.ai)._
+_Last updated: 2026-11-14 (newest: new app icon and opening animation). Owner: Usama (usama@doppellabs.ai)._
 
 ## What this project is
 
@@ -31,6 +31,10 @@ i7-8665U with 16 GB RAM and Intel UHD 620, so local inference is CPU-only (slow)
 To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run dev`. Never use `VITE_` for secrets.
 
 ## State as of the last session
+
+- **2026-11-14 (newest): new app icon (`public/icons/lumen-*`, Lit-style "lu") and an opening
+  animation (`src/components/fx/Intro.tsx`)**, at the owner's request (the phone showed the old
+  logo). See PROJECT_STATUS.md. The phone needs the hosted copy updated to show either.
 
 - **2026-11-08 (newest): building `docs/ROADMAP.md` Phase 1 in order, one item per commit.** Owner's
   rules for this run: ask before any library/model ([ask] items), before naming new rolls; stop at the

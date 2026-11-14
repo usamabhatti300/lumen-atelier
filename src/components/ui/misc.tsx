@@ -152,5 +152,5 @@ export function Progress({ value, label }: { value: number; label?: string }) {
 }
 
 export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="rounded-xs border border-line bg-raised-2 px-1.5 font-mono text-[10px] text-fg-3">{children}</kbd>;
+  return <kbd className="rounded-xs border border-line bg-raised-2 px-1.5 font-mono text-[11px] text-fg-3">{children}</kbd>;
 }

@@ -1,3 +1,4 @@
+import { useTilt } from '@/components/fx/useTilt';
 import { AnimatePresence, motion } from 'motion/react';
 import { publishLookSequence } from '@/features/editor/lookSequence';
 import { isoDate, stampText } from '@/lib/finish/stamp';
@@ -60,6 +61,8 @@ export function PresetBrowser({
   const appliedId = useEditor((s) => s.edit.appliedPreset?.id);
   const strip = variant === 'strip';
   const [searching, setSearching] = useState(false);
+  // Phones: press and hold a look in the strip to see it large without applying it.
+  const [peek, setPeek] = useState<{ preset: Preset; url: string | null } | null>(null);
 
   useEffect(() => {
     void load();
@@ -118,6 +121,16 @@ export function PresetBrowser({
   const rolls: Filter[] = [...PRESET_CATEGORY_IDS.filter((c) => c !== 'custom' && c !== 'reference'), 'all'];
   const stamp = useMemo(() => dateStamp(), []);
   const roll = mode === 'rolls' && filter !== 'all' ? rollOf(filter) : null;
+  // Keep the open roll's tab fully in view (it never sits cut off at the edge).
+  const rollTabs = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const row = rollTabs.current;
+    const tab = row?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!row || !tab) return;
+    const left = tab.offsetLeft - row.offsetLeft;
+    if (left < row.scrollLeft + 12 || left + tab.offsetWidth > row.scrollLeft + row.clientWidth - 28)
+      row.scrollTo({ left: Math.max(0, left - 24), behavior: 'smooth' });
+  }, [filter, mode]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -190,9 +203,10 @@ export function PresetBrowser({
         {/* Rolls: a slim mono row of the numbered rolls, then "all". */}
         {mode === 'rolls' && (
           <div
+            ref={rollTabs}
             role="tablist"
             aria-label="Preset categories"
-            className={`no-scrollbar flex gap-4 overflow-x-auto ${variant === 'page' ? '-mx-4 px-4 sm:mx-0 sm:flex-wrap sm:gap-x-5 sm:gap-y-1 sm:px-0' : '-mx-3 px-3 [mask-image:linear-gradient(90deg,#000_88%,transparent)]'}`}
+            className={`no-scrollbar flex gap-4 overflow-x-auto ${variant === 'page' ? '-mx-4 px-4 sm:mx-0 sm:flex-wrap sm:gap-x-5 sm:gap-y-1 sm:px-0' : '-mx-3 px-3 [mask-image:linear-gradient(90deg,transparent,#000_12px,#000_calc(100%-36px),transparent)]'}`}
           >
             {rolls.map((f) => (
               <button
@@ -278,11 +292,13 @@ export function PresetBrowser({
                 actionVerb={actionVerb}
                 catalogue={numbers.get(p.id)}
                 stamp={stamp}
+                onPeek={strip ? setPeek : undefined}
               />
             ))}
           </ul>
         )}
       </div>
+      {strip && <LookPeek peek={peek} catalogue={peek ? numbers.get(peek.preset.id) : undefined} />}
       <PresetEditDialog key={editing?.id ?? 'none'} preset={editing} onClose={() => setEditing(null)} />
       <Dialog
         open={!!deleting}
@@ -325,7 +341,10 @@ const PresetCard = memo(function PresetCard({
   actionVerb,
   catalogue,
   stamp,
+  onPeek,
 }: {
+  /** Strip only: press and hold shows the look large (null when let go). */
+  onPeek?: (p: { preset: Preset; url: string | null } | null) => void;
   actionVerb: string;
   catalogue?: string;
   /** Today's date stamp, shown on the chosen look. */
@@ -371,31 +390,69 @@ const PresetCard = memo(function PresetCard({
     return () => ctrl.abort();
   }, [preset.id, preset.adjustments, thumbKey, near]);
   const url = thumb?.key === thumbKey ? thumb.url : null;
+  const tilt = useTilt<HTMLButtonElement>(6);
+  const holdTimer = useRef(0);
+  const press = useRef<{ x: number; y: number } | null>(null);
+  const peeked = useRef(false);
+  const endPeek = () => {
+    window.clearTimeout(holdTimer.current);
+    press.current = null;
+    if (peeked.current) onPeek?.(null);
+  };
 
-  // Phones: a small frame from a contact strip (sprocket edge, the preview, its frame number); no
-  // caption, so the photo keeps the space. The name shows in the amount row once a look is chosen.
+  // Phones: a frame from a contact strip with the look's name under it, so you know what you are
+  // about to try. Press and hold for a large preview without applying it.
   if (strip) {
     return (
-      <li ref={item} className="w-[64px] shrink-0">
+      <li ref={item} className="w-[84px] shrink-0">
         <button
           type="button"
-          onClick={() => onApply?.(preset)}
+          onClick={(e) => {
+            if (peeked.current) {
+              peeked.current = false;
+              e.preventDefault();
+              return;
+            }
+            onApply?.(preset);
+          }}
+          onPointerDown={(e) => {
+            peeked.current = false;
+            if (!onPeek) return;
+            press.current = { x: e.clientX, y: e.clientY };
+            window.clearTimeout(holdTimer.current);
+            holdTimer.current = window.setTimeout(() => {
+              peeked.current = true;
+              onPeek({ preset, url });
+            }, 380);
+          }}
+          onPointerMove={(e) => {
+            const p0 = press.current;
+            if (p0 && Math.hypot(e.clientX - p0.x, e.clientY - p0.y) > 8) {
+              window.clearTimeout(holdTimer.current);
+              press.current = null;
+            }
+          }}
+          onPointerUp={endPeek}
+          onPointerCancel={endPeek}
+          onPointerLeave={endPeek}
+          onContextMenu={(e) => e.preventDefault()}
           disabled={!onApply}
           aria-pressed={active}
           aria-label={`${onApply ? actionVerb : 'Preset'} ${preset.name}`}
           title={preset.description ? `${preset.name}: ${preset.description}` : preset.name}
-          className={`relative flex w-full flex-col gap-1 rounded-[6px] border bg-well px-1 pt-2 pb-1 text-left transition-[transform,box-shadow,border-color] duration-200 enabled:active:scale-[0.95] ${
+          className={`relative flex w-full flex-col gap-1.5 rounded-[8px] border bg-well px-1 pt-2 pb-1.5 text-left transition-[transform,box-shadow,border-color] duration-200 select-none [-webkit-touch-callout:none] enabled:active:scale-[0.95] ${
             active ? 'border-accent shadow-offset-sm' : 'border-line'
           }`}
         >
           <span aria-hidden className="absolute top-[3px] right-1.5 left-1.5 h-[3px] bg-[repeating-linear-gradient(90deg,var(--color-line-strong)_0_4px,transparent_4px_8px)] opacity-70" />
-          <span className="relative block aspect-[4/5] overflow-hidden rounded-[2px] bg-raised-2">
+          <span className="relative block aspect-[4/5] overflow-hidden rounded-[3px] bg-raised-2">
             <AnimatePresence>
               {url && (
                 <motion.img
                   key={url}
                   src={url}
                   alt=""
+                  draggable={false}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.4 }}
@@ -404,8 +461,9 @@ const PresetCard = memo(function PresetCard({
               )}
             </AnimatePresence>
             {!url && <span className="skeleton absolute inset-0" />}
+            <span className={`absolute top-1 left-1 rounded-[3px] bg-black/55 px-1 font-mono text-[11px] leading-[15px] ${active ? 'text-accent-fg' : 'text-white/85'}`}>{catalogue}</span>
           </span>
-          <span className={`px-0.5 font-mono text-[9px] ${active ? 'text-fg' : 'text-fg-4'}`}>{catalogue}</span>
+          <span className={`line-clamp-2 min-h-[2.3em] px-0.5 text-[11.5px] leading-[1.15] font-medium tracking-[-0.01em] ${active ? 'text-fg' : 'text-fg-2'}`}>{preset.name}</span>
         </button>
       </li>
     );
@@ -415,13 +473,14 @@ const PresetCard = memo(function PresetCard({
     <li ref={item} className={`group relative ${strip ? 'w-[92px] shrink-0' : 'flex flex-col'}`}>
       {/* A look: its preview fills the tile; the chosen look gets a lilac edge, its afterimage and today's date stamp. */}
       <button
+        {...tilt}
         type="button"
         onClick={() => onApply?.(preset)}
         disabled={!onApply}
         aria-pressed={active}
         aria-label={`${onApply ? actionVerb : 'Preset'} ${preset.name}`}
         title={preset.description ? `${preset.name}: ${preset.description}` : preset.name}
-        className={`relative block w-full overflow-hidden bg-raised-2 text-left transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] enabled:active:scale-[0.95] ${
+        className={`tilt relative block w-full overflow-hidden bg-raised-2 text-left transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] enabled:active:scale-[0.95] ${
           strip ? 'aspect-[3/4] rounded-md' : large ? 'aspect-[4/5] rounded-lg' : 'aspect-[4/5] rounded-md'
         } ${active ? 'shadow-selected' : 'shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] enabled:hover:-translate-y-0.5'}`}
       >
@@ -440,8 +499,9 @@ const PresetCard = memo(function PresetCard({
         </AnimatePresence>
         {!url && <span className="skeleton absolute inset-0" />}
         <span aria-hidden className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+        <span aria-hidden className="tilt-light" />
         {catalogue && (
-          <span className={`absolute top-0 left-0 font-mono font-medium text-white/80 [text-shadow:0_1px_3px_rgb(0_0_0/0.7)] ${strip ? 'p-1.5 text-[9px]' : 'p-2 text-[10px]'}`}>
+          <span className={`absolute top-0 left-0 font-mono font-medium text-white/80 [text-shadow:0_1px_3px_rgb(0_0_0/0.7)] ${strip ? 'p-1.5 text-[11px]' : 'p-2 text-[11px]'}`}>
             {catalogue}
           </span>
         )}
@@ -458,7 +518,7 @@ const PresetCard = memo(function PresetCard({
           <Blend size={12} aria-label="Made from a reference photo" className={`absolute text-white/80 ${strip ? 'top-1.5 right-1.5' : 'top-2.5 right-2.5'}`} />
         ) : null}
         {active && stamp && !strip && (
-          <span aria-hidden className="absolute right-2 bottom-2 font-mono text-[10px] text-stamp [text-shadow:0_0_6px_rgb(242_153_74/0.35)]">
+          <span aria-hidden className="absolute right-2 bottom-2 font-mono text-[11px] text-stamp [text-shadow:0_0_6px_rgb(242_153_74/0.35)]">
             {stamp}
           </span>
         )}
@@ -661,5 +721,51 @@ export function PresetFields({
         </select>
       </div>
     </div>
+  );
+}
+
+/**
+ * Phones: the look you are pressing on, large, with its name and what it does. Let go to close;
+ * nothing is applied. Drawn over everything (a portal), above the strip.
+ */
+function LookPeek({ peek, catalogue }: { peek: { preset: Preset; url: string | null } | null; catalogue?: string }) {
+  return createPortal(
+    <AnimatePresence>
+      {peek && (
+        <motion.div
+          key="peek-dim"
+          aria-hidden
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="pointer-events-none fixed inset-0 z-[89] bg-black/60 backdrop-blur-[6px]"
+        />
+      )}
+      {peek && (
+        <motion.div
+          key={peek.preset.id}
+          initial={{ opacity: 0, scale: 0.92, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 8 }}
+          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+          className="pointer-events-none fixed inset-x-6 top-[12dvh] z-[90] mx-auto max-w-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="liquid overflow-hidden rounded-3xl bg-[rgb(22_20_28/0.9)]! p-2.5">
+            <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-raised-2">
+              {peek.url ? <img src={peek.url} alt="" className="h-full w-full object-cover" /> : <span className="skeleton absolute inset-0" />}
+              {catalogue && <span className="absolute top-2.5 left-2.5 rounded-md bg-black/55 px-1.5 py-0.5 font-mono text-[11px] text-white">{catalogue}</span>}
+            </div>
+            <div className="px-1.5 pt-3 pb-1.5">
+              <p className="text-[17px] font-semibold tracking-[-0.015em] text-fg">{peek.preset.name}</p>
+              {peek.preset.description && <p className="mt-1 line-clamp-3 text-[13px] leading-snug text-fg-3">{peek.preset.description}</p>}
+              <p className="mt-2 text-[12px] text-fg-4">Let go to close · tap the look to try it</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
   );
 }

@@ -102,7 +102,7 @@ export function RemovePanel() {
 
       <Section
         title="Removals"
-        aside={removals.length > 0 ? <span className="font-mono text-[10px] text-fg-4">{removals.length}</span> : undefined}
+        aside={removals.length > 0 ? <span className="font-mono text-[11px] text-fg-4">{removals.length}</span> : undefined}
       >
         {removals.length === 0 ? (
           <p className="text-xs text-fg-4">Nothing removed yet.</p>
@@ -117,7 +117,7 @@ export function RemovePanel() {
                       Removal {i + 1}
                       {r.strokes.length > 1 && <span className="text-fg-4"> · {r.strokes.length} strokes</span>}
                     </span>
-                    {pending && <span className="text-[10px] text-accent-fg">{status.phase === 'error' || status.phase === 'cancelled' ? 'not applied' : 'filling…'}</span>}
+                    {pending && <span className="text-[11px] text-accent-fg">{status.phase === 'error' || status.phase === 'cancelled' ? 'not applied' : 'filling…'}</span>}
                     <button
                       type="button"
                       className="coarse:p-2.5 rounded-xs p-1 text-fg-3 hover:bg-control hover:text-fg"

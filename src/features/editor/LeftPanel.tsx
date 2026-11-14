@@ -50,7 +50,7 @@ export function LeftPanel({
           data-testid="open-reference"
         >
           <span aria-hidden className="absolute inset-0 bg-line transition-colors duration-300 group-hover:bg-accent/70" />
-          <span className="relative flex items-center gap-3 rounded-[21px] bg-raised px-3 py-3">
+          <span className="relative flex items-center gap-3 rounded-[21px] bg-raised/85 px-3 py-3 backdrop-blur-xl">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-on-accent shadow-offset-sm transition-transform duration-500 group-hover:rotate-[-14deg]">
               <Blend size={17} />
             </span>
@@ -186,7 +186,10 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
       ? `${applied.overrides.length} hand-edited setting${applied.overrides.length === 1 ? '' : 's'} kept when the amount changes.`
       : undefined;
   // Honest about adaptive looks: say what was changed to fit this photo.
-  const adaptNote = applied?.adapted ? `Fitted to this photo: ${describeAdaptation(applied.adapted)}.` : undefined;
+  // The adaptation is already in the sliders, so say it is relative to the look as it was made.
+  const adaptNote = applied?.adapted
+    ? `Fitted to this photo: ${describeAdaptation(applied.adapted)} compared with the look as made. The sliders already include it.`
+    : undefined;
 
   // Phones: one line, only while a look is on (Amount · value · save · remove). The look's name is
   // on the chip over the photo. It springs open and folds away, so the photo re-fits smoothly.
@@ -236,7 +239,7 @@ function AppliedPresetBar({ compact = false, onSave }: { compact?: boolean; onSa
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className="shrink-0 overflow-hidden"
         >
-          <div className="mx-3 mt-3 rounded-lg bg-raised-2 px-3.5 pt-2.5 pb-1.5 ring-1 ring-line-soft">
+          <div className="glass-card mx-3 mt-3 rounded-lg px-3.5 pt-2.5 pb-1.5">
             <div className="flex items-center gap-2">
               <span aria-hidden className="spectrum h-2 w-2 shrink-0 rounded-full" />
               <p className="min-w-0 flex-1 truncate text-[13px] text-fg-3">

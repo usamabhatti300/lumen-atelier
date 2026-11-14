@@ -9,14 +9,14 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0d0c10",
-  "theme_color": "#0d0c10",
+  "background_color": "#0a090e",
+  "theme_color": "#0a090e",
   "categories": ["photo", "graphics", "productivity"],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/lumen-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/lumen-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/lumen-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/lumen-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ],
   "shortcuts": [
@@ -24,13 +24,13 @@
       "name": "Match a reference look",
       "short_name": "Match look",
       "url": "/?action=reference",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [{ "src": "/icons/lumen-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Preset library",
       "short_name": "Presets",
       "url": "/presets",
-      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+      "icons": [{ "src": "/icons/lumen-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "share_target": {

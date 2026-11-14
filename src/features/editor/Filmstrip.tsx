@@ -13,7 +13,7 @@ export function Filmstrip({ onImport, compact = false }: { onImport: () => void;
   const setActive = useEditor((s) => s.setActivePhoto);
   if (photos.length === 0 || (compact && photos.length === 1)) return null;
   return (
-    <nav aria-label="Filmstrip" className="shrink-0 border-t border-line-soft bg-ground">
+    <nav aria-label="Filmstrip" className="glass-pane glass-edge-t shrink-0">
       <ul className={`scroll-quiet flex items-center gap-2 overflow-x-auto px-3 ${compact ? 'h-[60px] py-1' : 'h-[72px]'}`}>
         {photos.map((p, i) => (
           <motion.li key={p.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: Math.min(i, 10) * 0.02 }} className="shrink-0">

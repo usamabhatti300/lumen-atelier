@@ -62,7 +62,8 @@ test.describe('editor', () => {
     const rotated = withExifOrientation(jpeg, 6); // 90° clockwise
     await page.getByTestId('gallery-file-input').setInputFiles({ name: 'rotated.jpg', mimeType: 'image/jpeg', buffer: rotated });
     await waitForRender(page);
-    await expect(page.getByText('preview 400×600')).toBeVisible();
+    // The size under the photo (the histogram's preview-size reading is now a tooltip).
+    await expect(page.getByTestId('edge-print')).toContainText('400 × 600');
     await page.getByTestId('export-open').click();
     await expect(page.getByText('400 × 600px')).toBeVisible();
     const dl = page.waitForEvent('download');

@@ -1,4 +1,6 @@
 /** Preset library: browse, favourite, import/export, manage presets (no photo needed). */
+import { DecodeText } from '@/components/fx/DecodeText';
+import { AfterimageCursor } from '@/components/fx/AfterimageCursor';
 import { Download, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -34,6 +36,7 @@ export default function PresetLibraryScreen() {
 
   return (
     <div className="scroll-quiet h-full overflow-y-auto bg-ground">
+      <AfterimageCursor />
       <AppBar>
           <Button size="sm" variant="secondary" aria-label="Import" className="max-sm:w-10 max-sm:px-0" icon={<Upload size={14} />} onClick={() => file.current?.click()}>
             <span className="max-sm:sr-only">Import</span>
@@ -73,7 +76,7 @@ export default function PresetLibraryScreen() {
             {BUILTIN_PRESETS.length} original looks{user.length > 0 ? ` · ${user.length} of yours` : ''} · all free
           </p>
           <h1 className="display relative mt-3 text-[3.2rem] text-fg sm:text-[5rem]">
-            Every <span className="voice text-accent">roll</span>
+            <DecodeText text="Every" immediate /> <DecodeText text="roll" immediate delay={0.25} className="voice text-accent" />
           </h1>
           <p className="relative mt-4 max-w-2xl text-[15px] leading-relaxed text-fg-3">
             Fourteen rolls of looks, starting with Editor's Picks, plus the looks you save or match from references. Previews here use a built-in test scene; in

@@ -31,6 +31,7 @@ import { ExportDialog } from '@/features/export/ExportDialog';
 import { Progress } from '@/components/ui/misc';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { motionReduced, tick } from '@/lib/haptics';
+import { Ambient } from '@/components/fx/Ambient';
 
 const ReferenceStudio = lazy(() => import('@/features/reference/ReferenceStudio'));
 
@@ -50,6 +51,12 @@ export default function EditorScreen() {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const referenceOpen = search.get('reference') === '1';
+  // The light behind the chrome follows the photo you are on, not every edit to it (its thumbnail is
+  // re-made as you edit; re-fading the light each time would cost frames and change nothing visible).
+  const activeThumb = useEditor((s) => s.photos.find((p) => p.id === s.activePhotoId));
+  const [ambient, setAmbient] = useState<{ id: string; url: string } | null>(null);
+  if (activeThumb && activeThumb.id !== ambient?.id) setAmbient({ id: activeThumb.id, url: activeThumb.thumbUrl });
+  const ambientSrc = ambient?.url ?? null;
   const fileInput = useRef<HTMLInputElement>(null);
   const desktop = useMediaQuery('(min-width: 1024px)');
   // Phones held sideways: panels go beside the photo instead of under it.
@@ -158,7 +165,7 @@ export default function EditorScreen() {
 
   return (
     <div
-      className="screen-enter flex h-full flex-col bg-ground"
+      className="screen-enter relative isolate flex h-full flex-col bg-ground"
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes('Files')) {
           e.preventDefault();
@@ -172,6 +179,8 @@ export default function EditorScreen() {
         if (!referenceOpen) void runImport([...e.dataTransfer.files]);
       }}
     >
+      {/* The photo's light behind the chrome; the photo itself sits on the near-neutral stage. */}
+      <Ambient src={ambientSrc} opacity={0.85} className="-z-10" still />
       <TopBar onImport={openImport} onPaste={openPaste} />
       <input
         ref={fileInput}
@@ -195,7 +204,7 @@ export default function EditorScreen() {
                   animate={{ width: 284, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-                  className="shrink-0 overflow-hidden border-r border-line-soft bg-ground"
+                  className="glass-pane glass-edge-r shrink-0 overflow-hidden"
                   aria-label="Presets and photos"
                 >
                   <div className="h-full w-[284px]">
@@ -204,7 +213,7 @@ export default function EditorScreen() {
                 </motion.aside>
               )}
             </AnimatePresence>
-            <main className="theme-frame relative flex min-w-0 flex-1 flex-col">
+            <main className="theme-frame stage-lit relative flex min-w-0 flex-1 flex-col">
               <div className="relative min-h-0 flex-1">
                 <Viewport onImport={openImport} />
               </div>
@@ -217,7 +226,7 @@ export default function EditorScreen() {
                   animate={{ width: 320, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
-                  className="shrink-0 overflow-hidden border-l border-line-soft bg-ground"
+                  className="glass-pane glass-edge-l shrink-0 overflow-hidden"
                   aria-label="Adjustments"
                 >
                   <div className="h-full w-[320px]">
@@ -229,7 +238,7 @@ export default function EditorScreen() {
           </>
         ) : (
           <>
-            <main className="theme-frame relative flex min-w-0 flex-1 flex-col">
+            <main className="theme-frame stage-lit relative flex min-w-0 flex-1 flex-col">
               <div className="relative min-h-0 flex-1">
                 <Viewport onImport={openImport} />
                 <LookReadout overlay />
@@ -335,7 +344,7 @@ function CompactNav({ sheet, setSheet, onOpenReference }: { sheet: Sheet | null;
         transition={motionReduced() ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 38 }}
         style={{ pointerEvents: away ? 'none' : undefined }}
         aria-hidden={away || undefined}
-        className="surface-glass mx-auto flex h-[60px] max-w-lg items-stretch rounded-[22px] px-1 shadow-float land:h-12 land:rounded-full"
+        className="liquid mx-auto flex h-[60px] max-w-lg items-stretch rounded-[26px] px-1 land:h-12 land:rounded-full"
         aria-label="Editing tools"
       >
         <CompactTab active={sheet === 'presets'} onClick={() => open('presets')} icon={LooksIcon} label="Looks" />
@@ -391,7 +400,7 @@ function CompactSheet({ sheet, setSheet, side = false }: { sheet: Sheet | null; 
           ref={sheetEl}
           data-dragging={dragH !== null || undefined}
           onKeyDown={(e) => e.key === 'Escape' && close()}
-          className={`flex shrink-0 flex-col overflow-hidden bg-raised ${side ? 'rounded-l-xl border-l border-line-soft' : 'rounded-t-xl border-t border-line-soft pb-4 shadow-[0_-20px_40px_-20px_rgb(0_0_0/0.8)]'}`}
+          className={`glass-pane flex shrink-0 flex-col overflow-hidden ${side ? 'glass-edge-l rounded-l-xl' : 'glass-edge-t rounded-t-xl pb-4 shadow-[0_-20px_40px_-20px_rgb(0_0_0/0.8)]'}`}
           role="region"
           aria-label={`${SHEET_TITLE[sheet] ?? 'More'} panel`}
           data-testid="compact-sheet"
@@ -548,7 +557,7 @@ function CompactTab({
       className={`flex flex-1 flex-col items-center justify-center gap-1 transition-colors duration-200 active:scale-95 ${active ? 'text-fg' : 'text-fg-4'}`}
     >
       <Icon size={20} strokeWidth={active ? 2 : 1.6} />
-      <span className={`text-[10.5px] land:sr-only ${active ? 'font-semibold' : 'font-medium'}`}>{label}</span>
+      <span className={`text-[11.5px] land:sr-only ${active ? 'font-semibold' : 'font-medium'}`}>{label}</span>
     </button>
   );
 }
@@ -574,7 +583,7 @@ function ToolGrid({ onPick }: { onPick: (t: RightTab | 'photos') => void }) {
           type="button"
           aria-label={t.label}
           onClick={() => onPick(t.id)}
-          className="flex min-h-[76px] flex-col items-start gap-1 rounded-md border border-line bg-raised-2 p-3 text-left transition-[background-color,transform] active:scale-[0.98] active:bg-control"
+          className="glass-card flex min-h-[76px] flex-col items-start gap-1 rounded-md p-3 text-left transition-[background-color,transform] active:scale-[0.98] active:bg-control"
         >
           <span className="text-[14px] font-semibold tracking-[-0.01em] text-fg">{t.label}</span>
           <span className="text-[12px] leading-snug text-fg-3">{t.body}</span>

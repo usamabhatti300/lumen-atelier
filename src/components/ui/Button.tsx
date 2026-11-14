@@ -16,7 +16,7 @@ const VARIANTS: Record<Variant, string> = {
   // Lilac: the one main action on a screen (Match a look, Export). It carries the afterimage
   // offset, which tucks in as the button is pressed.
   accent:
-    'bg-accent text-on-accent shadow-offset hover:bg-accent-hi active:bg-accent-lo active:shadow-none disabled:bg-control disabled:text-fg-4 disabled:shadow-none',
+    'bg-[linear-gradient(135deg,#d9cdff,var(--color-accent)_45%,#a9b6ff)] text-on-accent shadow-[3px_3px_0_rgb(200_184_255/0.3),0_10px_34px_-8px_rgb(170_150_255/0.65)] hover:brightness-110 active:brightness-95 active:shadow-none disabled:bg-control disabled:bg-none disabled:text-fg-4 disabled:shadow-none',
   secondary: 'bg-raised-2 text-fg border border-line hover:bg-control hover:border-line-strong active:bg-control-2 disabled:text-fg-4 disabled:bg-raised',
   ghost: 'text-fg-2 hover:text-fg hover:bg-control active:bg-control-2 disabled:text-fg-4',
   danger: 'bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20',
@@ -87,7 +87,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       </button>
       <Tooltip side={tooltipSide} className={SIDES[tooltipSide]}>
         {label}
-        {shortcut && <kbd className="ml-2 font-mono text-[10px] text-fg-4">{shortcut}</kbd>}
+        {shortcut && <kbd className="ml-2 font-mono text-[11px] text-fg-4">{shortcut}</kbd>}
       </Tooltip>
     </span>
   );

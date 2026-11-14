@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, Ellipsis, ImagePlus, Pencil, Settings, Trash2 } from 'lucide-react';
 import { LooksIcon, MatchIcon } from '@/components/icons';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { InstallBanner, InstallButton } from '@/pwa/PwaUi';
 import { takeSharedFiles } from '@/pwa/pwa';
@@ -27,6 +27,18 @@ import {
 } from '@/lib/storage/db';
 import { importFiles } from '@/engine/importer';
 import { SAMPLE_PHOTO, sampleFile } from '@/lib/samples';
+import { Ambient } from '@/components/fx/Ambient';
+import { Magnetic } from '@/components/fx/Magnetic';
+import { RingCarousel } from '@/components/fx/RingCarousel';
+import { HERO_LOOKS } from '@/components/fx/heroLooks';
+import { useTilt } from '@/components/fx/useTilt';
+import { DecodeText } from '@/components/fx/DecodeText';
+import { AfterimageCursor } from '@/components/fx/AfterimageCursor';
+import { MatchStory } from '@/features/home/MatchStory';
+import { useMediaQuery } from '@/lib/useMediaQuery';
+
+// three.js only loads for the hero, after the page is up.
+const ParticlePhoto = lazy(() => import('@/components/fx/ParticlePhoto'));
 
 interface ProjectCard extends ProjectRecord {
   cover: string | null;
@@ -106,7 +118,7 @@ export function GalleryScreen() {
         }
         await saveProject({ ...project, photoIds: result.added.map((p) => p.id), activePhotoId: result.added[0].id });
       }
-      navigate(`/project/${project.id}${mode === 'reference' ? '?reference=1' : ''}`);
+      navigate(`/project/${project.id}${mode === 'reference' ? '?reference=1' : ''}`, { viewTransition: true });
     },
     [navigate, showToast],
   );
@@ -174,6 +186,10 @@ export function GalleryScreen() {
   // The stage on the home screen holds the edit you were last in, else the newest one.
   const hero = resume ?? projects?.[0];
   const thumbs = useCategoryThumbs(projects === null ? undefined : (hero?.photoIds[0] ?? null));
+  // The hero plate is your last photo once you have one, else the bundled sample.
+  const plateSrc = projects === null ? null : (hero?.cover ?? SAMPLE_PHOTO.thumbUrl);
+  const [lookIndex, setLookIndex] = useState(0);
+  const wide = useMediaQuery('(min-width: 640px)');
   const pickPhotos = () => {
     intent.current = 'edit';
     fileInput.current?.click();
@@ -193,7 +209,7 @@ export function GalleryScreen() {
         if (document.documentElement.dataset.motion === 'reduced') return;
         const tl = gsap.timeline({ defaults: { ease: 'expo.out', duration: 0.9 } });
         tl.from('[data-reveal]', { y: 26, opacity: 0, stagger: 0.07 }, 0.05)
-          .from('[data-look]', { x: 40, opacity: 0, stagger: 0.04, duration: 0.8 }, 0.45);
+          .from('[data-look]', { y: 48, opacity: 0, duration: 1.1 }, 0.5);
       });
       return () => mm.revert();
     },
@@ -201,8 +217,10 @@ export function GalleryScreen() {
   );
 
   return (
-    <div ref={root} className="scroll-quiet h-full overflow-x-hidden overflow-y-auto bg-ground">
-      <header className="sticky top-0 z-30 border-b border-line-soft/60 bg-ground/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+    <div ref={root} className="scroll-quiet relative h-full overflow-x-hidden overflow-y-auto bg-ground">
+      {/* The photo's light behind the top of the page (fades out toward the rolls). */}
+      <Ambient src={plateSrc} opacity={0.42} className="!absolute !inset-x-0 !top-0 !bottom-auto h-[900px] [mask-image:linear-gradient(#000_45%,transparent)]" />
+      <header className="liquid-bar sticky top-0 z-30 pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-4 sm:px-8">
           <Wordmark />
           <nav className="flex items-center gap-1.5" aria-label="App">
@@ -225,8 +243,9 @@ export function GalleryScreen() {
         </div>
       </header>
       <InstallBanner />
+      <AfterimageCursor />
 
-      <main className="screen-enter mx-auto max-w-5xl px-4 pb-24 sm:px-8">
+      <main className="screen-enter relative mx-auto max-w-6xl px-4 pb-24 sm:px-8">
         <input
           ref={fileInput}
           type="file"
@@ -240,42 +259,80 @@ export function GalleryScreen() {
           }}
         />
 
-        {/* One line of promise, the two ways in, nothing else. */}
-        <section className="pt-8 pb-12 sm:pt-16 sm:pb-16">
-          <h1 className="display text-[clamp(2.9rem,13vw,5.5rem)] text-fg">
-            <span data-reveal className="block">
-              Any look.
-            </span>
-            <span data-reveal className="block">
-              Made <span className="voice pr-2 text-accent">yours.</span>
-            </span>
-          </h1>
-          <div data-reveal className="mt-8 grid grid-cols-2 gap-2.5 sm:flex sm:gap-3">
-            <Button variant="accent" size="lg" className="h-13 px-4 text-[15px] sm:h-12 sm:px-6" icon={<MatchIcon size={18} strokeWidth={2} />} onClick={matchLook}>
-              Match a look
-            </Button>
-            <Button variant="secondary" size="lg" className="h-13 px-4 text-[15px] sm:h-12 sm:px-6" icon={<ImagePlus size={18} />} onClick={pickPhotos}>
-              Open a photo
-            </Button>
-          </div>
-          <p data-reveal className="mt-4 font-mono text-[11px] text-fg-4">
-            free · private · on this device
-          </p>
-          {importing && (
-            <div className="mt-6 max-w-sm" role="status">
-              <p className="mb-2 font-mono text-xs text-fg-3">
-                importing {importing.done} of {importing.total}
-              </p>
-              <Progress value={importing.done / importing.total} label="Import progress" />
+        {/* The promise and the two ways in, beside the photo made of particles that the looks wash across. */}
+        <section className="relative grid items-center gap-6 pt-6 pb-12 sm:pt-12 sm:pb-16 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-4">
+          <div className="relative z-10">
+            <h1 className="display text-[clamp(2.9rem,12vw,5rem)] text-fg lg:text-[clamp(3.6rem,5.4vw,5.1rem)]">
+              <span className="block">
+                <DecodeText text="Any look." immediate delay={0.15} />
+              </span>
+              <span className="block">
+                <DecodeText text="Made" immediate delay={0.45} />{' '}
+                <DecodeText text="yours." immediate delay={0.65} className="voice pr-2 text-accent" />
+              </span>
+            </h1>
+            <p data-reveal className="mt-5 max-w-[36ch] text-[16px] leading-relaxed text-fg-2">
+              Bring a photo whose look you love. Lumen measures its light and colour and turns it into a look you can put on your own photos and keep editing.
+            </p>
+            <div data-reveal className="mt-7 grid grid-cols-2 gap-2.5 sm:flex sm:gap-3">
+              <Magnetic className="contents sm:inline-flex">
+                <Button variant="accent" size="lg" className="sheen h-13 w-full px-4 text-[15px] sm:h-12 sm:w-auto sm:px-6" icon={<MatchIcon size={18} strokeWidth={2} />} onClick={matchLook}>
+                  Match a look
+                </Button>
+              </Magnetic>
+              <Button variant="ghost" size="lg" className="liquid liquid-press h-13 px-4 text-[15px] text-fg hover:bg-transparent sm:h-12 sm:px-6" icon={<ImagePlus size={18} />} onClick={pickPhotos}>
+                Open a photo
+              </Button>
             </div>
-          )}
+            <p data-reveal className="mt-4 font-mono text-[11px] text-fg-4">
+              free · private · on this device
+            </p>
+            {importing && (
+              <div className="mt-6 max-w-sm" role="status">
+                <p className="mb-2 font-mono text-xs text-fg-3">
+                  importing {importing.done} of {importing.total}
+                </p>
+                <Progress value={importing.done / importing.total} label="Import progress" />
+              </div>
+            )}
+          </div>
+
+          <figure data-reveal data-cursor="Scatter" className="relative -mx-4 sm:mx-0">
+            <div className="hero-stage aspect-[4/3] w-full">
+              {plateSrc && (
+                <Suspense fallback={<img src={plateSrc} alt="" className="h-full w-full object-contain opacity-0" />}>
+                  <ParticlePhoto key={plateSrc} src={plateSrc} className="h-full w-full" onLook={setLookIndex} />
+                </Suspense>
+              )}
+            </div>
+            <figcaption className="mt-1 flex items-center justify-center gap-3 px-4 font-mono text-[11px]">
+              <span className="text-fg-4">{hero ? 'your last photo' : 'sample photo'}</span>
+              <span aria-hidden className="h-px w-6 bg-line-strong" />
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={lookIndex}
+                  initial={{ opacity: 0, y: 6, filter: 'blur(4px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, y: -6, filter: 'blur(4px)' }}
+                  transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                  className="text-fg"
+                  aria-live="polite"
+                >
+                  {HERO_LOOKS[lookIndex]?.label}
+                </motion.span>
+              </AnimatePresence>
+            </figcaption>
+          </figure>
         </section>
+
+        {/* How a look travels: the scroll story. */}
+        <MatchStory scroller={root} onMatch={matchLook} />
 
         {/* Your edits as a contact sheet: numbered frames with their dates. */}
         <section aria-labelledby="edits-title" className="pb-14">
           <div className="mb-3 flex items-baseline justify-between gap-4">
             <h2 id="edits-title" className="font-mono text-[13px] font-medium text-fg lowercase [font-stretch:100%]">
-              Your edits
+              <DecodeText text="Your edits" />
             </h2>
             {projects && projects.length > 0 && (
               <span className="font-mono text-[11px] text-fg-4">
@@ -294,7 +351,7 @@ export function GalleryScreen() {
                   className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-3 rounded-[8px] border border-dashed border-line-strong text-fg-3 transition-colors hover:border-accent hover:text-fg"
                 >
                   <FinderMark size={34} bright={dragOver} />
-                  <span className="font-mono text-[10px]">add a photo</span>
+                  <span className="font-mono text-[11px]">add a photo</span>
                 </button>
               </li>
               {/* First visit: a bundled CC0 photo to try every look on, one tap away. */}
@@ -311,10 +368,18 @@ export function GalleryScreen() {
                 >
                   <img src={SAMPLE_PHOTO.thumbUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80 transition-opacity group-hover:opacity-100" />
                   <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
-                  <span className="absolute inset-x-0 bottom-2 text-center font-mono text-[10px] text-white">try a sample</span>
+                  <span className="absolute inset-x-0 bottom-2 text-center font-mono text-[11px] text-white">try a sample</span>
                 </button>
               </li>
-              <li aria-hidden className="aspect-[4/5] rounded-[8px] border border-dashed border-line-soft" />
+              {/* Larger screens: the rest of the row says how else photos get in. */}
+              <li className="col-span-2 hidden sm:block lg:col-span-4">
+                <div className="flex h-full flex-col justify-center gap-2 rounded-[8px] border border-dashed border-line px-6 py-6 text-fg-3">
+                  <p className="text-[15px] font-medium text-fg-2">Drop photos anywhere on this page</p>
+                  <p className="max-w-[46ch] text-[13px] leading-relaxed">
+                    JPEG, PNG or WebP. They open as a new edit and stay on this device. To copy a look, start with <span className="text-fg-2">Match a look</span> and bring the photo you love.
+                  </p>
+                </div>
+              </li>
             </ul>
           ) : (
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">
@@ -336,6 +401,7 @@ export function GalleryScreen() {
                     >
                       <Link
                         to={`/project/${p.id}`}
+                        viewTransition
                         aria-label={`Open ${p.name}`}
                         title={p.name}
                         className={`relative flex flex-col gap-1.5 rounded-[8px] border bg-well px-1.5 pt-3 pb-1.5 transition-[transform,border-color,box-shadow] duration-200 active:scale-[0.98] ${
@@ -350,12 +416,12 @@ export function GalleryScreen() {
                             <span className="skeleton block h-full w-full" />
                           )}
                           {p.photoIds.length > 1 && (
-                            <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/55 px-1.5 font-mono text-[9px] text-white">
+                            <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/55 px-1.5 font-mono text-[11px] text-white">
                               ×{p.photoIds.length}
                             </span>
                           )}
                         </span>
-                        <span className="flex justify-between px-0.5 font-mono text-[10px]">
+                        <span className="flex justify-between px-0.5 font-mono text-[11px]">
                           <span className={current ? 'text-fg' : 'text-fg-4'}>{String(projects.length - i).padStart(2, '0')}</span>
                           <span className="text-fg-4">{date}</span>
                         </span>
@@ -410,20 +476,27 @@ export function GalleryScreen() {
         <section aria-labelledby="looks-title">
           <div className="mb-3 flex items-baseline justify-between gap-4">
             <h2 id="looks-title" className="font-mono text-[13px] font-medium text-fg lowercase [font-stretch:100%]">
-              Rolls
+              <DecodeText text="Rolls" />
             </h2>
             <Link to="/presets" className="group flex items-center gap-1 font-mono text-[11px] text-fg-3 transition-colors hover:text-fg">
               all {BUILTIN_PRESETS.length}
               <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
             </Link>
           </div>
-          <ul className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-2 sm:-mx-8 sm:scroll-px-8 sm:px-8">
-            {SHELF.map((c) => (
-              <li key={c.id} data-look className="w-[132px] shrink-0 snap-start sm:w-[150px]">
-                <CategoryTile category={c} src={thumbs[c.id]} rendering={projects !== null} />
-              </li>
-            ))}
-          </ul>
+          <div data-look className="-mx-4 overflow-hidden px-4 sm:-mx-8 sm:px-8">
+            <RingCarousel
+              label="Rolls of looks"
+              items={SHELF.map((c) => ({
+                key: c.id,
+                label: c.label,
+                render: ({ active }) => <CategoryTile category={c} src={thumbs[c.id]} rendering={projects !== null} active={active} />,
+              }))}
+              cardWidth={wide ? 200 : 150}
+              cardHeight={wide ? 270 : 204}
+              onOpen={(i) => navigate(`/presets?category=${SHELF[i].id}`, { viewTransition: true })}
+            />
+            <p className="mt-1 text-center font-mono text-[11px] text-fg-4">drag to turn · tap the front roll to open it</p>
+          </div>
         </section>
       </main>
 
@@ -562,11 +635,14 @@ function useCategoryThumbs(photoId: string | null | undefined): Record<string, s
   return thumbs;
 }
 
-function CategoryTile({ category: c, src, rendering }: { category: (typeof SHELF)[number]; src: string | undefined; rendering: boolean }) {
+function CategoryTile({ category: c, src, rendering, active }: { category: (typeof SHELF)[number]; src: string | undefined; rendering: boolean; active: boolean }) {
+  const tilt = useTilt<HTMLSpanElement>(8);
   return (
-    <Link
-      to={`/presets?category=${c.id}`}
-      className="group relative flex aspect-[3/4] flex-col justify-between overflow-hidden rounded-lg bg-raised-2 p-3 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.06)] transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-offset"
+    <span
+      {...tilt}
+      className={`tilt group relative flex h-full flex-col justify-between overflow-hidden rounded-xl bg-raised-2 p-3.5 transition-shadow duration-500 ${
+        active ? 'shadow-selected' : 'shadow-[inset_0_0_0_1px_rgb(255_255_255/0.08)]'
+      }`}
     >
       <AnimatePresence>
         {src && (
@@ -574,24 +650,35 @@ function CategoryTile({ category: c, src, rendering }: { category: (typeof SHELF
             key={src}
             src={src}
             alt=""
+            draggable={false}
             initial={{ opacity: 0, scale: 1.08 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         )}
       </AnimatePresence>
       {!src && rendering && <span aria-hidden className="skeleton absolute inset-0 opacity-50" />}
-      <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-black/30" />
+      <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/5 to-black/35" />
+      <span aria-hidden className="tilt-light" />
       <span className="relative flex items-center justify-between font-mono text-[11px] font-medium text-white/85">
         <span>{c.code}</span>
-        <span className="tabular">{c.count}</span>
+        <span className="tabular">{c.count} looks</span>
       </span>
       <span className="relative">
-        <span className="block text-[15px] leading-tight font-semibold tracking-[-0.015em] text-white">{c.label}</span>
-        <span className="mt-1 block font-mono text-[10px] text-white/70">{c.mood}</span>
+        <span className="block text-[17px] leading-tight font-semibold tracking-[-0.02em] text-white sm:text-[19px]">{c.label}</span>
+        <span className="mt-1 block font-mono text-[11px] text-white/70">{c.mood}</span>
+        {active && (
+          <motion.span
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="liquid mt-2.5 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium text-white"
+          >
+            Open roll <ArrowRight size={12} />
+          </motion.span>
+        )}
       </span>
-    </Link>
+    </span>
   );
 }
 

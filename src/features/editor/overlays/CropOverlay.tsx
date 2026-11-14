@@ -135,7 +135,7 @@ export function CropOverlay({ box }: { box: ViewBox }) {
             )}
           </div>
         ))}
-        <span className="tabular pointer-events-none absolute -bottom-6 left-0 font-mono text-[10px] text-fg/80">
+        <span className="tabular pointer-events-none absolute -bottom-6 left-0 font-mono text-[11px] text-fg/80">
           {Math.round(c.w * frame.width)} × {Math.round(c.h * frame.height)} · {ratioLabel(c.w * frame.width, c.h * frame.height)}
         </span>
       </div>

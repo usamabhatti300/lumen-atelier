@@ -316,3 +316,75 @@ Layout stability is part of motion: nothing the user taps may shift the photo.
 - Don't use orange for anything but date stamps.
 - Don't use emoji or Unicode glyphs as icons; use Lucide.
 - Don't imitate a specific camera's, film brand's or other app's trade dress.
+
+
+## Lit: depth and motion (2026-11-14, owner decision)
+
+The owner asked for a more modern, futuristic feel: glass, motion and depth. "Lit" sits on top of
+Afterimage; the palette, type, wordmark and analog props are unchanged. It replaces the earlier
+"no glows, gradients or glass" rule.
+
+- **Ambient light** (`components/fx/Ambient.tsx`): a heavily blurred, slowly drifting copy of the
+  current photo behind the chrome, with film grain. Home uses the hero photo; the editor uses the
+  active photo's thumbnail. It never sits over the photo.
+- **Glass** (`glass-pane` for chrome, `glass-card` for cards inside it): top bars, side panels,
+  sheets, filmstrip, dock and tab bars. The photo stage (`stage-lit`) stays near-neutral black at
+  the centre, so colour judgement on the photo stays honest; the light only reaches its rim.
+- **Hero** (`components/fx/ParticlePhoto.tsx`, three.js, lazy-loaded): your last photo (or the
+  sample) as particles that assemble on arrival; looks wash across it as a wave with a lilac front.
+  The pointer pushes particles aside and tilts the plate; a click scatters them. The looks are
+  shader approximations for the demonstration (`heroLooks.ts`); the app's edits always use the engine.
+- **Rolls ring** (`components/fx/RingCarousel.tsx`): rolls on a turning 3D ring with momentum drag,
+  snapping, click-to-focus, arrow keys and Enter.
+- **Feedback**: cards tilt toward the pointer with a following light (`useTilt`), the main action is
+  magnetic with a periodic sheen, slider readouts count to new values and fills glide when a look
+  lands, and screens hand over with a view transition.
+- **Liquid glass** (`components/fx/LiquidGlass.tsx`, `liquid` / `liquid-bar` utilities): glass that
+  bends what is behind it. On Chromium an SVG displacement filter runs as the backdrop-filter, so
+  bars, the phone dock, the toolbar pill and secondary buttons refract the page under them; a
+  specular highlight follows the pointer. Other browsers get the frosted version.
+- **Kinetic type** (`DecodeText`): headlines lock on letter by letter through flickering glyphs, on
+  load or when scrolled into view.
+- **Afterimage cursor** (`AfterimageCursor`, home, looks and settings only): an ivory dot, a ring on
+  a spring with a late lilac copy at a hard offset, a short trail of lilac pixels, and labels
+  (Drag, Open, Turn, Scatter) from `data-cursor`. Text fields and the editor keep system cursors.
+- **Scroll story** (`features/home/MatchStory.tsx`): a pinned section that tells "Match a look" as
+  you scroll: a reference is scanned, its palette breaks into particles that fly onto your photo,
+  the look washes across it and an editable look card rises. Illustration only (a graded crop of
+  the sample photo and descriptive readings).
+- **Look dissolve** (`LookDissolve`, editor): when a look lands, the previous frame breaks into
+  pixels behind a lilac burning front and drifts away, uncovering the new look. Replaces the CSS
+  ghost fade once three.js has loaded; the ghost canvas stays in the DOM (e2e reads it).
+- **Opening animation** (`components/fx/Intro.tsx`): continues from the phone's splash (the icon on
+  the night ground). "lu" locks on through flickering glyphs, a shutter flash fires and the lilac
+  copy slides out to its hard offset, the mark spells out "lumen" with "atelier" under it, then it
+  lifts away over the app, which loads beneath. About 2.1 s on the first ever open, about 1 s on
+  later opens; a tap skips it. Not shown with reduced motion.
+- **App icon** (`scripts/generate-icons.mjs` → `public/icons/lumen-*`): the same "lu" mark with its
+  lilac offset, lit: lilac light low right, warm light high left, a glass rim on the rounded tile.
+  The files were renamed from `icon-*` so installed apps fetch the new icon; rename again if the
+  mark changes.
+- **Reduced motion** (system or in-app): the hero shows the plain photo, the ring does not turn by
+  itself or spring, the light does not drift, cards stay flat, no sheen, no view-transition
+  movement, no decoding, no custom cursor, no dissolve, and the scroll story is a still picture.
+
+## UX pass (2026-11-14)
+
+- **Phone looks strip**: 84 px frames with the look's name under each (frame number on the
+  preview). Press and hold a frame to see the look large, with its description, without applying
+  it (`LookPeek`); letting go closes it.
+- **First looks of a visit**: a short hint under the look chip says what to do next (drag Amount)
+  and, when the look was fitted to the photo, what was changed. A "fitted" mark stays on the chip.
+- **Fitted note**: says the change is relative to the look as made and that the sliders already
+  include it, so it never seems to contradict them.
+- **Desktop tool bar**: named groups (Photos, Edit, View, Panels) with captions from 1280 px;
+  "Add" and "Compare" carry words, the rest have tooltips.
+- **Adjustment tabs**: two rows of four at 12 px, everyday tools first (Light, Colour, Crop,
+  Effects), then Detail, Masks, Portrait, Remove.
+- **Histogram**: shows only clipping, and only when more than 0.5% of the photo is pure black or
+  white. The preview size is a tooltip.
+- **Type floor**: no interface text below 11 px (the wordmark's "atelier" and zone numbers aside).
+- **Roll tabs**: the open roll scrolls fully into view; both edges fade.
+- **Home, larger screens**: the empty part of "Your edits" explains dropping photos in.
+- **Performance**: the editor's ambient light holds still and follows the photo, not each edit
+  (its glass panels would otherwise re-blur every frame).

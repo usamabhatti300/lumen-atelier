@@ -1,6 +1,6 @@
 # Project status: Lumen Atelier
 
-_Last updated: 2026-11-10. Source of truth for requirements: `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`._
+_Last updated: 2026-11-14. Source of truth for requirements: `PHOTO_EDITING_STUDIO_MASTER_SPEC.md`._
 
 ## Summary
 
@@ -9,7 +9,21 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-10 (newest): roadmap 2.5, the Effects tool.** A new **Effects** tile in the More grid
+**2026-11-14 (newest): new app icon and an opening animation** (owner: the phone still showed the
+old logo, and wanted a logo animation on open). The icon keeps the "lu" mark and gains the Lit
+light and glass rim; files renamed to `public/icons/lumen-*` (manifest and index.html updated, old
+`icon-*` files removed) so installed apps and caches fetch them. Android refreshes an installed
+app's icon by itself after it next opens the updated site (can take a day or more); on iPhone the
+home-screen icon only changes when the app is removed and added again. `Intro.tsx` plays over the
+app while it loads: full (~2.1 s) on the first open, short (~1 s) after, tap to skip, off with
+reduced motion and under automation (`?intro=full|short` forces it).
+Tests run: typecheck clean; lint 0 errors; Vitest 262 passed, 1 skipped (4 new, `Intro.test.ts`);
+e2e `intro` (plays, spells "lumen", leaves, tap skips, off by default under automation; manifest
+points at the new icon files and each returns an image) and `mobile-intro` passed. Frames checked
+at 390, 834 and 1440 px. **Not checked on a real phone; nothing is deployed from here** (the phone
+only shows this after the host is updated).
+
+**2026-11-10: roadmap 2.5, the Effects tool.** A new **Effects** tile in the More grid
 (phone/tablet) and an **Effects** tab on desktop, with eight one-slider effects, all 0 by default:
 Light (light leak, lens flare, bloom, halation, flash) and Lens & film (dreamy blur, colour fringe,
 dust & scratches). Each is a control in the schema (`effects.*`; edits saved before them load with

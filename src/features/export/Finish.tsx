@@ -218,7 +218,7 @@ export function SheetControls({
                 {p.thumbUrl && <img src={p.thumbUrl} alt="" className="h-full w-full object-cover" />}
                 {on && (
                   <>
-                    <span className="absolute top-1 left-1 rounded-sm bg-black/70 px-1 font-mono text-[10px] text-white">{String(n + 1).padStart(2, '0')}</span>
+                    <span className="absolute top-1 left-1 rounded-sm bg-black/70 px-1 font-mono text-[11px] text-white">{String(n + 1).padStart(2, '0')}</span>
                     <Check size={13} strokeWidth={3} className="absolute right-1 bottom-1 text-accent" />
                   </>
                 )}

@@ -99,7 +99,7 @@ export function SelectObjectPanel({ layerId }: { layerId: string }) {
           <Plus size={11} /> {startNew ? 'Tap the next object' : 'Add another object'}
         </button>
       )}
-      <p className="mt-2 border-t border-line-soft pt-1.5 text-[10px] leading-snug text-fg-4">
+      <p className="mt-2 border-t border-line-soft pt-1.5 text-[11px] leading-snug text-fg-4">
         Runs on this device with SlimSAM (Apache-2.0, 39.8 MB download once). The photo never leaves your computer.
       </p>
     </div>

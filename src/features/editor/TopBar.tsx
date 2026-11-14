@@ -60,7 +60,7 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
 
   return (
     <>
-    <header className="relative z-10 flex h-14 shrink-0 items-center gap-1 border-b border-line-soft bg-ground px-2 pt-[env(safe-area-inset-top)] sm:px-3 lg:h-[52px]">
+    <header className="liquid-bar relative z-10 flex h-14 shrink-0 items-center gap-1 px-2 pt-[env(safe-area-inset-top)] sm:px-3 lg:h-[52px]">
       <span className="hidden lg:contents">
         <Wordmark compact />
       </span>
@@ -86,52 +86,72 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
       />
       <SaveIndicator state={saveState} />
 
-      {/* Phones: back · undo · redo, then ⋮ and Export on the right (everything else lives in ⋮). */}
-      <div className="flex items-center gap-0.5 lg:mx-auto lg:rounded-full lg:bg-raised lg:p-1 lg:ring-1 lg:ring-line-soft">
-        <IconButton label="Toggle left panel" active={leftOpen} onClick={() => setUi({ leftOpen: !leftOpen })} className="hidden lg:inline-flex">
-          <PanelLeft size={16} />
-        </IconButton>
-        <IconButton label="Import photos" shortcut={`${mod}+O`} onClick={onImport} className="hidden lg:inline-flex">
-          <ImagePlus size={16} />
-        </IconButton>
-        <span className="mx-1 hidden h-5 w-px bg-line lg:block" />
-        <IconButton label={undoLabel ? `Undo ${undoLabel}` : 'Undo'} shortcut={`${mod}+Z`} disabled={!canUndo} onClick={undo}>
-          <Undo2 size={16} />
-        </IconButton>
-        <IconButton label={redoLabel ? `Redo ${redoLabel}` : 'Redo'} shortcut={`${mod}+⇧+Z`} disabled={!canRedo} onClick={redo}>
-          <Redo2 size={16} />
-        </IconButton>
-        <span className="mx-1 hidden h-5 w-px bg-line md:block" />
-        <IconButton label="Before / after split" shortcut="Y" active={compare === 'split'} disabled={disabled} onClick={() => setCompare('split')} className="hidden md:inline-flex">
-          <SplitSquareHorizontal size={16} />
-        </IconButton>
-        <IconButton label="Side by side" active={compare === 'side'} disabled={disabled} onClick={() => setCompare('side')} className="hidden md:inline-flex">
-          <Columns2 size={16} />
-        </IconButton>
-        <IconButton label={visible ? 'Hide adjustments' : 'Show adjustments'} shortcut="\\" active={!visible} disabled={disabled} onClick={toggleVisible} className="hidden md:inline-flex">
-          {visible ? <Eye size={16} /> : <EyeOff size={16} />}
-        </IconButton>
-        <span className="mx-1 hidden h-5 w-px bg-line md:block" />
-        <IconButton label="Fit to screen" shortcut="0" active={zoom === 'fit'} disabled={disabled} onClick={() => setUi({ zoom: 'fit' })} className="hidden md:inline-flex">
-          <Maximize size={15} />
-        </IconButton>
-        <IconButton label="Actual size (100%)" shortcut="1" active={zoom === 1} disabled={disabled} onClick={() => setUi({ zoom: 1 })} className="hidden md:inline-flex">
-          <ZoomIn size={16} />
-        </IconButton>
-        <span className="hidden w-11 text-center font-mono text-[11px] text-fg-3 md:block">{zoom === 'fit' ? 'Fit' : `${Math.round(zoom * 100)}%`}</span>
-        <span className="mx-1 hidden h-5 w-px bg-line lg:block" />
-        <IconButton label="Copy settings" shortcut={`${mod}+⇧+C`} disabled={disabled} onClick={copy} className="hidden lg:inline-flex">
-          <ClipboardCopy size={15} />
-        </IconButton>
-        <IconButton label="Paste settings" shortcut={`${mod}+⇧+V`} disabled={disabled || !hasClipboard} onClick={onPaste} className="hidden lg:inline-flex">
-          <ClipboardPaste size={15} />
-        </IconButton>
-        <IconButton label="Reset all edits" disabled={disabled} onClick={resetAll} className="hidden lg:inline-flex">
-          <RotateCcw size={15} />
-        </IconButton>
-        <IconButton label="Toggle right panel" active={rightOpen} onClick={() => setUi({ rightOpen: !rightOpen })} className="hidden lg:inline-flex">
-          <PanelRight size={16} />
-        </IconButton>
+      {/* Phones: back · undo · redo, then ⋮ and Export on the right (everything else lives in ⋮).
+          Desktop: the tools sit in named groups (Photos, Edit, View, Panels), so nothing is an unlabeled row of icons. */}
+      <div className="flex items-center gap-0.5 lg:mx-auto lg:gap-1 lg:rounded-full lg:p-1 lg:liquid">
+        <ToolGroup label="Photos">
+          <button
+            type="button"
+            onClick={onImport}
+            title={`Add photos (${mod}+O)`}
+            className="hidden h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium text-fg-2 transition-colors hover:bg-control hover:text-fg active:scale-95 lg:inline-flex"
+          >
+            <ImagePlus size={16} /> Add
+          </button>
+        </ToolGroup>
+        <ToolGroup label="Edit">
+          <IconButton label={undoLabel ? `Undo ${undoLabel}` : 'Undo'} shortcut={`${mod}+Z`} disabled={!canUndo} onClick={undo}>
+            <Undo2 size={16} />
+          </IconButton>
+          <IconButton label={redoLabel ? `Redo ${redoLabel}` : 'Redo'} shortcut={`${mod}+⇧+Z`} disabled={!canRedo} onClick={redo}>
+            <Redo2 size={16} />
+          </IconButton>
+          <IconButton label="Copy settings" shortcut={`${mod}+⇧+C`} disabled={disabled} onClick={copy} className="hidden lg:inline-flex">
+            <ClipboardCopy size={15} />
+          </IconButton>
+          <IconButton label="Paste settings" shortcut={`${mod}+⇧+V`} disabled={disabled || !hasClipboard} onClick={onPaste} className="hidden lg:inline-flex">
+            <ClipboardPaste size={15} />
+          </IconButton>
+          <IconButton label="Reset all edits" disabled={disabled} onClick={resetAll} className="hidden lg:inline-flex">
+            <RotateCcw size={15} />
+          </IconButton>
+        </ToolGroup>
+        <ToolGroup label="View" md>
+          <button
+            type="button"
+            aria-label="Before / after split"
+            aria-pressed={compare === 'split'}
+            title="Before / after split (Y)"
+            disabled={disabled}
+            onClick={() => setCompare('split')}
+            className={`hidden h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors active:scale-95 disabled:opacity-30 md:inline-flex ${
+              compare === 'split' ? 'bg-fg/[0.12] text-fg ring-1 ring-fg/15' : 'text-fg-2 hover:bg-control hover:text-fg'
+            }`}
+          >
+            <SplitSquareHorizontal size={16} /> <span className="hidden xl:inline">Compare</span>
+          </button>
+          <IconButton label="Side by side" active={compare === 'side'} disabled={disabled} onClick={() => setCompare('side')} className="hidden md:inline-flex">
+            <Columns2 size={16} />
+          </IconButton>
+          <IconButton label={visible ? 'Hide adjustments' : 'Show adjustments'} shortcut="\\" active={!visible} disabled={disabled} onClick={toggleVisible} className="hidden md:inline-flex">
+            {visible ? <Eye size={16} /> : <EyeOff size={16} />}
+          </IconButton>
+          <IconButton label="Fit to screen" shortcut="0" active={zoom === 'fit'} disabled={disabled} onClick={() => setUi({ zoom: 'fit' })} className="hidden md:inline-flex">
+            <Maximize size={15} />
+          </IconButton>
+          <IconButton label="Actual size (100%)" shortcut="1" active={zoom === 1} disabled={disabled} onClick={() => setUi({ zoom: 1 })} className="hidden md:inline-flex">
+            <ZoomIn size={16} />
+          </IconButton>
+          <span className="hidden w-10 text-center font-mono text-[11px] text-fg-3 md:block">{zoom === 'fit' ? 'Fit' : `${Math.round(zoom * 100)}%`}</span>
+        </ToolGroup>
+        <ToolGroup label="Panels">
+          <IconButton label="Toggle left panel" active={leftOpen} onClick={() => setUi({ leftOpen: !leftOpen })} className="hidden lg:inline-flex">
+            <PanelLeft size={16} />
+          </IconButton>
+          <IconButton label="Toggle right panel" active={rightOpen} onClick={() => setUi({ rightOpen: !rightOpen })} className="hidden lg:inline-flex">
+            <PanelRight size={16} />
+          </IconButton>
+        </ToolGroup>
       </div>
 
       <span className="flex-1 lg:hidden" />
@@ -144,6 +164,21 @@ export function TopBar({ onImport, onPaste }: { onImport: () => void; onPaste: (
       </Button>
     </header>
     </>
+  );
+}
+
+/**
+ * A named cluster in the desktop tool bar: a small caption, then its tools. Below `lg` (`md` for
+ * View) the caption and divider disappear and only the tools that fit stay.
+ */
+function ToolGroup({ label, md = false, children }: { label: string; md?: boolean; children: ReactNode }) {
+  return (
+    <div role="group" aria-label={label} className={`flex items-center gap-0.5 ${md ? 'md:border-l md:border-white/10 md:pl-1.5' : 'lg:border-l lg:border-white/10 lg:pl-1.5'} first:border-l-0 first:pl-0`}>
+      <span aria-hidden className="hidden pr-1 pl-1 text-[11px] font-medium text-fg-4 xl:inline">
+        {label}
+      </span>
+      {children}
+    </div>
   );
 }
 

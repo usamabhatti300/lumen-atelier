@@ -1,4 +1,6 @@
 /** Settings: performance, privacy, AI configuration, on-device AI models, data. */
+import { DecodeText } from '@/components/fx/DecodeText';
+import { AfterimageCursor } from '@/components/fx/AfterimageCursor';
 import { BrainCircuit, Cpu, Database, Gauge, Loader2, ShieldCheck, Smartphone, Sparkles, Waves } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { AppBar } from '@/components/AppBar';
@@ -30,10 +32,11 @@ export default function SettingsScreen() {
 
   return (
     <div className="scroll-quiet h-full overflow-y-auto bg-ground">
+      <AfterimageCursor />
       <AppBar />
       <main className="screen-enter mx-auto max-w-3xl px-4 pt-8 pb-24 sm:px-8 sm:pt-12">
         <p className="label-caps text-fg-4">Everything stays on this device</p>
-        <h1 className="display mt-3 text-[3.2rem] text-fg sm:text-[4.5rem]">Settings</h1>
+        <h1 className="display mt-3 text-[3.2rem] text-fg sm:text-[4.5rem]"><DecodeText text="Settings" immediate /></h1>
         <nav aria-label="Settings sections" className="no-scrollbar -mx-4 mt-6 mb-8 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
           {SECTIONS.map((x) => (
             <a

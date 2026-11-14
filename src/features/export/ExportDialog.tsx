@@ -280,7 +280,7 @@ function ExportDialogBody({ ids }: { ids: string[] | null }) {
           <div className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-md bg-raised-2 ${progress ? '' : 'hidden'}`}>
             {first?.thumbUrl && <img src={first.thumbUrl} alt="" className="h-full w-full object-cover" />}
             {many && (
-              <span className="absolute right-1 bottom-1 rounded-full bg-black/70 px-1.5 font-mono text-[10px] text-white">+{(ids?.length ?? 1) - 1}</span>
+              <span className="absolute right-1 bottom-1 rounded-full bg-black/70 px-1.5 font-mono text-[11px] text-white">+{(ids?.length ?? 1) - 1}</span>
             )}
           </div>
           <ul className="scroll-quiet max-h-24 min-w-0 flex-1 space-y-1 overflow-auto">

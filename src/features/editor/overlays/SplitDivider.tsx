@@ -35,7 +35,7 @@ export function SplitDivider({ box }: { box: ViewBox }) {
       }}
     >
       <span className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-fg/85 shadow-[0_0_0_1px_rgba(0,0,0,0.25)]" />
-      <span className="absolute top-1/2 left-1/2 flex h-7 w-7 -translate-1/2 items-center justify-center rounded-full border border-fg/80 bg-well/70 text-[10px] text-fg">
+      <span className="absolute top-1/2 left-1/2 flex h-7 w-7 -translate-1/2 items-center justify-center rounded-full border border-fg/80 bg-well/70 text-[11px] text-fg">
         ⇆
       </span>
     </div>

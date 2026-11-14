@@ -83,7 +83,7 @@ export function PhotosPanel() {
               <img src={p.thumbUrl} alt="" className="h-9 w-12 shrink-0 rounded-[2px] object-cover" />
               <span className="min-w-0">
                 <span className="block truncate text-xs text-fg">{p.name}</span>
-                <span className="tabular block text-[10.5px] text-fg-4">
+                <span className="tabular block text-[11.5px] text-fg-4">
                   {p.width} × {p.height}
                 </span>
               </span>
