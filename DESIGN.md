@@ -348,8 +348,11 @@ Afterimage; the palette, type, wordmark and analog props are unchanged. It repla
 - **Afterimage cursor** (`AfterimageCursor`, home, looks and settings only): an ivory dot, a ring on
   a spring with a late lilac copy at a hard offset, a short trail of lilac pixels, and labels
   (Drag, Open, Turn, Scatter) from `data-cursor`. Text fields and the editor keep system cursors.
-- **Scroll story** (`features/home/MatchStory.tsx`): a pinned section that tells "Match a look" as
-  you scroll: a reference is scanned, its palette breaks into particles that fly onto your photo,
+- **Home is a darkroom** (owner, 2026-11-14): the home screen has no ambient colour wash. The top of
+  the page is black with a little grain (`.home-void`), so the hero photo is the only colour.
+- **Story** (`features/home/MatchStory.tsx`): tells "Match a look". It plays by itself once when it
+  comes into view (it used to pin and follow the scroll, which the owner found confusing); step
+  titles jump to a step and "replay" runs it again. What it shows: a reference is scanned, its palette breaks into particles that fly onto your photo,
   the look washes across it and an editable look card rises. Illustration only (a graded crop of
   the sample photo and descriptive readings).
 - **Look dissolve** (`LookDissolve`, editor): when a look lands, the previous frame breaks into

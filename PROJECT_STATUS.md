@@ -9,7 +9,15 @@ All eight staged phases from spec §18 have a working implementation. The signat
 end, with or without an AI key. Items still open are listed under **Remaining work**. Nothing
 there is presented as finished in the UI.
 
-**2026-11-14 (newest): new app icon and an opening animation** (owner: the phone still showed the
+**2026-11-14 (newest): home hero background and the story.** Owner feedback: the hero's coloured
+ambient gradient looked wrong, and the scroll-pinned "How a look travels" confused. Home now has a
+black, lightly grained top (`.home-void`) instead of the ambient light; the particle photo stays (a
+frame-stream replacement was tried and rejected by the owner). `MatchStory` plays by itself once
+when in view, with clickable steps and a replay link; no pinning, normal page height.
+Tests run: typecheck clean, lint 0 errors, Vitest 262 passed, 1 skipped; e2e `home-sample`,
+`mobile-home-sample`, `intro` passed. Looked at 390, 834 and 1440 px.
+
+**2026-11-14: new app icon and an opening animation** (owner: the phone still showed the
 old logo, and wanted a logo animation on open). The icon keeps the "lu" mark and gains the Lit
 light and glass rim; files renamed to `public/icons/lumen-*` (manifest and index.html updated, old
 `icon-*` files removed) so installed apps and caches fetch them. Android refreshes an installed

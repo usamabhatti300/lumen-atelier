@@ -1,24 +1,25 @@
 /**
- * Home, the scroll story: how "Match a look" works, told by scrolling. The section pins while you
- * scroll through it:
+ * Home, the story of "Match a look". It plays by itself, once, when it comes into view (no scroll
+ * pinning: the page scrolls normally past it). Each step's title jumps to that step, and Replay
+ * runs it again:
  *   1. a reference photo arrives and a scan line reads it; what it finds appears beside it;
  *   2. its colours come off as a palette, break into particles and fly across;
  *   3. they land on your photo, the look washes over it, and an editable look card rises.
- * Scrolling back plays it backwards. With reduced motion it is a still, finished picture.
+ * With reduced motion it is a still, finished picture.
  *
  * Illustration only: the "reference" is a crop of the bundled sample photo with a CSS grade, and
  * the readings are the kind of things the analysis describes, not a live measurement.
  */
 import {
+  animate,
   motion,
   useMotionValue,
   useMotionValueEvent,
-  useScroll,
-  useSpring,
   useTransform,
+  type AnimationPlaybackControls,
   type MotionValue,
 } from 'motion/react';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SAMPLE_PHOTO } from '@/lib/samples';
 import { motionReduced } from '@/lib/haptics';
 import { DecodeText } from '@/components/fx/DecodeText';
@@ -46,23 +47,50 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const seg = (p: number, a: number, b: number) => clamp01((p - a) / (b - a));
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
-export function MatchStory({
-  scroller,
-  onMatch,
-}: {
-  scroller: RefObject<HTMLElement | null>;
-  onMatch: () => void;
-}) {
+/** Seconds for the whole story, and where each step ends (0..1). */
+const STORY_SECONDS = 8;
+const STEP_END = [0.33, 0.6, 1];
+
+export function MatchStory({ onMatch }: { onMatch: () => void }) {
   const [still] = useState(() => motionReduced());
   const section = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    container: scroller,
-    target: section,
-    offset: ['start start', 'end end'],
-  });
-  const smooth = useSpring(scrollYProgress, { stiffness: 140, damping: 30, mass: 0.4 });
-  const fixed = useMotionValue(1);
-  const p = still ? fixed : smooth;
+  const p = useMotionValue(still ? 1 : 0);
+  const run = useRef<AnimationPlaybackControls | null>(null);
+  const [done, setDone] = useState(still);
+
+  /** Plays from `from` to `to` at the story's pace. */
+  const play = useCallback(
+    (from: number, to: number) => {
+      run.current?.stop();
+      p.set(from);
+      setDone(false);
+      run.current = animate(p, to, {
+        duration: Math.max(0.6, (to - from) * STORY_SECONDS),
+        ease: 'linear',
+        onComplete: () => setDone(to >= 1),
+      });
+    },
+    [p],
+  );
+
+  // Start once, when most of the section is on screen.
+  useEffect(() => {
+    const el = section.current;
+    if (!el || still) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        io.disconnect();
+        play(0, 1);
+      },
+      { threshold: 0.45 },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      run.current?.stop();
+    };
+  }, [still, play]);
 
   const [step, setStep] = useState(still ? 2 : 0);
   useMotionValueEvent(p, 'change', (v) => setStep(v < 0.34 ? 0 : v < 0.62 ? 1 : 2));
@@ -72,11 +100,10 @@ export function MatchStory({
       ref={section}
       aria-labelledby="story-title"
       className="relative"
-      style={{ height: still ? 'auto' : '340vh' }}
+      data-testid="match-story"
+      data-step={step}
     >
-      <div
-        className={`${still ? '' : 'sticky top-14'} flex min-h-[calc(100dvh-3.5rem)] flex-col justify-center gap-6 py-8 lg:grid lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:items-center lg:gap-10`}
-      >
+      <div className="flex flex-col justify-center gap-6 py-10 sm:py-16 lg:grid lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)] lg:items-center lg:gap-10">
         <div>
           <h2 id="story-title" className="display text-[clamp(2rem,6vw,3.4rem)] text-fg">
             <DecodeText text="How a look" />{' '}
@@ -95,11 +122,15 @@ export function MatchStory({
                   className="absolute top-[22px] left-0 h-px w-8 origin-left bg-accent transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
                   style={{ transform: `scaleX(${i <= step ? 1 : 0})` }}
                 />
-                <p
-                  className={`text-[17px] font-semibold tracking-[-0.015em] transition-colors duration-500 sm:text-[19px] ${i === step ? 'text-fg' : 'text-fg-4'}`}
+                <button
+                  type="button"
+                  disabled={still}
+                  aria-current={i === step ? 'step' : undefined}
+                  onClick={() => play(i === 0 ? 0 : STEP_END[i - 1], STEP_END[i])}
+                  className={`block min-h-9 text-left text-[17px] font-semibold tracking-[-0.015em] transition-colors duration-500 enabled:hover:text-fg sm:text-[19px] ${i === step ? 'text-fg' : 'text-fg-4'}`}
                 >
                   {s.title}
-                </p>
+                </button>
                 <motion.p
                   initial={false}
                   animate={{ height: i === step ? 'auto' : 0, opacity: i === step ? 1 : 0 }}
@@ -111,6 +142,15 @@ export function MatchStory({
               </li>
             ))}
           </ol>
+          {!still && (
+            <button
+              type="button"
+              onClick={() => play(0, 1)}
+              className={`mt-3 ml-12 h-9 font-mono text-[12px] text-fg-3 transition-opacity duration-500 hover:text-fg ${done ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+            >
+              ↺ replay
+            </button>
+          )}
         </div>
         <Stage p={p} onMatch={onMatch} />
       </div>

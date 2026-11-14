@@ -27,7 +27,6 @@ import {
 } from '@/lib/storage/db';
 import { importFiles } from '@/engine/importer';
 import { SAMPLE_PHOTO, sampleFile } from '@/lib/samples';
-import { Ambient } from '@/components/fx/Ambient';
 import { Magnetic } from '@/components/fx/Magnetic';
 import { RingCarousel } from '@/components/fx/RingCarousel';
 import { HERO_LOOKS } from '@/components/fx/heroLooks';
@@ -218,8 +217,8 @@ export function GalleryScreen() {
 
   return (
     <div ref={root} className="scroll-quiet relative h-full overflow-x-hidden overflow-y-auto bg-ground">
-      {/* The photo's light behind the top of the page (fades out toward the rolls). */}
-      <Ambient src={plateSrc} opacity={0.42} className="!absolute !inset-x-0 !top-0 !bottom-auto h-[900px] [mask-image:linear-gradient(#000_45%,transparent)]" />
+      {/* The hero's darkroom: black with a little grain, so the photo is the only colour on the page. */}
+      <div aria-hidden className="home-void" />
       <header className="liquid-bar sticky top-0 z-30 pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-4 sm:px-8">
           <Wordmark />
@@ -326,7 +325,7 @@ export function GalleryScreen() {
         </section>
 
         {/* How a look travels: the scroll story. */}
-        <MatchStory scroller={root} onMatch={matchLook} />
+        <MatchStory onMatch={matchLook} />
 
         {/* Your edits as a contact sheet: numbered frames with their dates. */}
         <section aria-labelledby="edits-title" className="pb-14">
