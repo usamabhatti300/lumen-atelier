@@ -5,7 +5,7 @@
  * the photo across crops and rotations. Painted areas that are still being
  * filled are shown with a soft amber wash.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useEditor } from '@/state/editorStore';
 import { useEngine } from '@/engine/engineStore';
@@ -15,6 +15,7 @@ import { activeRemovals, simplifyStroke } from '@/lib/removal/removal';
 import { REMOVAL_LIMITS, type RemovalStroke } from '@/lib/schema/adjustments';
 import type { ViewBox } from '../Viewport';
 import { touchMods } from './touchMode';
+import { onToolPinch } from './toolPinch';
 
 export function RemoveToolOverlay({ box }: { box: ViewBox }) {
   const geometry = useEditor((s) => s.edit.geometry);
@@ -26,6 +27,15 @@ export function RemoveToolOverlay({ box }: { box: ViewBox }) {
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [live, setLive] = useState<RemovalStroke | null>(null);
   const drawing = useRef<{ stroke: RemovalStroke; append: boolean } | null>(null);
+  // A second finger turns the touch into a pinch: drop the stroke the first finger began.
+  useEffect(
+    () =>
+      onToolPinch(() => {
+        drawing.current = null;
+        setLive(null);
+      }),
+    [],
+  );
 
   const m = useMemo(() => (full ? outputToSourceMatrix(full, geometry) : null), [full, geometry]);
   const inv = useMemo(() => (full ? sourceToOutputMatrix(full, geometry) : null), [full, geometry]);

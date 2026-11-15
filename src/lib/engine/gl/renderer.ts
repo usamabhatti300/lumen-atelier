@@ -16,7 +16,7 @@
  * padded tile for full-resolution export. Masks and grain are addressed in
  * full-image coordinates so tiles join seamlessly.
  */
-import type { CropRect, EditState } from '../../schema/adjustments';
+import { MAX_HEAL_SPOTS, type CropRect, type EditState } from '../../schema/adjustments';
 import {
   BLUR_RADII,
   MIN_BLUR_PX,
@@ -323,22 +323,18 @@ export class GLRenderer {
 
     // 2. Retouch.
     if (retouchOn) {
-      const bs = this.blur('rbs', lin, radius(BLUR_RADII.small, MIN_BLUR_PX.small));
-      const bm = this.blur('rbm', lin, radius(BLUR_RADII.medium * 1.6, MIN_BLUR_PX.medium));
-      const spots = r.spots.slice(0, 32);
-      const spotData = new Float32Array(32 * 4);
-      const offData = new Float32Array(32 * 2);
+      const spots = r.spots.slice(0, MAX_HEAL_SPOTS);
+      const spotData = new Float32Array(MAX_HEAL_SPOTS * 4);
+      const offData = new Float32Array(MAX_HEAL_SPOTS * 2);
       spots.forEach((s, i) => {
         spotData.set([s.x, s.y, s.r, 0], i * 4);
         offData.set([s.dx, s.dy], i * 2);
       });
-      const out = this.ensureTarget('retouched', sw, sh, f);
-      this.pass('retouch', retouchFrag(f), out, {
-        u_lin: lin.tex,
-        u_bs: bs.tex,
-        u_bm: bm.tex,
+      const faceOn =
+        this.portraitMask !== null &&
+        (r.skinSmoothing > 0 || r.eyeEnhance > 0 || r.teethWhitening > 0 || r.faceLight > 0 || r.underEye > 0);
+      const shared = {
         u_pmask: this.portraitMask ?? this.blankTex,
-        u_hasMask: this.portraitMask ? 1 : 0,
         u_region: [this.srcRegion.x, this.srcRegion.y, this.srcRegion.w, this.srcRegion.h],
         u_fullSize: [req.fullSize.width, req.fullSize.height],
         u_skin: r.skinSmoothing / 100,
@@ -347,11 +343,39 @@ export class GLRenderer {
         u_teeth: r.teethWhitening / 100,
         u_faceLight: r.faceLight / 100,
         u_underEye: r.underEye / 100,
-        u_spotCount: spots.length,
         u_texel: [1 / sw, 1 / sh],
         u_skinRadius: radius(BLUR_RADII.medium * 2, 2),
         'u_spots[0]': spotData,
         'u_spotOff[0]': offData,
+      };
+      // With both spots and face retouching, heal first and retouch the healed image: skin
+      // smoothing samples its neighbours and a blurred copy, and from the unhealed image those
+      // put part of each blemish back. With only one of the two, a single pass is the same as before.
+      let from = lin;
+      let spotCount = spots.length;
+      if (spots.length > 0 && faceOn) {
+        const healed = this.ensureTarget('healed', sw, sh, f);
+        this.pass('retouch', retouchFrag(f), healed, {
+          ...shared,
+          u_lin: lin.tex,
+          u_bs: this.blankTex,
+          u_bm: this.blankTex,
+          u_hasMask: 0,
+          u_spotCount: spots.length,
+        });
+        from = healed;
+        spotCount = 0;
+      }
+      const bs = this.blur('rbs', from, radius(BLUR_RADII.small, MIN_BLUR_PX.small));
+      const bm = this.blur('rbm', from, radius(BLUR_RADII.medium * 1.6, MIN_BLUR_PX.medium));
+      const out = this.ensureTarget('retouched', sw, sh, f);
+      this.pass('retouch', retouchFrag(f), out, {
+        ...shared,
+        u_lin: from.tex,
+        u_bs: bs.tex,
+        u_bm: bm.tex,
+        u_hasMask: this.portraitMask ? 1 : 0,
+        u_spotCount: spotCount,
       });
       base = out;
     }

@@ -32,6 +32,35 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
 
 ## State as of the last session
 
+- **2026-11-15 (newest): audit and strategy, nothing built.** Three documents were written:
+  `APP_GUIDE.md` (user guide to every feature), `report.md` (audit of all 54 looks with measured
+  skin and look-to-look numbers, adaptive fitting, portrait, masks, blur, effects) and
+  `PRODUCT_STRATEGY.md` (direction, roadmap, Free/Pro). **Read the "Owner decisions" table at the
+  top of `PRODUCT_STRATEGY.md` before planning anything:** looks in three tiers (about 30 Core,
+  Experimental, Archived; cut only after testing on real photographs; saved edits and Kept never
+  break), personality kept selectively ("the interface never competes with the photograph"),
+  phone dock Edit · Looks · Portrait · Blur & Effects · More, freemium with a one-time Pro
+  purchase (validate before building payments), and the order: looks first, Match a look second,
+  then Portrait and Blur. The roadmap there replaces the "still to build" order in the next
+  entry. Before Phase 0/1 can start the owner must supply or approve an evaluation photo set
+  (never the Pictures folder) and a real-phone test. Known bug to fix first: heal spots after
+  the 32nd are stored but never drawn (`renderer.ts:328`).
+  **Phase 0 code fixes done the same day (not committed):** heal spots to 64 everywhere
+  (`MAX_HEAL_SPOTS`); heal before smoothing when both are on (two retouch passes); iris mask
+  clipped to the eye opening and under-eye area turned with the eye line (`underEyeEllipse`);
+  two-finger zoom and pan while a drawing tool is active on touch (`overlays/toolPinch.ts`; heal
+  and Select object act on finger-up for touch); export tile planning (`planTiles`: lens reach
+  added to the other blurs, tile shrinks to fit the GPU texture limit); a note when Lens blur and
+  Background blur are both on. Tests: `faceMask.test.ts`, `exporter.test.ts`, `e2e/phase0.spec.ts`,
+  `e2e/mobile-phase0.spec.ts`. **Not verified in a render:** heal-before-smooth, the iris clip and
+  the under-eye rotation need a photo with a face, and the e2e images have none; they are on the
+  owner's phone checklist (`docs/PHONE_TEST_CHECKLIST.md`, 5.3-5.7). **Phase 0 still open:** the
+  owner's real-phone test, the evaluation photo set (licensed or CC0, the owner approves each
+  photo), touch-target sizes (after the phone test). Look value fixes wait for Phase 1. The second
+  round of owner decisions (Free/Pro line, opening tab, no payment code yet, consent-only Pro
+  interest) is in the same table in `PRODUCT_STRATEGY.md`. Do not start Phase 2 or later until
+  Phase 0 is finished and tested.
+
 - **2026-11-15 (newest): trend features.** After Gen Z trend research the owner approved eight
   picks, in this order, and asked for the first three, which are **built** (details and tests in
   PROJECT_STATUS.md): (1) digicam kit: roll 09 Pocket Digicam + Camcorder / Viewfinder overlays in
@@ -42,7 +71,11 @@ To enable AI: create `.env` with `ANTHROPIC_API_KEY=...` and restart `npm run de
   fill); (6) scrapbook: cut-out stickers from subject selection + collage layouts; (7) look card
   (9:16 before/after with the look's name) + look links / QR (settings only, never the photo);
   (8) camera with live looks (**ask where its entry goes**; proposed: a "Shoot" button on home).
-  Roll and look names from this pass are proposals the owner has not objected to. **Not committed.**
+  Roll and look names from this pass are proposals the owner has not objected to. The particle
+  dissolve on look change was removed at the owner's request (plain fade only). **Committed and
+  pushed** (`88d76f9`, 2026-11-15). **The app is deployed on Render** (owner, 2026-11-15; no
+  `render.yaml` in the repo and the URL is not recorded here: ask the owner for it). Older notes
+  below that say no host was chosen are out of date.
 
 - **2026-11-14 (newest): product audit and improvement pass** (the owner's brief: audit everything,
   curate the looks, add what earns its place, implement, test, audit again). Read

@@ -26,6 +26,10 @@ export function LensBlurSection() {
   const ready = depth.status === 'ready';
   const on = lens.amount > 0;
   const modified = !!stored && JSON.stringify(stored) !== JSON.stringify(defaultLensBlur());
+  // Background blur (Portrait) is a mask layer of its own; with lens blur on too, the background is blurred twice.
+  const layerBlurToo = useEditor((s) =>
+    s.edit.layers.some((l) => l.visible && l.adjustments.blur > 0 && l.components.some((c) => c.type === 'segment' && c.target === 'background')),
+  );
 
   const slider = (key: keyof typeof LENS_BLUR_RANGES, label: string, hint: string, patch?: (v: number) => Partial<LensBlur>) => (
     <Slider
@@ -92,6 +96,11 @@ export function LensBlurSection() {
         }
       />
       {mode === 'cpu' && on && <p className="mt-1 text-[11px] leading-relaxed text-fg-4">Rendering on the CPU here, so the preview updates slowly.</p>}
+      {on && layerBlurToo && (
+        <p className="mt-1 text-[11px] leading-relaxed text-fg-3" data-testid="double-blur-note">
+          Background blur is also on (Masks), so the background is blurred twice. Turn one of them off for a cleaner result.
+        </p>
+      )}
     </Section>
   );
 }

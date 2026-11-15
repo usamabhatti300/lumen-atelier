@@ -246,6 +246,24 @@ export async function exportEdited(opts: ExportOptions): Promise<Blob> {
   }
 }
 
+/**
+ * Tile size and source padding for a tiled export.
+ *
+ * Lens blur runs on the source before the other blurs, so the two reaches add (until 2026-11-15
+ * the larger of the two was used, which left too little margin when both were on). A padded
+ * tile's source must also fit one GPU texture, including the wider box a rotated tile covers:
+ * the tile shrinks to make room, and only when even a small tile cannot hold the full padding
+ * is the padding itself cut (a faint seam is better than a failed export).
+ */
+export function planTiles(o: { tileSize: number; maxTexture: number; blurReach: number; lensReach: number }) {
+  const want = o.blurReach + o.lensReach + 8;
+  const minTile = 256;
+  const pad = Math.max(0, Math.min(want, Math.floor((o.maxTexture - Math.ceil(minTile * Math.SQRT2)) / 2)));
+  const fits = Math.floor((o.maxTexture - 2 * pad) / Math.SQRT2);
+  const tile = Math.max(minTile, Math.min(o.tileSize, Math.floor(o.maxTexture / 2), fits));
+  return { tile, pad, reduced: pad < want };
+}
+
 async function renderTiles(
   renderer: GLRenderer,
   source: ImageBitmap,
@@ -265,7 +283,6 @@ async function renderTiles(
     const lut = await getLut(edit.lut.id);
     if (lut) renderer.setLut(lut.data, lut.size);
   }
-  const tile = Math.min(opts.tileSize ?? 2048, Math.floor(renderer.maxTextureSize / 2));
   const longEdge = Math.max(fullSize.width, fullSize.height);
   const maxLayerBlur = Math.max(0, ...edit.layers.map((l) => l.adjustments.blur / 100));
   const maxSpotReach = Math.max(
@@ -277,17 +294,19 @@ async function renderTiles(
   const lens = deriveLensParams(edit.lensBlur);
   const lensPx = lens.active && opts.depth ? lensRadiusPx(lens, longEdge, 1) : 0;
   const lensAlign = lensPx >= 0.5 ? lensBlurPlan(lensPx).factor : 1;
-  const pad = Math.max(
-    Math.ceil(
-      // Bloom/halation/dreamy/soft focus blur the finished develop again, so their reach adds to the rest;
-      // so does the length of the motion blur and shutter drag streaks, which run before them.
+  const { tile, pad } = planTiles({
+    tileSize: opts.tileSize ?? 2048,
+    maxTexture: renderer.maxTextureSize,
+    // Bloom/halation/dreamy/soft focus blur the finished develop again, so their reach adds to the rest;
+    // so does the length of the motion blur and shutter drag streaks, which run before them.
+    blurReach: Math.ceil(
       (Math.max(BLUR_RADII.large * 3, BLUR_RADII.layerMax * maxLayerBlur * 3, BLUR_RADII.medium * 1.6 * 3, maxSpotReach) +
         (params.glowActive ? BLUR_RADII.glow * 3 : 0) +
         streakReach(params.fx)) *
         longEdge,
-    ) + 8,
-    lensPx >= 0.5 ? lensTilePadding(lensPx) + 8 : 0,
-  );
+    ),
+    lensReach: lensPx >= 0.5 ? lensTilePadding(lensPx) : 0,
+  });
   const alignDown = (v: number) => Math.floor(v / lensAlign) * lensAlign;
 
   const mat = outputToSourceMatrix(fullSize, edit.geometry);

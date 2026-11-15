@@ -4,7 +4,7 @@
  * source-image coordinates through the geometry matrix, so strokes stay
  * attached to the photo across crops and rotations.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor } from '@/state/editorStore';
 import { useEngine } from '@/engine/engineStore';
 import { engine } from '@/engine/controller';
@@ -17,6 +17,7 @@ import type { ViewBox } from '../Viewport';
 import { ObjectToolChip } from '@/features/masks/selectObject';
 import { objectClick } from '@/features/masks/selectObjectActions';
 import { touchMods } from './touchMode';
+import { onToolPinch } from './toolPinch';
 
 let healCache: { photoId: string; img: PixelSource } | null = null;
 function healPixels(): PixelSource | null {
@@ -42,6 +43,19 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [live, setLive] = useState<MaskComponent | null>(null);
   const drawing = useRef<{ comp: MaskComponent; startUv: [number, number] } | null>(null);
+  // A finger's tap (heal, select object) acts when the finger lifts, so a second finger can
+  // still turn it into a pinch. A mouse click acts at once, as before.
+  const pendingTap = useRef<{ s: [number, number]; mods: { shiftKey: boolean; altKey: boolean } } | null>(null);
+  useEffect(
+    () =>
+      onToolPinch(() => {
+        drawing.current = null;
+        pendingTap.current = null;
+        setLive(null);
+        setLiveStroke(null);
+      }),
+    [setLiveStroke],
+  );
 
   const m = useMemo(() => (full ? outputToSourceMatrix(full, geometry) : null), [full, geometry]);
   const inv = useMemo(() => (full ? sourceToOutputMatrix(full, geometry) : null), [full, geometry]);
@@ -66,18 +80,14 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
   const needsLayer = tool === 'brush' || tool === 'linear' || tool === 'radial' || tool === 'object';
   const disabled = needsLayer && !activeLayerId;
 
-  const onDown = (e: React.PointerEvent) => {
-    if (e.button !== 0 || disabled) return;
-    e.stopPropagation();
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    const uv = toUv(e);
-    const s = toSrc(uv);
+  /** One click or tap of a point tool at source position `s`. */
+  const tapAt = (s: [number, number], mods: { shiftKey: boolean; altKey: boolean }) => {
     if (tool === 'object') {
-      if (s[0] >= 0 && s[0] <= 1 && s[1] >= 0 && s[1] <= 1) objectClick(s[0], s[1], touchMods(e));
+      if (s[0] >= 0 && s[0] <= 1 && s[1] >= 0 && s[1] <= 1) objectClick(s[0], s[1], mods);
       return;
     }
     if (tool === 'heal') {
-      if (touchMods(e).altKey) {
+      if (mods.altKey) {
         // Touch "Delete spot" mode: remove the spot under the finger (rings are hard to hit exactly).
         const at = toScreen(s);
         const hit = spots.find((sp) => {
@@ -92,6 +102,19 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
       const r = brush.size / 2;
       const off = findHealOffset(img, { x: s[0], y: s[1], r });
       addSpot({ x: s[0], y: s[1], r, dx: off.dx, dy: off.dy });
+    }
+  };
+
+  const onDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 || disabled) return;
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const uv = toUv(e);
+    const s = toSrc(uv);
+    if (tool === 'object' || tool === 'heal') {
+      const mods = touchMods(e);
+      if (e.pointerType === 'touch') pendingTap.current = { s, mods };
+      else tapAt(s, mods);
       return;
     }
     let comp: MaskComponent;
@@ -131,11 +154,19 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
   };
 
   const onUp = () => {
+    const tap = pendingTap.current;
+    pendingTap.current = null;
+    if (tap) tapAt(tap.s, tap.mods);
     const d = drawing.current;
     drawing.current = null;
     setLive(null);
     setLiveStroke(null);
     if (d && activeLayerId) addComponent(activeLayerId, d.comp);
+  };
+  // A cancelled touch (the browser took it over) leaves no tap behind; a stroke is kept as far as it got.
+  const onCancel = () => {
+    pendingTap.current = null;
+    onUp();
   };
 
   const shapes = [...(layer?.components ?? []), ...(live ? [live] : [])];
@@ -147,7 +178,7 @@ export function MaskToolOverlay({ box }: { box: ViewBox }) {
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
-      onPointerCancel={onUp}
+      onPointerCancel={onCancel}
       onPointerLeave={() => setCursor(null)}
       data-testid="tool-overlay"
     >

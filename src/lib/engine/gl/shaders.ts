@@ -3,6 +3,7 @@
  * The colour math mirrors src/lib/engine/pixel.ts (CPU reference). Keep the two
  * in sync; tests exercise the CPU version and e2e tests compare both paths.
  */
+import { MAX_HEAL_SPOTS } from '../../schema/adjustments';
 import { LENS, STREAK } from '../params';
 
 export const VERTEX = /* glsl */ `#version 300 es
@@ -240,8 +241,8 @@ uniform vec2 u_fullSize;    // full image size in px
 uniform float u_skin, u_skinTex, u_eye, u_teeth, u_faceLight, u_underEye;
 uniform int u_hasMask;
 uniform int u_spotCount;
-uniform vec4 u_spots[32];   // x, y (global normalized), r (fraction of long edge), unused
-uniform vec2 u_spotOff[32]; // offset (global normalized)
+uniform vec4 u_spots[${MAX_HEAL_SPOTS}];   // x, y (global normalized), r (fraction of long edge), unused
+uniform vec2 u_spotOff[${MAX_HEAL_SPOTS}]; // offset (global normalized)
 uniform vec2 u_texel;       // 1 / texture size
 uniform float u_skinRadius; // surface-blur radius in texels
 
@@ -278,7 +279,7 @@ void main() {
   vec2 toLE = u_fullSize / longEdge;
 
   // Healing spots: clone from the offset source, matched to the target's colour at the ring.
-  for (int i = 0; i < 32; i++) {
+  for (int i = 0; i < ${MAX_HEAL_SPOTS}; i++) {
     if (i >= u_spotCount) break;
     vec4 s = u_spots[i];
     float d = length((g - s.xy) * toLE) / s.z;

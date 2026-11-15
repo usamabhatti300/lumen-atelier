@@ -17,6 +17,7 @@ import { RemoveToolOverlay } from './overlays/RemoveToolOverlay';
 import { SplitDivider } from './overlays/SplitDivider';
 import { FocusOverlay } from './overlays/FocusOverlay';
 import { TouchModeChip } from './overlays/TouchModeChip';
+import { cancelToolStrokes } from './overlays/toolPinch';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 
 export interface ViewBox {
@@ -134,6 +135,8 @@ export function Viewport({ onImport }: { onImport: () => void }) {
   const canPan = !fitted && (tool === 'none' || spaceDown);
   // Pinch and double-tap only where a finger does not already draw or drag something.
   const canPinch = !!activePhotoId && !!canvasSize.w && tool === 'none';
+  // With a drawing tool active one finger draws, and two fingers still zoom and pan.
+  const toolPinch = !!activePhotoId && !!canvasSize.w && toolActive;
 
   const local = (e: { clientX: number; clientY: number }) => {
     const rect = container.current!.getBoundingClientRect();
@@ -287,6 +290,16 @@ export function Viewport({ onImport }: { onImport: () => void }) {
         if (!activePhotoId || !canvasSize.w) return;
         const rect = container.current!.getBoundingClientRect();
         zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)), e.clientX - rect.left, e.clientY - rect.top);
+      }}
+      onPointerDownCapture={(e) => {
+        // Seen before the tool overlay: a second finger starts a pinch and never reaches the tool.
+        if (e.pointerType !== 'touch' || !toolPinch) return;
+        touches.current.set(e.pointerId, local(e));
+        if (touches.current.size < 2) return;
+        e.stopPropagation();
+        if (touches.current.size > 2) return;
+        cancelToolStrokes();
+        pinch.current = { ...pinchFrame(), zoom: currentZoom, pan: fitted ? { x: 0, y: 0 } : pan };
       }}
       onPointerDown={(e) => {
         if (e.pointerType === 'touch' && canPinch && onTouchDown(e)) return;

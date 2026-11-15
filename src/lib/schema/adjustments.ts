@@ -360,6 +360,9 @@ export interface MaskLayer {
 
 // --- Portrait retouching ---------------------------------------------------
 
+/** The most heal spots one photo keeps. The editor, the saved edit and the shader all use this one limit. */
+export const MAX_HEAL_SPOTS = 64;
+
 export interface HealSpot {
   id: string;
   /** Centre, normalized source coordinates. */
@@ -866,7 +869,7 @@ export const RetouchSchema = z.object({
         dy: z.number().min(-1).max(1),
       }),
     )
-    .max(64),
+    .max(MAX_HEAL_SPOTS),
 });
 
 export const RemovalSchema = z.object({

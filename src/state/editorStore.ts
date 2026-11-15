@@ -27,6 +27,7 @@ import {
   type PartialAdjustments,
   type RemovalStroke,
   type Retouch,
+  MAX_HEAL_SPOTS,
   REMOVAL_LIMITS,
 } from '@/lib/schema/adjustments';
 import { blendPreset } from '@/lib/presets/blend';
@@ -540,7 +541,7 @@ export const useEditor = create<EditorState>()(
       },
 
       addSpot(spot) {
-        change('Heal spot', (e) => ({ ...e, retouch: { ...e.retouch, spots: [...e.retouch.spots, { ...spot, id: newId('s_') }].slice(-64) } }));
+        change('Heal spot', (e) => ({ ...e, retouch: { ...e.retouch, spots: [...e.retouch.spots, { ...spot, id: newId('s_') }].slice(-MAX_HEAL_SPOTS) } }));
       },
 
       removeSpot(id) {
