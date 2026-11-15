@@ -6,6 +6,8 @@ import { applyPoint, newObjectComponent, pointActionFor } from '@/lib/masks/obje
 import type { ObjectComponent } from '@/lib/schema/adjustments';
 import { newId } from '@/lib/storage/db';
 import { useEditor } from '@/state/editorStore';
+import { releaseMlWorkerIfIdle } from '@/lib/ml/client';
+import { memoryConstrained } from '@/lib/ml/memory';
 
 /** When set, the next plain click starts another object in the active layer instead of replacing the current one. */
 export const useObjectTool = create<{ startNew: boolean; hint: string | null }>(() => ({ startNew: false, hint: null }));
@@ -53,3 +55,14 @@ export function objectClick(x: number, y: number, mods: { shiftKey: boolean; alt
   s.updateMaskComponent(layerId, { ...current, points });
   useObjectTool.setState({ hint: null });
 }
+
+// On phones, leaving the Select object tool gives the model's memory back once it is idle.
+// The masks already made stay; coming back to the tool loads the model again.
+let leaveTimer = 0;
+useEditor.subscribe(
+  (s) => s.tool,
+  (tool, prev) => {
+    window.clearTimeout(leaveTimer);
+    if (prev === 'object' && tool !== 'object' && memoryConstrained()) leaveTimer = window.setTimeout(() => releaseMlWorkerIfIdle(), 4000);
+  },
+);

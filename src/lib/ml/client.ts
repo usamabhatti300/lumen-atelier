@@ -6,6 +6,7 @@
  */
 import type { DepthImage, DepthResult, LoadResult, MlRequest, MlResponse, SelfTestResult, TensorData } from './protocol';
 import type { ModelInfo } from './registry';
+import { memoryConstrained, registerRuntime, runtimeStarting } from './memory';
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; onProgress?: (loaded: number, total: number) => void };
 type RequestBody = MlRequest extends infer R ? (R extends { id: number } ? Omit<R, 'id'> : never) : never;
@@ -13,6 +14,28 @@ type RequestBody = MlRequest extends infer R ? (R extends { id: number } ? Omit<
 let worker: Worker | null = null;
 let seq = 0;
 const pending = new Map<number, Pending>();
+/** When the worker last started or finished a request (multi-step jobs leave short gaps between requests). */
+let lastActive = 0;
+const resetListeners = new Set<() => void>();
+
+/** Called when the worker has been shut down: anything remembered as "loaded" in it is gone. */
+export function onMlWorkerReset(fn: () => void): () => void {
+  resetListeners.add(fn);
+  return () => void resetListeners.delete(fn);
+}
+
+/**
+ * Shuts the ML worker down to give its memory back (a WebAssembly heap never shrinks while its
+ * worker lives). Only when nothing is running and nothing ran in the last `minIdleMs`, so a job
+ * made of several requests is never cut in half. The next request starts a fresh worker.
+ */
+export function releaseMlWorkerIfIdle(minIdleMs = 3000): boolean {
+  if (!worker || pending.size > 0 || performance.now() - lastActive < minIdleMs) return false;
+  worker.terminate();
+  worker = null;
+  for (const fn of resetListeners) fn();
+  return true;
+}
 
 function getWorker(): Worker {
   if (!worker) {
@@ -23,6 +46,7 @@ function getWorker(): Worker {
       if (!p) return;
       if (msg.type === 'progress') return p.onProgress?.(msg.loaded, msg.total);
       pending.delete(msg.id);
+      lastActive = performance.now();
       if (msg.type === 'result') p.resolve(msg.result);
       else p.reject(Object.assign(new Error(msg.error.message), { name: msg.error.name }));
     };
@@ -48,6 +72,8 @@ export function call<T>(body: RequestBody, opts: CallOptions = {}): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     if (opts.signal?.aborted) return reject(new DOMException('Cancelled', 'AbortError'));
     const id = ++seq;
+    if (memoryConstrained()) runtimeStarting('ml');
+    lastActive = performance.now();
     const w = getWorker();
     pending.set(id, { resolve: resolve as (v: unknown) => void, reject, onProgress: opts.onProgress });
     opts.signal?.addEventListener(
@@ -110,3 +136,5 @@ export function modelInstallState(model: ModelInfo, files: Record<string, number
   if (present.every(Boolean)) return 'installed';
   return present.some(Boolean) ? 'partial' : 'missing';
 }
+
+registerRuntime('ml', () => releaseMlWorkerIfIdle());

@@ -10,6 +10,7 @@
 import { create } from 'zustand';
 import { objectMaskKey, type ObjectMaskRaster } from '@/lib/masks/objectMask';
 import type { ObjectMaskLookup } from '@/lib/masks/rasterize';
+import { onMlWorkerReset } from '@/lib/ml/client';
 import { samDecode, samEmbed, samLoad } from '@/lib/ml/samClient';
 import { getCachedObjectMask, putCachedObjectMask } from '@/lib/storage/maskCache';
 import type { ObjectComponent } from '@/lib/schema/adjustments';
@@ -212,9 +213,20 @@ class ObjectMaskService {
   isPaused(photoId: string) {
     return this.paused.has(photoId);
   }
+
+  workerReset() {
+    this.model = null;
+    this.embeds.clear();
+    const s = useObjectSelect.getState();
+    useObjectSelect.setState({ readyPhotoId: null, phase: s.phase === 'error' ? 'error' : 'idle' });
+  }
 }
 
 export const objectMasks = new ObjectMaskService();
+
+// The ML worker was shut down to free memory: the model and every photo's analysis went with it.
+// Masks already made are kept (in memory and in the cache); the next click loads what it needs.
+onMlWorkerReset(() => objectMasks.workerReset());
 
 export function objectComponentsOf(layers: { components: { type: string }[] }[]): ObjectComponent[] {
   return layers.flatMap((l) => l.components.filter((c): c is ObjectComponent => c.type === 'object'));

@@ -6,6 +6,7 @@
  */
 import { ModelsMissingError } from './mediapipe';
 import { runPortraitModels, type PortraitModelResult } from './portraitModels';
+import { memoryConstrained, registerRuntime, runtimeStarting } from '../ml/memory';
 
 type Reply = { id: number; ok: true; result: PortraitModelResult } | { id: number; ok: false; missing: boolean; message: string };
 
@@ -38,12 +39,21 @@ function getWorker(): Worker {
   return w;
 }
 
+/** Shuts the portrait worker down to give its memory back; its models load again on the next photo. */
+export function releasePortraitWorkerIfIdle(): boolean {
+  if (!worker || pending.size > 0) return false;
+  worker.terminate();
+  worker = null;
+  return true;
+}
+
 const abortError = () => new DOMException('Detection stopped.', 'AbortError');
 
 function inWorker(input: ImageBitmap, signal?: AbortSignal): Promise<PortraitModelResult> {
   return new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(abortError());
     const id = ++seq;
+    if (memoryConstrained()) runtimeStarting('portrait');
     pending.set(id, { resolve, reject });
     signal?.addEventListener(
       'abort',
@@ -82,3 +92,5 @@ export async function detectPortrait(input: ImageBitmap, signal?: AbortSignal): 
     input.close();
   }
 }
+
+registerRuntime('portrait', releasePortraitWorkerIfIdle);
